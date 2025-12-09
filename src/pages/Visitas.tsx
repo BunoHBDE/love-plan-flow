@@ -272,7 +272,7 @@ export default function Visitas() {
                 Agendar Visita
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-display text-xl">
                   Agendar Nova Visita
