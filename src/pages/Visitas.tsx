@@ -26,6 +26,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogDescription,
@@ -803,13 +809,45 @@ export default function Visitas() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium border ${
-                      statusStyles[visit.status]
-                    }`}
-                  >
-                    {statusLabels[visit.status]}
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium border cursor-pointer transition-all hover:opacity-80 ${
+                          statusStyles[visit.status]
+                        }`}
+                      >
+                        {statusLabels[visit.status]}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-card">
+                      {(["confirmada", "agendada", "realizada", "cancelada"] as const).map((status) => (
+                        <DropdownMenuItem
+                          key={status}
+                          onClick={() => {
+                            setVisits(visits.map((v) =>
+                              v.id === visit.id ? { ...v, status } : v
+                            ));
+                            toast({
+                              title: "Status atualizado!",
+                              description: `Status alterado para "${statusLabels[status]}".`,
+                            });
+                          }}
+                          className={cn(
+                            "cursor-pointer",
+                            visit.status === status && "font-semibold"
+                          )}
+                        >
+                          <span className={`w-2 h-2 rounded-full mr-2 ${
+                            status === "confirmada" ? "bg-success" :
+                            status === "agendada" ? "bg-warning" :
+                            status === "realizada" ? "bg-primary" :
+                            "bg-destructive"
+                          }`} />
+                          {statusLabels[status]}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button variant="elegant" size="sm" onClick={() => handleOpenDetails(visit)}>
                     Detalhes
                   </Button>
