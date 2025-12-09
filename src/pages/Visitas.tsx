@@ -309,10 +309,16 @@ export default function Visitas() {
           <div className="flex flex-wrap gap-2">
             {(["confirmada", "agendada", "realizada", "cancelada"] as const).map((status) => {
               const isSelected = statusFilter.includes(status);
+              const selectedStyles = {
+                confirmada: "bg-success text-success-foreground hover:bg-success/90 border-success",
+                agendada: "bg-warning text-warning-foreground hover:bg-warning/90 border-warning",
+                realizada: "bg-primary text-primary-foreground hover:bg-primary/90 border-primary",
+                cancelada: "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-destructive",
+              };
               return (
                 <Button
                   key={status}
-                  variant={isSelected ? "default" : "outline"}
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     if (isSelected) {
@@ -323,7 +329,7 @@ export default function Visitas() {
                   }}
                   className={cn(
                     "transition-all",
-                    isSelected && statusStyles[status].replace("bg-", "bg-").replace("/10", "")
+                    isSelected && selectedStyles[status]
                   )}
                 >
                   {statusLabels[status]}
