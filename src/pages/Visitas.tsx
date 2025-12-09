@@ -15,6 +15,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -24,7 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X, Users, Heart } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X, Users, Heart, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -137,6 +146,32 @@ export default function Visitas() {
     weddingYearEstimate: "",
   });
   const [weddingDatePickerOpen, setWeddingDatePickerOpen] = useState(false);
+  
+  // Details dialog state
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  
+  // Edit dialog state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editVisit, setEditVisit] = useState({
+    clientName: "",
+    email: "",
+    phone: "",
+    date: "",
+    time: "",
+    notes: "",
+    guestCount: "",
+    weddingDateStatus: "undefined" as "defined" | "undefined",
+    weddingDate: "",
+    weddingMonthEstimate: "",
+    weddingYearEstimate: "",
+  });
+  const [originalEditVisit, setOriginalEditVisit] = useState("");
+  const [editWeddingDatePickerOpen, setEditWeddingDatePickerOpen] = useState(false);
+  
+  // Unsaved changes confirmation dialog
+  const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false);
+  
   const { toast } = useToast();
 
   const filteredVisits = visits
@@ -220,6 +255,119 @@ export default function Visitas() {
         visit.date
       ).toLocaleDateString("pt-BR")} às ${visit.time}.`,
     });
+  };
+
+  const handleOpenDetails = (visit: Visit) => {
+    setSelectedVisit(visit);
+    setIsDetailsOpen(true);
+  };
+
+  const handleOpenEdit = () => {
+    if (!selectedVisit) return;
+    setEditVisit({
+      clientName: selectedVisit.clientName,
+      email: selectedVisit.email,
+      phone: selectedVisit.phone,
+      date: selectedVisit.date,
+      time: selectedVisit.time,
+      notes: selectedVisit.notes || "",
+      guestCount: selectedVisit.guestCount?.toString() || "",
+      weddingDateStatus: selectedVisit.weddingDateStatus,
+      weddingDate: selectedVisit.weddingDate || "",
+      weddingMonthEstimate: selectedVisit.weddingMonthEstimate || "",
+      weddingYearEstimate: selectedVisit.weddingYearEstimate || "",
+    });
+    setOriginalEditVisit(JSON.stringify({
+      clientName: selectedVisit.clientName,
+      email: selectedVisit.email,
+      phone: selectedVisit.phone,
+      date: selectedVisit.date,
+      time: selectedVisit.time,
+      notes: selectedVisit.notes || "",
+      guestCount: selectedVisit.guestCount?.toString() || "",
+      weddingDateStatus: selectedVisit.weddingDateStatus,
+      weddingDate: selectedVisit.weddingDate || "",
+      weddingMonthEstimate: selectedVisit.weddingMonthEstimate || "",
+      weddingYearEstimate: selectedVisit.weddingYearEstimate || "",
+    }));
+    setIsDetailsOpen(false);
+    setIsEditDialogOpen(true);
+  };
+
+  const hasUnsavedChanges = () => {
+    return JSON.stringify(editVisit) !== originalEditVisit;
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedVisit) return;
+    
+    if (!editVisit.clientName || !editVisit.date || !editVisit.time) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha nome, data e horário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editVisit.weddingDateStatus === "defined" && !editVisit.weddingDate) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, informe a data do casamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedVisits = visits.map((v) =>
+      v.id === selectedVisit.id
+        ? {
+            ...v,
+            clientName: editVisit.clientName,
+            email: editVisit.email,
+            phone: editVisit.phone,
+            date: editVisit.date,
+            time: editVisit.time,
+            notes: editVisit.notes,
+            guestCount: editVisit.guestCount ? parseInt(editVisit.guestCount) : undefined,
+            weddingDateStatus: editVisit.weddingDateStatus,
+            weddingDate: editVisit.weddingDate || undefined,
+            weddingMonthEstimate: editVisit.weddingMonthEstimate || undefined,
+            weddingYearEstimate: editVisit.weddingYearEstimate || undefined,
+          }
+        : v
+    );
+
+    setVisits(updatedVisits);
+    setIsEditDialogOpen(false);
+    setSelectedVisit(null);
+
+    toast({
+      title: "Visita atualizada!",
+      description: `Os dados da visita de ${editVisit.clientName} foram salvos.`,
+    });
+  };
+
+  const handleCloseEdit = () => {
+    if (hasUnsavedChanges()) {
+      setIsUnsavedDialogOpen(true);
+    } else {
+      setIsEditDialogOpen(false);
+    }
+  };
+
+  const handleDiscardChanges = () => {
+    setIsUnsavedDialogOpen(false);
+    setIsEditDialogOpen(false);
+  };
+
+  const handleSaveAndClose = () => {
+    handleSaveEdit();
+    setIsUnsavedDialogOpen(false);
+  };
+
+  const handleBackToEdit = () => {
+    setIsUnsavedDialogOpen(false);
   };
 
   const months = [
@@ -662,7 +810,7 @@ export default function Visitas() {
                   >
                     {statusLabels[visit.status]}
                   </span>
-                  <Button variant="elegant" size="sm">
+                  <Button variant="elegant" size="sm" onClick={() => handleOpenDetails(visit)}>
                     Detalhes
                   </Button>
                 </div>
@@ -677,6 +825,311 @@ export default function Visitas() {
             </div>
           )}
         </div>
+
+        {/* Details Dialog */}
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl">
+                Detalhes da Visita
+              </DialogTitle>
+            </DialogHeader>
+
+            {selectedVisit && (
+              <div className="space-y-4 py-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-champagne">
+                    <User className="h-8 w-8 text-gold" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">{selectedVisit.clientName}</h3>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border mt-1 ${statusStyles[selectedVisit.status]}`}>
+                      {statusLabels[selectedVisit.status]}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border border-border">
+                  {selectedVisit.email && (
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-foreground">{selectedVisit.email}</span>
+                    </div>
+                  )}
+                  {selectedVisit.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-foreground">{selectedVisit.phone}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-foreground">
+                      {new Date(selectedVisit.date).toLocaleDateString("pt-BR")} às {selectedVisit.time}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <Heart className="h-4 w-4 text-gold" />
+                    <span className="text-foreground">
+                      <strong>Data do Casamento:</strong> {getWeddingDateDisplay(selectedVisit)}
+                    </span>
+                  </div>
+                  {selectedVisit.guestCount && (
+                    <div className="flex items-center gap-3">
+                      <Users className="h-4 w-4 text-gold" />
+                      <span className="text-foreground">
+                        <strong>Número de Convidados:</strong> {selectedVisit.guestCount}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {selectedVisit.notes && (
+                  <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                    <p className="text-sm text-muted-foreground font-medium mb-1">Observações:</p>
+                    <p className="text-foreground">{selectedVisit.notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
+                Fechar
+              </Button>
+              <Button variant="gold" onClick={handleOpenEdit}>
+                Editar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={(open) => !open && handleCloseEdit()}>
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl">
+                Editar Visita
+              </DialogTitle>
+              <DialogDescription>
+                Altere os dados da visita conforme necessário.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="editClientName">Nome do Cliente *</Label>
+                <Input
+                  id="editClientName"
+                  value={editVisit.clientName}
+                  onChange={(e) => setEditVisit({ ...editVisit, clientName: e.target.value })}
+                  placeholder="Nome completo"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="editEmail">Email</Label>
+                  <Input
+                    id="editEmail"
+                    type="email"
+                    value={editVisit.email}
+                    onChange={(e) => setEditVisit({ ...editVisit, email: e.target.value })}
+                    placeholder="email@exemplo.com"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="editPhone">Telefone</Label>
+                  <Input
+                    id="editPhone"
+                    value={editVisit.phone}
+                    onChange={(e) => setEditVisit({ ...editVisit, phone: e.target.value })}
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="editDate">Data *</Label>
+                  <Input
+                    id="editDate"
+                    type="date"
+                    value={editVisit.date}
+                    onChange={(e) => setEditVisit({ ...editVisit, date: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="editTime">Horário *</Label>
+                  <Input
+                    id="editTime"
+                    type="time"
+                    value={editVisit.time}
+                    onChange={(e) => setEditVisit({ ...editVisit, time: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="editGuestCount">Número de Convidados</Label>
+                <Input
+                  id="editGuestCount"
+                  type="number"
+                  min="1"
+                  value={editVisit.guestCount}
+                  onChange={(e) => setEditVisit({ ...editVisit, guestCount: e.target.value })}
+                  placeholder="Ex: 150"
+                />
+              </div>
+
+              <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border border-border">
+                <Label className="font-medium">Data do Casamento</Label>
+                
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editWeddingDateStatus"
+                      checked={editVisit.weddingDateStatus === "defined"}
+                      onChange={() => setEditVisit({ ...editVisit, weddingDateStatus: "defined", weddingMonthEstimate: "", weddingYearEstimate: "" })}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">Data já definida</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editWeddingDateStatus"
+                      checked={editVisit.weddingDateStatus === "undefined"}
+                      onChange={() => setEditVisit({ ...editVisit, weddingDateStatus: "undefined", weddingDate: "" })}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">Ainda sem data definida</span>
+                  </label>
+                </div>
+
+                {editVisit.weddingDateStatus === "defined" ? (
+                  <div className="grid gap-2">
+                    <Label htmlFor="editWeddingDate">Data do Casamento *</Label>
+                    <Popover open={editWeddingDatePickerOpen} onOpenChange={setEditWeddingDatePickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "justify-start text-left font-normal",
+                            !editVisit.weddingDate && "text-muted-foreground"
+                          )}
+                        >
+                          <Heart className="mr-2 h-4 w-4" />
+                          {editVisit.weddingDate
+                            ? format(new Date(editVisit.weddingDate), "dd/MM/yyyy", { locale: ptBR })
+                            : "Selecione a data do casamento"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarComponent
+                          mode="single"
+                          selected={editVisit.weddingDate ? new Date(editVisit.weddingDate) : undefined}
+                          onSelect={(date) => {
+                            setEditVisit({ ...editVisit, weddingDate: date ? format(date, "yyyy-MM-dd") : "" });
+                            setEditWeddingDatePickerOpen(false);
+                          }}
+                          initialFocus
+                          locale={ptBR}
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Mês Previsto (opcional)</Label>
+                      <Select
+                        value={editVisit.weddingMonthEstimate}
+                        onValueChange={(value) => setEditVisit({ ...editVisit, weddingMonthEstimate: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o mês" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {months.map((month) => (
+                            <SelectItem key={month.value} value={month.value}>
+                              {month.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Ano Previsto (opcional)</Label>
+                      <Select
+                        value={editVisit.weddingYearEstimate}
+                        onValueChange={(value) => setEditVisit({ ...editVisit, weddingYearEstimate: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o ano" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {years.map((year) => (
+                            <SelectItem key={year} value={year}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="editNotes">Observações</Label>
+                <Input
+                  id="editNotes"
+                  value={editVisit.notes}
+                  onChange={(e) => setEditVisit({ ...editVisit, notes: e.target.value })}
+                  placeholder="Anotações sobre a visita..."
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={handleCloseEdit}>
+                Cancelar
+              </Button>
+              <Button variant="gold" onClick={handleSaveEdit}>
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Unsaved Changes Confirmation */}
+        <AlertDialog open={isUnsavedDialogOpen} onOpenChange={setIsUnsavedDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
+              <AlertDialogDescription>
+                Você possui alterações que não foram salvas. O que deseja fazer?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={handleBackToEdit}>
+                Voltar e Editar
+              </Button>
+              <Button variant="destructive" onClick={handleDiscardChanges}>
+                Descartar
+              </Button>
+              <Button variant="gold" onClick={handleSaveAndClose}>
+                Salvar e Fechar
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </MainLayout>
   );
