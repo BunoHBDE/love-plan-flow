@@ -3,6 +3,12 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter } from "lucide-react";
+import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface Visit {
   id: string;
@@ -94,7 +103,7 @@ export default function Visitas() {
   const [visits, setVisits] = useState<Visit[]>(initialVisits);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [sortBy, setSortBy] = useState<SortOption>("date");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newVisit, setNewVisit] = useState({
@@ -113,7 +122,7 @@ export default function Visitas() {
         visit.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         visit.email.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || visit.status === statusFilter;
-      const matchesDate = !dateFilter || visit.date === dateFilter;
+      const matchesDate = !dateFilter || visit.date === format(dateFilter, "yyyy-MM-dd");
       return matchesSearch && matchesStatus && matchesDate;
     })
     .sort((a, b) => {
@@ -322,12 +331,39 @@ export default function Visitas() {
             </Select>
 
             {/* Date filter */}
-            <Input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              placeholder="Filtrar por data"
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "justify-start text-left font-normal",
+                    !dateFilter && "text-muted-foreground"
+                  )}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {dateFilter ? format(dateFilter, "dd/MM/yyyy", { locale: ptBR }) : "Filtrar por data"}
+                  {dateFilter && (
+                    <X
+                      className="ml-auto h-4 w-4 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDateFilter(undefined);
+                      }}
+                    />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={dateFilter}
+                  onSelect={setDateFilter}
+                  initialFocus
+                  locale={ptBR}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
 
             {/* Sort */}
             <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
