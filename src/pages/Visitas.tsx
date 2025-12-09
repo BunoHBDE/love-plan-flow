@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X } from "lucide-react";
+import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X, Users, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -39,6 +39,11 @@ interface Visit {
   time: string;
   status: "confirmada" | "agendada" | "cancelada" | "realizada";
   notes?: string;
+  guestCount?: number;
+  weddingDateStatus: "defined" | "undefined";
+  weddingDate?: string;
+  weddingMonthEstimate?: string;
+  weddingYearEstimate?: string;
 }
 
 const initialVisits: Visit[] = [
@@ -51,6 +56,9 @@ const initialVisits: Visit[] = [
     time: "14:00",
     status: "confirmada",
     notes: "Interessada em casamento para 80 convidados",
+    guestCount: 80,
+    weddingDateStatus: "defined",
+    weddingDate: "2025-06-20",
   },
   {
     id: "2",
@@ -60,6 +68,10 @@ const initialVisits: Visit[] = [
     date: "2024-12-16",
     time: "10:30",
     status: "agendada",
+    guestCount: 150,
+    weddingDateStatus: "undefined",
+    weddingMonthEstimate: "03",
+    weddingYearEstimate: "2025",
   },
   {
     id: "3",
@@ -70,6 +82,9 @@ const initialVisits: Visit[] = [
     time: "16:00",
     status: "confirmada",
     notes: "Segunda visita - quer ver decoração",
+    guestCount: 200,
+    weddingDateStatus: "defined",
+    weddingDate: "2025-09-15",
   },
   {
     id: "4",
@@ -80,6 +95,8 @@ const initialVisits: Visit[] = [
     time: "11:00",
     status: "realizada",
     notes: "Muito interessada, aguardando orçamento",
+    guestCount: 100,
+    weddingDateStatus: "undefined",
   },
 ];
 
@@ -113,7 +130,13 @@ export default function Visitas() {
     date: "",
     time: "",
     notes: "",
+    guestCount: "",
+    weddingDateStatus: "undefined" as "defined" | "undefined",
+    weddingDate: "",
+    weddingMonthEstimate: "",
+    weddingYearEstimate: "",
   });
+  const [weddingDatePickerOpen, setWeddingDatePickerOpen] = useState(false);
   const { toast } = useToast();
 
   const filteredVisits = visits
@@ -150,9 +173,28 @@ export default function Visitas() {
       return;
     }
 
+    if (newVisit.weddingDateStatus === "defined" && !newVisit.weddingDate) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, informe a data do casamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const visit: Visit = {
       id: Date.now().toString(),
-      ...newVisit,
+      clientName: newVisit.clientName,
+      email: newVisit.email,
+      phone: newVisit.phone,
+      date: newVisit.date,
+      time: newVisit.time,
+      notes: newVisit.notes,
+      guestCount: newVisit.guestCount ? parseInt(newVisit.guestCount) : undefined,
+      weddingDateStatus: newVisit.weddingDateStatus,
+      weddingDate: newVisit.weddingDate || undefined,
+      weddingMonthEstimate: newVisit.weddingMonthEstimate || undefined,
+      weddingYearEstimate: newVisit.weddingYearEstimate || undefined,
       status: "agendada",
     };
 
@@ -164,6 +206,11 @@ export default function Visitas() {
       date: "",
       time: "",
       notes: "",
+      guestCount: "",
+      weddingDateStatus: "undefined",
+      weddingDate: "",
+      weddingMonthEstimate: "",
+      weddingYearEstimate: "",
     });
     setIsDialogOpen(false);
 
@@ -173,6 +220,35 @@ export default function Visitas() {
         visit.date
       ).toLocaleDateString("pt-BR")} às ${visit.time}.`,
     });
+  };
+
+  const months = [
+    { value: "01", label: "Janeiro" },
+    { value: "02", label: "Fevereiro" },
+    { value: "03", label: "Março" },
+    { value: "04", label: "Abril" },
+    { value: "05", label: "Maio" },
+    { value: "06", label: "Junho" },
+    { value: "07", label: "Julho" },
+    { value: "08", label: "Agosto" },
+    { value: "09", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
+
+  const getWeddingDateDisplay = (visit: Visit) => {
+    if (visit.weddingDateStatus === "defined" && visit.weddingDate) {
+      return new Date(visit.weddingDate).toLocaleDateString("pt-BR");
+    }
+    if (visit.weddingMonthEstimate || visit.weddingYearEstimate) {
+      const monthLabel = months.find(m => m.value === visit.weddingMonthEstimate)?.label || "";
+      return `Previsão: ${monthLabel} ${visit.weddingYearEstimate || ""}`.trim();
+    }
+    return "Data não definida";
   };
 
   return (
@@ -268,6 +344,131 @@ export default function Visitas() {
                       }
                     />
                   </div>
+                </div>
+
+                {/* Guest Count */}
+                <div className="grid gap-2">
+                  <Label htmlFor="guestCount">Número de Convidados</Label>
+                  <Input
+                    id="guestCount"
+                    type="number"
+                    min="1"
+                    value={newVisit.guestCount}
+                    onChange={(e) =>
+                      setNewVisit({ ...newVisit, guestCount: e.target.value })
+                    }
+                    placeholder="Ex: 150"
+                  />
+                </div>
+
+                {/* Wedding Date Section */}
+                <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border border-border">
+                  <Label className="font-medium">Data do Casamento</Label>
+                  
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="weddingDateStatus"
+                        checked={newVisit.weddingDateStatus === "defined"}
+                        onChange={() =>
+                          setNewVisit({ ...newVisit, weddingDateStatus: "defined", weddingMonthEstimate: "", weddingYearEstimate: "" })
+                        }
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">Data já definida</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="weddingDateStatus"
+                        checked={newVisit.weddingDateStatus === "undefined"}
+                        onChange={() =>
+                          setNewVisit({ ...newVisit, weddingDateStatus: "undefined", weddingDate: "" })
+                        }
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">Ainda sem data definida</span>
+                    </label>
+                  </div>
+
+                  {newVisit.weddingDateStatus === "defined" ? (
+                    <div className="grid gap-2">
+                      <Label htmlFor="weddingDate">Data do Casamento *</Label>
+                      <Popover open={weddingDatePickerOpen} onOpenChange={setWeddingDatePickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "justify-start text-left font-normal",
+                              !newVisit.weddingDate && "text-muted-foreground"
+                            )}
+                          >
+                            <Heart className="mr-2 h-4 w-4" />
+                            {newVisit.weddingDate
+                              ? format(new Date(newVisit.weddingDate), "dd/MM/yyyy", { locale: ptBR })
+                              : "Selecione a data do casamento"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={newVisit.weddingDate ? new Date(newVisit.weddingDate) : undefined}
+                            onSelect={(date) => {
+                              setNewVisit({ ...newVisit, weddingDate: date ? format(date, "yyyy-MM-dd") : "" });
+                              setWeddingDatePickerOpen(false);
+                            }}
+                            initialFocus
+                            locale={ptBR}
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label>Mês Previsto (opcional)</Label>
+                        <Select
+                          value={newVisit.weddingMonthEstimate}
+                          onValueChange={(value) =>
+                            setNewVisit({ ...newVisit, weddingMonthEstimate: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o mês" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {months.map((month) => (
+                              <SelectItem key={month.value} value={month.value}>
+                                {month.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Ano Previsto (opcional)</Label>
+                        <Select
+                          value={newVisit.weddingYearEstimate}
+                          onValueChange={(value) =>
+                            setNewVisit({ ...newVisit, weddingYearEstimate: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o ano" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {years.map((year) => (
+                              <SelectItem key={year} value={year}>
+                                {year}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
@@ -430,6 +631,18 @@ export default function Visitas() {
                         <span className="flex items-center gap-1">
                           <Phone className="h-4 w-4" />
                           {visit.phone}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-1">
+                      <span className="flex items-center gap-1">
+                        <Heart className="h-4 w-4 text-gold" />
+                        {getWeddingDateDisplay(visit)}
+                      </span>
+                      {visit.guestCount && (
+                        <span className="flex items-center gap-1">
+                          <Users className="h-4 w-4 text-gold" />
+                          {visit.guestCount} convidados
                         </span>
                       )}
                     </div>
