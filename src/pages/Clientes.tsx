@@ -37,6 +37,8 @@ interface Client {
   email: string;
   phone: string;
   cpf: string;
+  weddingDate?: string;
+  guestCount?: number;
   address: Address;
   status: "lead" | "orcamento" | "contrato" | "pago";
 }
@@ -48,6 +50,8 @@ const initialClients: Client[] = [
     email: "maria@email.com",
     phone: "(11) 99999-0001",
     cpf: "123.456.789-00",
+    weddingDate: "2025-06-15",
+    guestCount: 150,
     address: {
       street: "Rua das Flores",
       number: "100",
@@ -65,6 +69,8 @@ const initialClients: Client[] = [
     email: "ana@email.com",
     phone: "(11) 99999-0002",
     cpf: "987.654.321-00",
+    weddingDate: "2025-08-20",
+    guestCount: 100,
     address: {
       street: "Av. Brasil",
       number: "500",
@@ -82,6 +88,8 @@ const initialClients: Client[] = [
     email: "juliana@email.com",
     phone: "(11) 99999-0003",
     cpf: "456.789.123-00",
+    weddingDate: "2025-05-10",
+    guestCount: 200,
     address: {
       street: "Rua do Sol",
       number: "250",
@@ -142,6 +150,8 @@ export default function Clientes() {
     email: "",
     phone: "",
     cpf: "",
+    weddingDate: "",
+    guestCount: "",
     address: {
       street: "",
       number: "",
@@ -240,7 +250,13 @@ export default function Clientes() {
 
     const client: Client = {
       id: Date.now().toString(),
-      ...newClient,
+      name: newClient.name,
+      email: newClient.email,
+      phone: newClient.phone,
+      cpf: newClient.cpf,
+      weddingDate: newClient.weddingDate || undefined,
+      guestCount: newClient.guestCount ? parseInt(newClient.guestCount) : undefined,
+      address: newClient.address,
       status: "lead",
     };
 
@@ -250,6 +266,8 @@ export default function Clientes() {
       email: "",
       phone: "",
       cpf: "",
+      weddingDate: "",
+      guestCount: "",
       address: {
         street: "",
         number: "",
@@ -339,15 +357,41 @@ export default function Clientes() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input
+                      id="cpf"
+                      value={newClient.cpf}
+                      onChange={(e) =>
+                        setNewClient({ ...newClient, cpf: formatCPF(e.target.value) })
+                      }
+                      placeholder="000.000.000-00"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="guestCount">Nº de Convidados</Label>
+                    <Input
+                      id="guestCount"
+                      type="number"
+                      value={newClient.guestCount}
+                      onChange={(e) =>
+                        setNewClient({ ...newClient, guestCount: e.target.value })
+                      }
+                      placeholder="150"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid gap-2">
-                  <Label htmlFor="cpf">CPF</Label>
+                  <Label htmlFor="weddingDate">Data do Casamento</Label>
                   <Input
-                    id="cpf"
-                    value={newClient.cpf}
+                    id="weddingDate"
+                    type="date"
+                    value={newClient.weddingDate}
                     onChange={(e) =>
-                      setNewClient({ ...newClient, cpf: formatCPF(e.target.value) })
+                      setNewClient({ ...newClient, weddingDate: e.target.value })
                     }
-                    placeholder="000.000.000-00"
                   />
                 </div>
 
