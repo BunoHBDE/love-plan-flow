@@ -102,7 +102,7 @@ type SortOption = "date" | "time" | "status" | "name";
 export default function Visitas() {
   const [visits, setVisits] = useState<Visit[]>(initialVisits);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>(["confirmada", "agendada"]);
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [sortBy, setSortBy] = useState<SortOption>("date");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -121,7 +121,7 @@ export default function Visitas() {
       const matchesSearch =
         visit.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         visit.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === "all" || visit.status === statusFilter;
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(visit.status);
       const matchesDate = !dateFilter || visit.date === format(dateFilter, "yyyy-MM-dd");
       return matchesSearch && matchesStatus && matchesDate;
     })
@@ -299,12 +299,40 @@ export default function Visitas() {
         </div>
 
         {/* Filters */}
-        <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up space-y-4">
+          <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">Filtros</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+          {/* Status filter buttons */}
+          <div className="flex flex-wrap gap-2">
+            {(["confirmada", "agendada", "realizada", "cancelada"] as const).map((status) => {
+              const isSelected = statusFilter.includes(status);
+              return (
+                <Button
+                  key={status}
+                  variant={isSelected ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    if (isSelected) {
+                      setStatusFilter(statusFilter.filter((s) => s !== status));
+                    } else {
+                      setStatusFilter([...statusFilter, status]);
+                    }
+                  }}
+                  className={cn(
+                    "transition-all",
+                    isSelected && statusStyles[status].replace("bg-", "bg-").replace("/10", "")
+                  )}
+                >
+                  {statusLabels[status]}
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Search by name */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -315,20 +343,6 @@ export default function Visitas() {
                 className="pl-10"
               />
             </div>
-
-            {/* Status filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                <SelectItem value="confirmada">Confirmada</SelectItem>
-                <SelectItem value="agendada">Agendada</SelectItem>
-                <SelectItem value="realizada">Realizada</SelectItem>
-                <SelectItem value="cancelada">Cancelada</SelectItem>
-              </SelectContent>
-            </Select>
 
             {/* Date filter */}
             <Popover>
