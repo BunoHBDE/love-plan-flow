@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock, Phone, User, Plus, Search } from "lucide-react";
+import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Visit {
@@ -28,7 +28,7 @@ interface Visit {
   phone: string;
   date: string;
   time: string;
-  status: "confirmada" | "pendente" | "cancelada" | "realizada";
+  status: "confirmada" | "agendada" | "cancelada" | "realizada";
   notes?: string;
 }
 
@@ -50,7 +50,7 @@ const initialVisits: Visit[] = [
     phone: "(11) 99999-0002",
     date: "2024-12-16",
     time: "10:30",
-    status: "pendente",
+    status: "agendada",
   },
   {
     id: "3",
@@ -76,21 +76,26 @@ const initialVisits: Visit[] = [
 
 const statusStyles = {
   confirmada: "bg-success/10 text-success border-success/20",
-  pendente: "bg-warning/10 text-warning border-warning/20",
+  agendada: "bg-warning/10 text-warning border-warning/20",
   cancelada: "bg-destructive/10 text-destructive border-destructive/20",
   realizada: "bg-primary/10 text-primary border-primary/20",
 };
 
 const statusLabels = {
   confirmada: "Confirmada",
-  pendente: "Pendente",
+  agendada: "Agendada",
   cancelada: "Cancelada",
   realizada: "Realizada",
 };
 
+type SortOption = "date" | "time" | "status" | "name";
+
 export default function Visitas() {
   const [visits, setVisits] = useState<Visit[]>(initialVisits);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("date");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newVisit, setNewVisit] = useState({
     clientName: "",
@@ -102,11 +107,29 @@ export default function Visitas() {
   });
   const { toast } = useToast();
 
-  const filteredVisits = visits.filter(
-    (visit) =>
-      visit.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      visit.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredVisits = visits
+    .filter((visit) => {
+      const matchesSearch =
+        visit.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        visit.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || visit.status === statusFilter;
+      const matchesDate = !dateFilter || visit.date === dateFilter;
+      return matchesSearch && matchesStatus && matchesDate;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "date":
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case "time":
+          return a.time.localeCompare(b.time);
+        case "status":
+          return a.status.localeCompare(b.status);
+        case "name":
+          return a.clientName.localeCompare(b.clientName);
+        default:
+          return 0;
+      }
+    });
 
   const handleCreateVisit = () => {
     if (!newVisit.clientName || !newVisit.date || !newVisit.time) {
@@ -121,7 +144,7 @@ export default function Visitas() {
     const visit: Visit = {
       id: Date.now().toString(),
       ...newVisit,
-      status: "pendente",
+      status: "agendada",
     };
 
     setVisits([visit, ...visits]);
@@ -266,15 +289,60 @@ export default function Visitas() {
           </Dialog>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md animate-slide-up">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome ou email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        {/* Filters */}
+        <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
+          <div className="flex items-center gap-2 mb-4">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">Filtros</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Search by name */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Status filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os status</SelectItem>
+                <SelectItem value="confirmada">Confirmada</SelectItem>
+                <SelectItem value="agendada">Agendada</SelectItem>
+                <SelectItem value="realizada">Realizada</SelectItem>
+                <SelectItem value="cancelada">Cancelada</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Date filter */}
+            <Input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              placeholder="Filtrar por data"
+            />
+
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+              <SelectTrigger>
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Data</SelectItem>
+                <SelectItem value="time">Horário</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+                <SelectItem value="name">Nome</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Visits Grid */}
