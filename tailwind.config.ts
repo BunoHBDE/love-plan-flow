@@ -14,7 +14,6 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["'Playfair Display'", "serif"],
         sans: ["'Inter'", "sans-serif"],
       },
       colors: {
@@ -74,12 +73,8 @@ export default {
           light: "hsl(var(--gold-light))",
           dark: "hsl(var(--gold-dark))",
         },
-        champagne: "hsl(var(--champagne))",
-        cream: "hsl(var(--cream))",
-        rose: {
-          DEFAULT: "hsl(var(--rose))",
-          light: "hsl(var(--rose-light))",
-        },
+        "brown-medium": "hsl(var(--brown-medium))",
+        "green-foliage": "hsl(var(--green-foliage))",
       },
       borderRadius: {
         lg: "var(--radius)",
