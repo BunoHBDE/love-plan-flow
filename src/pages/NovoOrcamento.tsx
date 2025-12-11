@@ -30,11 +30,11 @@ import {
   ArrowLeft,
   Save,
   Users,
-  MapPin,
+  Plus,
   Phone,
-  Mail,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
 
 // Mock data for existing clients (will come from database later)
 const mockClients = [
@@ -105,6 +105,9 @@ const estadosBrasil = [
   "RS", "RO", "RR", "SC", "SP", "SE", "TO",
 ];
 
+// Shared client list (mock - in future will come from database)
+let sharedMockClients = [...mockClients];
+
 function calcularPreco(
   pacote: string,
   diaSemana: string,
@@ -163,9 +166,9 @@ export default function NovoOrcamento() {
 
   // Client state
   const [clienteId, setClienteId] = useState<string | null>(null);
-  const [modoCliente, setModoCliente] = useState<"buscar" | "novo">("buscar");
   const [termoBuscaCliente, setTermoBuscaCliente] = useState("");
   const [listaResultadosCliente, setListaResultadosCliente] = useState<typeof mockClients>([]);
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
 
   // Client data
   const [nomeCliente, setNomeCliente] = useState("");
@@ -198,8 +201,6 @@ export default function NovoOrcamento() {
   // Observations
   const [observacoesInternas, setObservacoesInternas] = useState("");
   const [observacoesCliente, setObservacoesCliente] = useState("");
-
-  const [isLoadingCep, setIsLoadingCep] = useState(false);
 
   // Calculate price when relevant fields change
   useEffect(() => {
@@ -281,39 +282,29 @@ export default function NovoOrcamento() {
     });
   };
 
-  const handleCepChange = async (value: string) => {
-    const cepFormatted = value.replace(/\D/g, "").slice(0, 8);
-    const cepWithMask = cepFormatted.replace(/(\d{5})(\d)/, "$1-$2");
-    setCep(cepWithMask);
+  const handleClientCreated = (clientData: ClientFormData & { id: string }) => {
+    // Add to shared mock clients
+    const newMockClient = {
+      id: clientData.id,
+      nome: clientData.name,
+      email: clientData.email,
+      telefone: clientData.phone,
+      cpf: clientData.cpf,
+      n_convidados: clientData.guestCount ? parseInt(clientData.guestCount) : 0,
+      data_casamento: clientData.weddingDate,
+      cep: clientData.address.cep,
+      rua: clientData.address.street,
+      numero: clientData.address.number,
+      complemento: clientData.address.complement,
+      bairro: clientData.address.neighborhood,
+      cidade: clientData.address.city,
+      estado_uf: clientData.address.state,
+    };
+    sharedMockClients = [newMockClient, ...sharedMockClients];
 
-    if (cepFormatted.length === 8) {
-      setIsLoadingCep(true);
-      try {
-        const response = await fetch(`https://viacep.com.br/ws/${cepFormatted}/json/`);
-        const data = await response.json();
-
-        if (data.erro) {
-          toast({
-            title: "CEP não encontrado",
-            description: "Verifique o CEP informado.",
-            variant: "destructive",
-          });
-        } else {
-          setRua(data.logradouro || "");
-          setBairro(data.bairro || "");
-          setCidade(data.localidade || "");
-          setEstadoUf(data.uf || "");
-        }
-      } catch {
-        toast({
-          title: "Erro ao buscar CEP",
-          description: "Não foi possível consultar o CEP.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingCep(false);
-      }
-    }
+    // Select the created client
+    handleSelecionarCliente(newMockClient);
+    setIsClientDialogOpen(false);
   };
 
   const formatCurrency = (value: number) => {
@@ -431,252 +422,76 @@ export default function NovoOrcamento() {
                 <h2 className="text-lg font-display font-semibold">Cliente</h2>
               </div>
 
-              <RadioGroup
-                value={modoCliente}
-                onValueChange={(v) => {
-                  setModoCliente(v as "buscar" | "novo");
-                  setListaResultadosCliente([]);
-                  if (v === "novo") {
-                    setClienteId(null);
-                    setNomeCliente("");
-                    setEmail("");
-                    setTelefone("");
-                    setCpf("");
-                    setNConvidados(0);
-                    setDataCasamento("");
-                    setCep("");
-                    setRua("");
-                    setNumero("");
-                    setComplemento("");
-                    setBairro("");
-                    setCidade("");
-                    setEstadoUf("");
-                  }
-                }}
-                className="flex gap-6 mb-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="buscar" id="buscar" />
-                  <Label htmlFor="buscar">Usar cliente existente</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="novo" id="novo" />
-                  <Label htmlFor="novo">Cadastrar novo cliente</Label>
-                </div>
-              </RadioGroup>
-
-              {modoCliente === "buscar" && (
-                <div className="space-y-4">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar por telefone, email ou nome"
-                        value={termoBuscaCliente}
-                        onChange={(e) => setTermoBuscaCliente(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleBuscarCliente()}
-                        className="pl-10"
-                      />
-                    </div>
-                    <Button onClick={handleBuscarCliente}>Buscar</Button>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por telefone, email ou nome"
+                      value={termoBuscaCliente}
+                      onChange={(e) => setTermoBuscaCliente(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleBuscarCliente()}
+                      className="pl-10"
+                    />
                   </div>
+                  <Button onClick={handleBuscarCliente}>Buscar</Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsClientDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo
+                  </Button>
+                </div>
 
-                  {listaResultadosCliente.length > 0 && (
-                    <div className="border border-border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>Telefone</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead className="w-24">Ação</TableHead>
+                {listaResultadosCliente.length > 0 && (
+                  <div className="border border-border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Telefone</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead className="w-24">Ação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {listaResultadosCliente.map((cliente) => (
+                          <TableRow key={cliente.id}>
+                            <TableCell className="font-medium">{cliente.nome}</TableCell>
+                            <TableCell>{cliente.telefone}</TableCell>
+                            <TableCell>{cliente.email}</TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSelecionarCliente(cliente)}
+                              >
+                                Selecionar
+                              </Button>
+                            </TableCell>
                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {listaResultadosCliente.map((cliente) => (
-                            <TableRow key={cliente.id}>
-                              <TableCell className="font-medium">{cliente.nome}</TableCell>
-                              <TableCell>{cliente.telefone}</TableCell>
-                              <TableCell>{cliente.email}</TableCell>
-                              <TableCell>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleSelecionarCliente(cliente)}
-                                >
-                                  Selecionar
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-
-                  {clienteId && (
-                    <div className="bg-success/10 border border-success/20 rounded-lg p-4">
-                      <p className="text-sm text-success font-medium">
-                        Cliente selecionado: {nomeCliente}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {modoCliente === "novo" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="nomeCliente">Nome *</Label>
-                      <Input
-                        id="nomeCliente"
-                        value={nomeCliente}
-                        onChange={(e) => setNomeCliente(e.target.value)}
-                        placeholder="Nome completo"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="email@exemplo.com"
-                      />
-                    </div>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
+                )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="telefone">Telefone *</Label>
-                      <Input
-                        id="telefone"
-                        value={telefone}
-                        onChange={(e) => setTelefone(formatPhone(e.target.value))}
-                        placeholder="(11) 99999-9999"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="cpf">CPF</Label>
-                      <Input
-                        id="cpf"
-                        value={cpf}
-                        onChange={(e) => setCpf(formatCPF(e.target.value))}
-                        placeholder="000.000.000-00"
-                      />
-                    </div>
+                {clienteId && (
+                  <div className="bg-success/10 border border-success/20 rounded-lg p-4">
+                    <p className="text-sm text-success font-medium">
+                      Cliente selecionado: {nomeCliente}
+                    </p>
                   </div>
+                )}
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="nConvidados">Nº de Convidados *</Label>
-                      <Input
-                        id="nConvidados"
-                        type="number"
-                        value={nConvidados || ""}
-                        onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
-                        placeholder="150"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="dataCasamento">Data do Casamento</Label>
-                      <Input
-                        id="dataCasamento"
-                        type="date"
-                        value={dataCasamento}
-                        onChange={(e) => setDataCasamento(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="border-t border-border pt-4 mt-4">
-                    <h4 className="font-medium mb-4 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Endereço
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="cep">CEP</Label>
-                        <Input
-                          id="cep"
-                          value={cep}
-                          onChange={(e) => handleCepChange(e.target.value)}
-                          placeholder="00000-000"
-                          disabled={isLoadingCep}
-                        />
-                      </div>
-                      <div className="grid gap-2 md:col-span-2">
-                        <Label htmlFor="rua">Rua</Label>
-                        <Input
-                          id="rua"
-                          value={rua}
-                          onChange={(e) => setRua(e.target.value)}
-                          placeholder="Nome da rua"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="numero">Número</Label>
-                        <Input
-                          id="numero"
-                          value={numero}
-                          onChange={(e) => setNumero(e.target.value)}
-                          placeholder="123"
-                        />
-                      </div>
-                      <div className="grid gap-2 md:col-span-2">
-                        <Label htmlFor="complemento">Complemento</Label>
-                        <Input
-                          id="complemento"
-                          value={complemento}
-                          onChange={(e) => setComplemento(e.target.value)}
-                          placeholder="Apto, Bloco, etc."
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="bairro">Bairro</Label>
-                        <Input
-                          id="bairro"
-                          value={bairro}
-                          onChange={(e) => setBairro(e.target.value)}
-                          placeholder="Bairro"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="cidade">Cidade</Label>
-                        <Input
-                          id="cidade"
-                          value={cidade}
-                          onChange={(e) => setCidade(e.target.value)}
-                          placeholder="Cidade"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="estadoUf">Estado</Label>
-                        <Select value={estadoUf} onValueChange={setEstadoUf}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="UF" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {estadosBrasil.map((uf) => (
-                              <SelectItem key={uf} value={uf}>
-                                {uf}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <ClientFormDialog
+                open={isClientDialogOpen}
+                onOpenChange={setIsClientDialogOpen}
+                onClientCreated={handleClientCreated}
+                showSaveAndSearch={true}
+              />
             </div>
 
             {/* Block 2 - Evento */}
