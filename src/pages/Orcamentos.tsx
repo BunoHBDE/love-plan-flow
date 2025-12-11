@@ -1,34 +1,16 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   FileText,
-  Calendar,
-  Euro,
   Plus,
   Search,
   Download,
   Eye,
   Send,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 interface Quote {
   id: string;
@@ -120,75 +102,18 @@ const statusStyles = {
 };
 
 export default function Orcamentos() {
-  const [quotes, setQuotes] = useState<Quote[]>(initialQuotes);
+  const [quotes] = useState<Quote[]>(initialQuotes);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newQuote, setNewQuote] = useState({
-    clientName: "",
-    weddingDate: "",
-    guestCount: 0,
-    spaceValue: 0,
-    decorationValue: 0,
-    extraServices: 0,
-  });
-  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const filteredQuotes = quotes.filter((quote) =>
     quote.clientName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateQuote = () => {
-    if (!newQuote.clientName) {
-      toast({
-        title: "Campo obrigatório",
-        description: "Por favor, informe o nome do cliente.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const totalValue =
-      newQuote.spaceValue + newQuote.decorationValue + newQuote.extraServices;
-
-    const quote: Quote = {
-      id: `ORC-${String(quotes.length + 1).padStart(3, "0")}`,
-      clientName: newQuote.clientName,
-      weddingDate: newQuote.weddingDate,
-      guestCount: newQuote.guestCount,
-      totalValue,
-      status: "rascunho",
-      createdAt: new Date().toISOString().split("T")[0],
-      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0],
-      items: [
-        { description: "Locação do Espaço", value: newQuote.spaceValue },
-        { description: "Decoração", value: newQuote.decorationValue },
-        { description: "Serviços Extras", value: newQuote.extraServices },
-      ].filter((item) => item.value > 0),
-    };
-
-    setQuotes([quote, ...quotes]);
-    setNewQuote({
-      clientName: "",
-      weddingDate: "",
-      guestCount: 0,
-      spaceValue: 0,
-      decorationValue: 0,
-      extraServices: 0,
-    });
-    setIsDialogOpen(false);
-
-    toast({
-      title: "Orçamento criado!",
-      description: `Orçamento ${quote.id} criado com sucesso.`,
-    });
-  };
-
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-PT", {
+    return new Intl.NumberFormat("pt-BR", {
       style: "currency",
-      currency: "EUR",
+      currency: "BRL",
     }).format(value);
   };
 
@@ -206,146 +131,10 @@ export default function Orcamentos() {
             </p>
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="gold" size="lg">
-                <Plus className="h-5 w-5" />
-                Novo Orçamento
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[550px]">
-              <DialogHeader>
-                <DialogTitle className="font-display text-xl">
-                  Criar Novo Orçamento
-                </DialogTitle>
-                <DialogDescription>
-                  Preencha os dados para gerar uma proposta.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="clientName">Cliente *</Label>
-                  <Input
-                    id="clientName"
-                    value={newQuote.clientName}
-                    onChange={(e) =>
-                      setNewQuote({ ...newQuote, clientName: e.target.value })
-                    }
-                    placeholder="Nome do casal"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="weddingDate">Data do Casamento</Label>
-                    <Input
-                      id="weddingDate"
-                      type="date"
-                      value={newQuote.weddingDate}
-                      onChange={(e) =>
-                        setNewQuote({
-                          ...newQuote,
-                          weddingDate: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="guestCount">Nº de Convidados</Label>
-                    <Input
-                      id="guestCount"
-                      type="number"
-                      value={newQuote.guestCount || ""}
-                      onChange={(e) =>
-                        setNewQuote({
-                          ...newQuote,
-                          guestCount: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="150"
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t border-border pt-4 mt-2">
-                  <h4 className="font-medium mb-4">Valores do Orçamento</h4>
-                  <div className="grid gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="spaceValue">Locação do Espaço (€)</Label>
-                      <Input
-                        id="spaceValue"
-                        type="number"
-                        value={newQuote.spaceValue || ""}
-                        onChange={(e) =>
-                          setNewQuote({
-                            ...newQuote,
-                            spaceValue: parseFloat(e.target.value) || 0,
-                          })
-                        }
-                        placeholder="15000"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="decorationValue">Decoração (€)</Label>
-                      <Input
-                        id="decorationValue"
-                        type="number"
-                        value={newQuote.decorationValue || ""}
-                        onChange={(e) =>
-                          setNewQuote({
-                            ...newQuote,
-                            decorationValue: parseFloat(e.target.value) || 0,
-                          })
-                        }
-                        placeholder="5000"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="extraServices">Serviços Extras (€)</Label>
-                      <Input
-                        id="extraServices"
-                        type="number"
-                        value={newQuote.extraServices || ""}
-                        onChange={(e) =>
-                          setNewQuote({
-                            ...newQuote,
-                            extraServices: parseFloat(e.target.value) || 0,
-                          })
-                        }
-                        placeholder="3000"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-secondary/50 rounded-lg p-4 mt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Total do Orçamento</span>
-                    <span className="text-xl font-display font-bold text-primary">
-                      {formatCurrency(
-                        newQuote.spaceValue +
-                          newQuote.decorationValue +
-                          newQuote.extraServices
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button variant="gold" onClick={handleCreateQuote}>
-                  Criar Orçamento
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button variant="gold" size="lg" onClick={() => navigate("/orcamentos/novo")}>
+            <Plus className="h-5 w-5" />
+            Novo Orçamento
+          </Button>
         </div>
 
         {/* Search */}
@@ -401,7 +190,7 @@ export default function Orcamentos() {
                     </td>
                     <td className="p-4 text-muted-foreground">
                       {quote.weddingDate
-                        ? new Date(quote.weddingDate).toLocaleDateString(
+                        ? new Date(quote.weddingDate + "T12:00:00").toLocaleDateString(
                             "pt-BR"
                           )
                         : "-"}
