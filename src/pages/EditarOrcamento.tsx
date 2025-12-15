@@ -251,6 +251,22 @@ export default function EditarOrcamento() {
 
   const handleDownloadPDF = () => {
     if (!quoteData) return;
+
+    // Parse payment terms from quote data
+    const parcelasJson = quoteData.parcelas_json as any[] | null;
+    const paymentTerms = parcelasJson && parcelasJson.length > 0
+      ? {
+          percentualSinal: quoteData.percentual_sinal,
+          valorSinal: quoteData.valor_sinal,
+          numeroParcelas: quoteData.numero_parcelas,
+          parcelas: parcelasJson.map((p: any) => ({
+            numero: p.numero,
+            valor: p.valor,
+            dataVencimento: p.dataVencimento,
+          })),
+        }
+      : undefined;
+
     generateQuotePDF({
       id: quoteData.quote_number,
       clientName: quoteData.client?.nome || "Cliente",
@@ -263,6 +279,7 @@ export default function EditarOrcamento() {
       items: [
         { description: `Pacote ${pacote}`, value: valorOrcamento },
       ],
+      paymentTerms,
     });
   };
 
