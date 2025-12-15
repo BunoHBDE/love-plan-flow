@@ -3,6 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   FileText,
   Plus,
@@ -10,7 +16,12 @@ import {
   Download,
   Eye,
   Send,
+  CalendarIcon,
+  X,
 } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface Quote {
   id: string;
@@ -101,14 +112,47 @@ const statusStyles = {
   expirado: "bg-warning/10 text-warning border-warning/20",
 };
 
+const allStatuses: Quote["status"][] = ["rascunho", "enviado", "aceito", "recusado", "expirado"];
+
 export default function Orcamentos() {
   const [quotes] = useState<Quote[]>(initialQuotes);
   const [searchTerm, setSearchTerm] = useState("");
+  const [quoteNumberFilter, setQuoteNumberFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [selectedStatuses, setSelectedStatuses] = useState<Quote["status"][]>([]);
   const navigate = useNavigate();
 
-  const filteredQuotes = quotes.filter((quote) =>
-    quote.clientName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const toggleStatus = (status: Quote["status"]) => {
+    setSelectedStatuses((prev) =>
+      prev.includes(status)
+        ? prev.filter((s) => s !== status)
+        : [...prev, status]
+    );
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setQuoteNumberFilter("");
+    setDateFilter(undefined);
+    setSelectedStatuses([]);
+  };
+
+  const hasActiveFilters = searchTerm || quoteNumberFilter || dateFilter || selectedStatuses.length > 0;
+
+  const filteredQuotes = quotes.filter((quote) => {
+    const matchesName = quote.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesNumber = quoteNumberFilter
+      ? quote.id.toLowerCase().includes(quoteNumberFilter.toLowerCase())
+      : true;
+    const matchesDate = dateFilter
+      ? quote.createdAt === format(dateFilter, "yyyy-MM-dd")
+      : true;
+    const matchesStatus = selectedStatuses.length > 0
+      ? selectedStatuses.includes(quote.status)
+      : true;
+
+    return matchesName && matchesNumber && matchesDate && matchesStatus;
+  });
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -137,15 +181,85 @@ export default function Orcamentos() {
           </Button>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md animate-slide-up">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar orçamentos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        {/* Filters */}
+        <div className="space-y-4 animate-slide-up">
+          <div className="flex flex-wrap gap-4">
+            {/* Search by name */}
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome do cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Search by quote number */}
+            <div className="relative min-w-[180px]">
+              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Nº do orçamento..."
+                value={quoteNumberFilter}
+                onChange={(e) => setQuoteNumberFilter(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Date filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "min-w-[180px] justify-start text-left font-normal",
+                    !dateFilter && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateFilter ? format(dateFilter, "dd/MM/yyyy", { locale: ptBR }) : "Data de criação"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFilter}
+                  onSelect={setDateFilter}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Clear filters */}
+            {hasActiveFilters && (
+              <Button variant="ghost" onClick={clearFilters} className="gap-2">
+                <X className="h-4 w-4" />
+                Limpar filtros
+              </Button>
+            )}
+          </div>
+
+          {/* Status filters */}
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm text-muted-foreground mr-2 self-center">Status:</span>
+            {allStatuses.map((status) => (
+              <Button
+                key={status}
+                variant="outline"
+                size="sm"
+                onClick={() => toggleStatus(status)}
+                className={cn(
+                  "border transition-colors",
+                  selectedStatuses.includes(status)
+                    ? statusStyles[status]
+                    : "bg-transparent"
+                )}
+              >
+                {statusLabels[status]}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Quotes Table */}
