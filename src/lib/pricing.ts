@@ -149,6 +149,9 @@ export function calcularPrecoDetalhado(
     return null;
   }
 
+  // Normalizar diaSemana para sabado ou domingo
+  const diaNormalizado = diaSemana === "domingo" ? "domingo" : "sabado";
+
   // Verificar se pacote com buffet tem menu selecionado
   if (pacoteIncluiBuffet(pacote) && !menuBuffet) {
     return null;
@@ -157,10 +160,10 @@ export function calcularPrecoDetalhado(
   const pacoteBase = getPacoteBase(pacote);
   
   // Espaço
-  const espaco = getEspacoPreco(ano, diaSemana);
+  const espaco = getEspacoPreco(ano, diaNormalizado);
   
   // Decoração
-  const decoracaoConfig = getDecoracaoBase(pacoteBase, diaSemana);
+  const decoracaoConfig = getDecoracaoBase(pacoteBase, diaNormalizado);
   const decoracao = decoracaoConfig.baseFixo + (decoracaoConfig.porConvidado * nConvidados);
   
   // Buffet (se aplicável)
@@ -193,9 +196,9 @@ export function calcularPrecoDetalhado(
       pacoteNome: pacoteNomes[pacote] || pacote,
       buffetNome: menuBuffet ? buffetNomes[menuBuffet] || menuBuffet : null,
       ano,
-      diaSemana: diaSemanaLabel[diaSemana] || diaSemana,
+      diaSemana: diaSemanaLabel[diaNormalizado] || diaNormalizado,
       nConvidados,
-      formulaEspaco: `Espaço ${ano} (${diaSemanaLabel[diaSemana]}) = ${espaco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
+      formulaEspaco: `Espaço ${ano} (${diaSemanaLabel[diaNormalizado]}) = ${espaco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
       formulaDecoracao: `${decoracaoConfig.baseFixo} + ${decoracaoConfig.porConvidado} × ${nConvidados} = ${decoracao}`,
       formulaBuffet,
     },
