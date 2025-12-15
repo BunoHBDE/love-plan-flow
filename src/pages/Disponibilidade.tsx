@@ -394,20 +394,20 @@ export default function Disponibilidade() {
               )}
 
               {/* Calendars Grid */}
-              <div className={`grid gap-4 justify-items-center ${
+              <div className={`grid justify-items-center ${
                 viewMode === "anual" 
-                  ? "grid-cols-3 lg:grid-cols-4" 
+                  ? "grid-cols-3 lg:grid-cols-4 gap-2" 
                   : viewMode === "estacao" 
-                    ? "grid-cols-1 sm:grid-cols-3" 
-                    : "grid-cols-1 place-items-center"
+                    ? "grid-cols-1 sm:grid-cols-3 gap-4" 
+                    : "grid-cols-1 place-items-center gap-4"
               }`}>
                 {monthsToDisplay.map((month, index) => (
                   <div key={index} className={`flex flex-col items-center ${
                     viewMode === "anual" ? "w-full" : "w-full max-w-[320px]"
                   }`}>
                     {viewMode !== "mensal" && (
-                      <h3 className={`font-medium mb-1 capitalize ${
-                        viewMode === "anual" ? "text-xs" : "text-sm"
+                      <h3 className={`font-medium mb-0.5 capitalize ${
+                        viewMode === "anual" ? "text-[10px]" : "text-sm"
                       }`}>
                         {format(month, viewMode === "anual" ? "MMM" : "MMMM yyyy", { locale: ptBR })}
                       </h3>
@@ -420,7 +420,7 @@ export default function Disponibilidade() {
                       locale={ptBR}
                       className={`rounded-md border pointer-events-auto ${
                         viewMode === "anual" 
-                          ? "[&_.rdp-months]:p-1 [&_.rdp-cell]:p-0 [&_.rdp-day]:h-6 [&_.rdp-day]:w-6 [&_.rdp-day]:text-[10px] [&_.rdp-head_cell]:w-6 [&_.rdp-head_cell]:text-[10px] [&_.rdp-caption]:text-xs [&_.rdp-caption]:hidden [&_.rdp-nav]:hidden" 
+                          ? "[&]:p-0.5 [&_.rdp-months]:p-0 [&_.rdp-month]:p-0 [&_.rdp-table]:w-full [&_.rdp-cell]:p-0 [&_.rdp-day]:h-5 [&_.rdp-day]:w-5 [&_.rdp-day]:text-[8px] [&_.rdp-day]:p-0 [&_.rdp-head_cell]:w-5 [&_.rdp-head_cell]:text-[8px] [&_.rdp-head_cell]:p-0 [&_.rdp-caption]:hidden [&_.rdp-nav]:hidden" 
                           : "w-full"
                       }`}
                       modifiers={{
