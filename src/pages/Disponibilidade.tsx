@@ -14,6 +14,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Table,
   TableBody,
   TableCell,
@@ -120,6 +126,11 @@ export default function Disponibilidade() {
         type: "evento" as const,
       }));
   }, [quotes]);
+
+  // Helper function to get event info by date
+  const getEventoByDate = (date: Date) => {
+    return eventosAceitos.find((e) => isSameDay(new Date(e.date + "T12:00:00"), date));
+  };
 
   // Get blocked dates as Date objects
   const datasBloqueadas = useMemo(() => {
@@ -441,43 +452,76 @@ export default function Disponibilidade() {
                 </div>
               ) : (
                 /* Season and Monthly - Calendar format */
-                <div className={`flex flex-col gap-6 items-center ${
-                  viewMode === "estacao" ? "max-h-[600px] overflow-y-auto pr-2" : ""
-                }`}>
-                  {monthsToDisplay.map((month, index) => (
-                    <div key={index} className="flex flex-col items-center w-full max-w-[320px]">
-                      {viewMode === "estacao" && (
-                        <h3 className="text-sm font-medium mb-2 capitalize">
-                          {format(month, "MMMM yyyy", { locale: ptBR })}
-                        </h3>
-                      )}
-                      <Calendar
-                        mode="single"
-                        selected={undefined}
-                        onSelect={(date) => date && handleDateClick(date)}
-                        month={month}
-                        locale={ptBR}
-                        className="rounded-md border pointer-events-auto w-full"
-                        modifiers={{
-                          occupied: datasOcupadas,
-                          blocked: datasBloqueadas,
-                          available: datasDisponiveis,
-                        }}
-                        modifiersClassNames={{
-                          occupied: "bg-destructive/20 text-destructive font-semibold cursor-not-allowed",
-                          blocked: "bg-warning/20 text-warning font-semibold hover:bg-warning/30 cursor-pointer",
-                          available: "bg-success/20 text-success font-semibold hover:bg-success/30 cursor-pointer",
-                        }}
-                        disabled={(date) => {
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          return date < today;
-                        }}
-                        showOutsideDays={false}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <TooltipProvider delayDuration={200}>
+                  <div className={`flex flex-col gap-6 items-center ${
+                    viewMode === "estacao" ? "max-h-[600px] overflow-y-auto pr-2" : ""
+                  }`}>
+                    {monthsToDisplay.map((month, index) => (
+                      <div key={index} className="flex flex-col items-center w-full max-w-[320px]">
+                        {viewMode === "estacao" && (
+                          <h3 className="text-sm font-medium mb-2 capitalize">
+                            {format(month, "MMMM yyyy", { locale: ptBR })}
+                          </h3>
+                        )}
+                        <Calendar
+                          mode="single"
+                          selected={undefined}
+                          onSelect={(date) => date && handleDateClick(date)}
+                          month={month}
+                          locale={ptBR}
+                          className="rounded-md border pointer-events-auto w-full"
+                          modifiers={{
+                            occupied: datasOcupadas,
+                            blocked: datasBloqueadas,
+                            available: datasDisponiveis,
+                          }}
+                          modifiersClassNames={{
+                            occupied: "bg-destructive/20 text-destructive font-semibold cursor-pointer",
+                            blocked: "bg-warning/20 text-warning font-semibold hover:bg-warning/30 cursor-pointer",
+                            available: "bg-success/20 text-success font-semibold hover:bg-success/30 cursor-pointer",
+                          }}
+                          disabled={(date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return date < today;
+                          }}
+                          showOutsideDays={false}
+                          components={{
+                            DayContent: ({ date }) => {
+                              const evento = getEventoByDate(date);
+                              const isOccupied = datasOcupadas.some((d) => isSameDay(d, date));
+                              
+                              if (isOccupied && evento) {
+                                return (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="w-full h-full flex items-center justify-center">
+                                        {date.getDate()}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[200px]">
+                                      <div className="space-y-1">
+                                        <p className="font-semibold">{evento.clientName}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {evento.guestCount} convidados • {evento.pacote}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {evento.quoteNumber}
+                                        </p>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              }
+                              
+                              return <span>{date.getDate()}</span>;
+                            },
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </TooltipProvider>
               )}
 
               {/* Legend */}
