@@ -11,6 +11,7 @@ import NovoOrcamento from "./pages/NovoOrcamento";
 import EditarOrcamento from "./pages/EditarOrcamento";
 import Contratos from "./pages/Contratos";
 import Pagamentos from "./pages/Pagamentos";
+import Disponibilidade from "./pages/Disponibilidade";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/orcamentos/:id" element={<ProtectedRoute><EditarOrcamento /></ProtectedRoute>} />
           <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
           <Route path="/pagamentos" element={<ProtectedRoute><Pagamentos /></ProtectedRoute>} />
+          <Route path="/disponibilidade" element={<ProtectedRoute><Disponibilidade /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
