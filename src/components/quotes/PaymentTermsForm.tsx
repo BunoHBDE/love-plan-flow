@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { CreditCard, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { CreditCard, AlertCircle, CheckCircle2, RefreshCw, Scale } from "lucide-react";
 
 export interface Parcela {
   numero: number;
@@ -49,6 +49,7 @@ export function PaymentTermsForm({
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [parcelaInputs, setParcelaInputs] = useState<{ valor: string }[]>([]);
   const [parcelasEditadas, setParcelasEditadas] = useState(false);
+  const [indicesEditados, setIndicesEditados] = useState<Set<number>>(new Set());
   const [maxParcelas, setMaxParcelas] = useState(12);
   const [erroParcelamento, setErroParcelamento] = useState<string | null>(null);
   const [erroSinal, setErroSinal] = useState(false);
@@ -151,6 +152,7 @@ export function PaymentTermsForm({
     setParcelas(novasParcelas);
     setParcelaInputs(novasParcelas.map(p => ({ valor: p.valor.toFixed(2) })));
     setParcelasEditadas(false);
+    setIndicesEditados(new Set());
   };
 
   // Auto-calculate installments when not manually edited
@@ -162,6 +164,7 @@ export function PaymentTermsForm({
   // Reset manual edits when number of installments changes
   useEffect(() => {
     setParcelasEditadas(false);
+    setIndicesEditados(new Set());
   }, [numeroParcelas]);
 
   // Notify parent of changes
@@ -236,6 +239,31 @@ export function PaymentTermsForm({
     calcularParcelas();
   };
 
+  // Adjust non-edited installments to balance the total
+  const handleAjustarDemais = () => {
+    if (indicesEditados.size === 0 || indicesEditados.size >= parcelas.length) return;
+    
+    // Sum of edited installments
+    const somaEditadas = parcelas
+      .filter((_, index) => indicesEditados.has(index))
+      .reduce((sum, p) => sum + p.valor, 0);
+    
+    // Remaining amount to distribute
+    const restanteParaDistribuir = saldoRestante - somaEditadas;
+    const numNaoEditadas = parcelas.length - indicesEditados.size;
+    const valorPorParcela = restanteParaDistribuir / numNaoEditadas;
+    
+    const novasParcelas = parcelas.map((parcela, index) => {
+      if (indicesEditados.has(index)) {
+        return parcela;
+      }
+      return { ...parcela, valor: valorPorParcela };
+    });
+    
+    setParcelas(novasParcelas);
+    setParcelaInputs(novasParcelas.map(p => ({ valor: p.valor.toFixed(2) })));
+  };
+
   // Handle individual installment value change
   const handleParcelaValueChange = (index: number, value: string) => {
     const newInputs = [...parcelaInputs];
@@ -260,6 +288,7 @@ export function PaymentTermsForm({
     newParcelas[index] = { ...newParcelas[index], valor: num };
     setParcelas(newParcelas);
     setParcelasEditadas(true);
+    setIndicesEditados(prev => new Set(prev).add(index));
     
     const newInputs = [...parcelaInputs];
     newInputs[index] = { valor: num.toFixed(2) };
@@ -412,16 +441,30 @@ export function PaymentTermsForm({
                   Cronograma de Parcelas (edite valores e vencimentos)
                 </Label>
                 {parcelasEditadas && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRecalcularParcelas}
-                    className="flex items-center gap-1"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    Recalcular
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {indicesEditados.size > 0 && indicesEditados.size < parcelas.length && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAjustarDemais}
+                        className="flex items-center gap-1"
+                      >
+                        <Scale className="h-3 w-3" />
+                        Ajustar demais
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRecalcularParcelas}
+                      className="flex items-center gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Recalcular
+                    </Button>
+                  </div>
                 )}
               </div>
               <div className="space-y-2">
