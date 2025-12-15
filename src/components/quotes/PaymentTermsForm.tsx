@@ -53,6 +53,7 @@ export function PaymentTermsForm({
   const [maxParcelas, setMaxParcelas] = useState(12);
   const [erroParcelamento, setErroParcelamento] = useState<string | null>(null);
   const [erroSinal, setErroSinal] = useState(false);
+  const [errosDataParcela, setErrosDataParcela] = useState<Set<number>>(new Set());
 
   // Calculate valorSinal: use manual if set, otherwise from percentage
   const valorSinalCalculado = (valorTotal * percentualSinal) / 100;
@@ -295,13 +296,40 @@ export function PaymentTermsForm({
     setParcelaInputs(newInputs);
   };
 
-  // Handle individual installment date change
+  // Handle individual installment date change with validation
   const handleParcelaDateChange = (index: number, value: string) => {
     const newParcelas = [...parcelas];
     newParcelas[index] = { ...newParcelas[index], dataVencimento: value };
     setParcelas(newParcelas);
     setParcelasEditadas(true);
+    
+    // Validate date against 30 days before event
+    if (dataEvento && value) {
+      const eventDate = new Date(dataEvento + "T12:00:00");
+      const limitDate = new Date(eventDate);
+      limitDate.setDate(limitDate.getDate() - 30);
+      
+      const parcelaDate = new Date(value + "T12:00:00");
+      
+      const newErros = new Set(errosDataParcela);
+      if (parcelaDate > limitDate) {
+        newErros.add(index);
+      } else {
+        newErros.delete(index);
+      }
+      setErrosDataParcela(newErros);
+    }
   };
+
+  // Calculate limit date for display
+  const dataLimiteVencimento = dataEvento
+    ? (() => {
+        const eventDate = new Date(dataEvento + "T12:00:00");
+        const limitDate = new Date(eventDate);
+        limitDate.setDate(limitDate.getDate() - 30);
+        return limitDate.toISOString().split("T")[0];
+      })()
+    : null;
 
   // Calculate total of installments
   const totalParcelas = parcelas.reduce((sum, p) => sum + p.valor, 0);
@@ -481,34 +509,45 @@ export function PaymentTermsForm({
                 {parcelas.map((parcela, index) => (
                   <div
                     key={parcela.numero}
-                    className={`flex flex-wrap items-center gap-2 p-2 rounded transition-colors ${
-                      indicesEditados.has(index) 
-                        ? "bg-amber-100 border border-amber-300 dark:bg-amber-900/30 dark:border-amber-700" 
-                        : "bg-secondary/30"
+                    className={`flex flex-col gap-1 p-2 rounded transition-colors ${
+                      errosDataParcela.has(index)
+                        ? "bg-destructive/10 border border-destructive/50"
+                        : indicesEditados.has(index) 
+                          ? "bg-amber-100 border border-amber-300 dark:bg-amber-900/30 dark:border-amber-700" 
+                          : "bg-secondary/30"
                     }`}
                   >
-                    <span className="font-medium text-sm w-20">
-                      Parcela {parcela.numero}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">Vencimento:</span>
-                      <Input
-                        type="date"
-                        value={parcela.dataVencimento}
-                        onChange={(e) => handleParcelaDateChange(index, e.target.value)}
-                        className="w-36 h-8 text-sm"
-                      />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-sm w-20">
+                        Parcela {parcela.numero}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">Vencimento:</span>
+                        <Input
+                          type="date"
+                          value={parcela.dataVencimento}
+                          max={dataLimiteVencimento || undefined}
+                          onChange={(e) => handleParcelaDateChange(index, e.target.value)}
+                          className={`w-36 h-8 text-sm ${errosDataParcela.has(index) ? "border-destructive" : ""}`}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 ml-auto">
+                        <span className="text-xs text-muted-foreground">R$</span>
+                        <Input
+                          type="text"
+                          value={parcelaInputs[index]?.valor ?? parcela.valor.toFixed(2)}
+                          onChange={(e) => handleParcelaValueChange(index, e.target.value)}
+                          onBlur={() => handleParcelaValueBlur(index)}
+                          className="w-24 h-8 text-sm text-right"
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 ml-auto">
-                      <span className="text-xs text-muted-foreground">R$</span>
-                      <Input
-                        type="text"
-                        value={parcelaInputs[index]?.valor ?? parcela.valor.toFixed(2)}
-                        onChange={(e) => handleParcelaValueChange(index, e.target.value)}
-                        onBlur={() => handleParcelaValueBlur(index)}
-                        className="w-24 h-8 text-sm text-right"
-                      />
-                    </div>
+                    {errosDataParcela.has(index) && (
+                      <div className="flex items-center gap-1 text-destructive text-xs">
+                        <AlertCircle className="h-3 w-3" />
+                        <span>Vencimento deve ser até 30 dias antes do evento ({dataLimiteVencimento ? formatDate(dataLimiteVencimento) : ""})</span>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {parcelas.length > 0 && (
