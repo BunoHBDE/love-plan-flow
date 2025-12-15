@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CreditCard, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CreditCard, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 
 export interface Parcela {
   numero: number;
@@ -42,8 +43,6 @@ export function PaymentTermsForm({
   const [valorSinalInput, setValorSinalInput] = useState("");
   const [valorSinalManual, setValorSinalManual] = useState<number | null>(null);
   
-  const [valorParcelaFinalInput, setValorParcelaFinalInput] = useState("");
-  const [valorParcelaFinal, setValorParcelaFinal] = useState<number | null>(null);
   
   const [numeroParcelas, setNumeroParcelas] = useState(1);
   const [diaVencimento, setDiaVencimento] = useState(10);
@@ -60,12 +59,6 @@ export function PaymentTermsForm({
   const percentualEfetivo = valorTotal > 0 ? (valorSinal / valorTotal) * 100 : 0;
   
   const saldoRestante = valorTotal - valorSinal;
-  
-  // Calculate installment values considering final installment
-  const parcelaFinalValor = valorParcelaFinal !== null ? valorParcelaFinal : 0;
-  const saldoParaDemaisParcelas = saldoRestante - parcelaFinalValor;
-  const numParcelasRegulares = numeroParcelas > 1 ? numeroParcelas - 1 : 0;
-  const valorParcelaRegular = numParcelasRegulares > 0 ? saldoParaDemaisParcelas / numParcelasRegulares : saldoRestante;
 
   // Sync percentage input when valorTotal changes
   useEffect(() => {
@@ -112,10 +105,8 @@ export function PaymentTermsForm({
     }
   }, [dataEvento, diaVencimento]);
 
-  // Calculate installment dates - only recalculate if not manually edited
-  useEffect(() => {
-    if (parcelasEditadas) return; // Don't recalculate if user has manually edited
-    
+  // Calculate installments
+  const calcularParcelas = () => {
     if (numeroParcelas <= 0 || saldoRestante <= 0) {
       setParcelas([]);
       setParcelaInputs([]);
@@ -147,16 +138,7 @@ export function PaymentTermsForm({
       const dataParcela = new Date(dataUltimaParcela);
       dataParcela.setMonth(dataParcela.getMonth() - (numeroParcelas - i));
 
-      const isUltimaParcela = i === numeroParcelas;
-      let valorParcela: number;
-      
-      if (valorParcelaFinal !== null && numeroParcelas > 1) {
-        // If final installment value is set
-        valorParcela = isUltimaParcela ? valorParcelaFinal : valorParcelaRegular;
-      } else {
-        // All installments equal
-        valorParcela = saldoRestante / numeroParcelas;
-      }
+      const valorParcela = saldoRestante / numeroParcelas;
 
       novasParcelas.push({
         numero: i,
@@ -168,7 +150,14 @@ export function PaymentTermsForm({
     novasParcelas.sort((a, b) => a.numero - b.numero);
     setParcelas(novasParcelas);
     setParcelaInputs(novasParcelas.map(p => ({ valor: p.valor.toFixed(2) })));
-  }, [numeroParcelas, diaVencimento, saldoRestante, dataEvento, valorParcelaFinal, valorParcelaRegular, parcelasEditadas]);
+    setParcelasEditadas(false);
+  };
+
+  // Auto-calculate installments when not manually edited
+  useEffect(() => {
+    if (parcelasEditadas) return;
+    calcularParcelas();
+  }, [numeroParcelas, diaVencimento, saldoRestante, dataEvento, parcelasEditadas]);
 
   // Reset manual edits when number of installments changes
   useEffect(() => {
@@ -243,23 +232,8 @@ export function PaymentTermsForm({
     }
   };
 
-  const handleValorParcelaFinalChange = (value: string) => {
-    setValorParcelaFinalInput(value);
-  };
-
-  const handleValorParcelaFinalBlur = () => {
-    const num = parseFloat(valorParcelaFinalInput.replace(",", "."));
-    
-    if (isNaN(num) || num <= 0 || valorParcelaFinalInput === "") {
-      setValorParcelaFinal(null);
-      setValorParcelaFinalInput("");
-    } else if (num > saldoRestante) {
-      setValorParcelaFinal(saldoRestante);
-      setValorParcelaFinalInput(saldoRestante.toFixed(2));
-    } else {
-      setValorParcelaFinal(num);
-      setValorParcelaFinalInput(num.toFixed(2));
-    }
+  const handleRecalcularParcelas = () => {
+    calcularParcelas();
   };
 
   // Handle individual installment value change
@@ -328,12 +302,12 @@ export function PaymentTermsForm({
         {/* Sinal */}
         <div className="p-4 bg-muted/50 rounded-lg border border-border">
           <h3 className="font-medium mb-3">Sinal (Entrada)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div>
               <Label className="text-muted-foreground text-sm">
                 Percentual (mín. 10%)
               </Label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mt-1">
                 <Input
                   type="number"
                   min={10}
@@ -350,7 +324,7 @@ export function PaymentTermsForm({
               <Label className="text-muted-foreground text-sm">
                 Valor do Sinal
               </Label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mt-1">
                 <span className="text-muted-foreground">R$</span>
                 <Input
                   type="text"
@@ -361,20 +335,18 @@ export function PaymentTermsForm({
                   placeholder="0,00"
                 />
               </div>
-            </div>
-            <div>
-              <Label className="text-muted-foreground text-sm">Saldo Restante</Label>
-              <p className="font-semibold text-lg py-1">
-                {formatCurrency(saldoRestante)}
-              </p>
-            </div>
-            <div>
               {erroSinal && (
-                <p className="text-destructive text-xs mt-6 flex items-center gap-1">
+                <p className="text-destructive text-xs mt-1 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   Mínimo de 10% ({formatCurrency(valorTotal * 0.1)})
                 </p>
               )}
+            </div>
+            <div>
+              <Label className="text-muted-foreground text-sm">Saldo Restante</Label>
+              <p className="font-semibold text-lg mt-1">
+                {formatCurrency(saldoRestante)}
+              </p>
             </div>
           </div>
         </div>
@@ -382,7 +354,7 @@ export function PaymentTermsForm({
         {/* Parcelamento */}
         <div className="p-4 bg-muted/50 rounded-lg border border-border">
           <h3 className="font-medium mb-3">Parcelamento do Saldo</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <Label className="text-muted-foreground text-sm">
                 Número de Parcelas (máx. {maxParcelas})
@@ -423,27 +395,6 @@ export function PaymentTermsForm({
                 </SelectContent>
               </Select>
             </div>
-            {numeroParcelas > 1 && (
-              <div>
-                <Label className="text-muted-foreground text-sm">
-                  Valor da Parcela Final (opcional)
-                </Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">R$</span>
-                  <Input
-                    type="text"
-                    value={valorParcelaFinalInput}
-                    onChange={(e) => handleValorParcelaFinalChange(e.target.value)}
-                    onBlur={handleValorParcelaFinalBlur}
-                    className="w-32"
-                    placeholder="0,00"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Demais parcelas: {formatCurrency(valorParcelaRegular)}
-                </p>
-              </div>
-            )}
           </div>
 
           {erroParcelamento && (
@@ -456,9 +407,23 @@ export function PaymentTermsForm({
           {/* Installments Preview */}
           {parcelas.length > 0 && (
             <div className="mt-4">
-              <Label className="text-muted-foreground text-sm mb-2 block">
-                Cronograma de Parcelas (edite valores e vencimentos)
-              </Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-muted-foreground text-sm">
+                  Cronograma de Parcelas (edite valores e vencimentos)
+                </Label>
+                {parcelasEditadas && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRecalcularParcelas}
+                    className="flex items-center gap-1"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Recalcular
+                  </Button>
+                )}
+              </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 bg-primary/10 rounded border border-primary/20">
                   <CheckCircle2 className="h-4 w-4 text-primary" />
