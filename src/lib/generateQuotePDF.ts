@@ -55,7 +55,7 @@ const formatDate = (dateString: string): string => {
   return date.toLocaleDateString("pt-BR");
 };
 
-export const generateQuotePDF = async (quote: QuoteData): Promise<void> => {
+export const generateQuotePDF = (quote: QuoteData): void => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -71,43 +71,29 @@ export const generateQuotePDF = async (quote: QuoteData): Promise<void> => {
 
   // Header background
   doc.setFillColor(...lightBg);
-  doc.rect(0, 0, pageWidth, 70, "F");
+  doc.rect(0, 0, pageWidth, 60, "F");
   
   // Gold accent line
   doc.setFillColor(...goldColor);
-  doc.rect(0, 70, pageWidth, 3, "F");
-
-  // Add Logo
-  try {
-    const logoImg = new Image();
-    logoImg.crossOrigin = "anonymous";
-    await new Promise<void>((resolve, reject) => {
-      logoImg.onload = () => resolve();
-      logoImg.onerror = () => reject();
-      logoImg.src = "/images/logo-sitio-canto-da-mata.jpeg";
-    });
-    doc.addImage(logoImg, "JPEG", margin, yPosition - 5, 40, 40);
-  } catch (e) {
-    // Logo não carregou, continua sem ela
-  }
+  doc.rect(0, 60, pageWidth, 3, "F");
 
   // Company name
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(...primaryColor);
-  doc.text("SÍTIO CANTO DA MATA", pageWidth / 2 + 10, yPosition + 8, { align: "center" });
+  doc.text("SÍTIO CANTO DA MATA", pageWidth / 2, yPosition + 8, { align: "center" });
   
   // Title - ORÇAMENTO
   doc.setFontSize(22);
-  doc.text("ORÇAMENTO", pageWidth / 2 + 10, yPosition + 22, { align: "center" });
+  doc.text("ORÇAMENTO", pageWidth / 2, yPosition + 22, { align: "center" });
   
   // Quote number
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...textColor);
-  doc.text(`Nº ${quote.id}`, pageWidth / 2 + 10, yPosition + 32, { align: "center" });
+  doc.text(`Nº ${quote.id}`, pageWidth / 2, yPosition + 32, { align: "center" });
   
-  yPosition = 90;
+  yPosition = 80;
 
   // Client Info Section
   doc.setFillColor(...primaryColor);
