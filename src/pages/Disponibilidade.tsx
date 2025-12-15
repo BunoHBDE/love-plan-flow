@@ -136,36 +136,44 @@ export default function Disponibilidade() {
     return [...datasOcupadas, ...datasBloqueadas];
   }, [datasOcupadas, datasBloqueadas]);
 
-  // Get events in selected month
-  const eventosNoMes = useMemo(() => {
-    const start = startOfMonth(selectedMonth);
-    const end = endOfMonth(selectedMonth);
-    
+  // Get period range based on view mode
+  const periodRange = useMemo(() => {
+    if (viewMode === "mensal") {
+      return { start: startOfMonth(selectedMonth), end: endOfMonth(selectedMonth) };
+    }
+    if (viewMode === "estacao") {
+      const firstMonth = monthsToDisplay[0];
+      const lastMonth = monthsToDisplay[monthsToDisplay.length - 1];
+      return { start: startOfMonth(firstMonth), end: endOfMonth(lastMonth) };
+    }
+    // Annual
+    const firstMonth = setMonth(setYear(new Date(), selectedYear), 0);
+    const lastMonth = setMonth(setYear(new Date(), selectedYear), 11);
+    return { start: startOfMonth(firstMonth), end: endOfMonth(lastMonth) };
+  }, [viewMode, selectedMonth, monthsToDisplay, selectedYear]);
+
+  // Get events in selected period
+  const eventosNoPeriodo = useMemo(() => {
     return eventosAceitos.filter((e) => {
       const eventDate = new Date(e.date + "T12:00:00");
-      return eventDate >= start && eventDate <= end;
+      return eventDate >= periodRange.start && eventDate <= periodRange.end;
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [eventosAceitos, selectedMonth]);
+  }, [eventosAceitos, periodRange]);
 
-  // Get blocked dates in selected month
-  const bloqueadasNoMes = useMemo(() => {
-    const start = startOfMonth(selectedMonth);
-    const end = endOfMonth(selectedMonth);
-    
+  // Get blocked dates in selected period
+  const bloqueadasNoPeriodo = useMemo(() => {
     return blockedDates.filter((b) => {
       const blockedDate = new Date(b.date + "T12:00:00");
-      return blockedDate >= start && blockedDate <= end;
+      return blockedDate >= periodRange.start && blockedDate <= periodRange.end;
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [blockedDates, selectedMonth]);
+  }, [blockedDates, periodRange]);
 
-  // Get available weekend dates in selected month
+  // Get available weekend dates in selected period
   const datasDisponiveis = useMemo(() => {
-    const start = startOfMonth(selectedMonth);
-    const end = endOfMonth(selectedMonth);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const allDays = eachDayOfInterval({ start, end });
+    const allDays = eachDayOfInterval({ start: periodRange.start, end: periodRange.end });
     
     return allDays.filter((day) => {
       // Only weekends (Saturday and Sunday)
@@ -175,7 +183,7 @@ export default function Disponibilidade() {
       // Not already occupied or blocked
       return !allUnavailableDates.some((unavailable) => isSameDay(unavailable, day));
     });
-  }, [selectedMonth, allUnavailableDates]);
+  }, [periodRange, allUnavailableDates]);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString + "T12:00:00"), "dd 'de' MMMM", { locale: ptBR });
@@ -385,16 +393,12 @@ export default function Disponibilidade() {
                 </div>
               )}
 
-              {/* Calendars Grid */}
-              <div className={`grid gap-6 justify-items-center ${
-                viewMode === "anual" 
-                  ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
-                  : viewMode === "estacao" 
-                    ? "grid-cols-1 sm:grid-cols-3" 
-                    : "grid-cols-1 place-items-center"
+              {/* Calendars - Vertical layout */}
+              <div className={`flex flex-col gap-6 items-center ${
+                viewMode === "anual" ? "max-h-[600px] overflow-y-auto pr-2" : ""
               }`}>
                 {monthsToDisplay.map((month, index) => (
-                  <div key={index} className="flex flex-col items-center w-full max-w-[280px]">
+                  <div key={index} className="flex flex-col items-center w-full max-w-[320px]">
                     {viewMode !== "mensal" && (
                       <h3 className="text-sm font-medium mb-2 capitalize">
                         {format(month, "MMMM yyyy", { locale: ptBR })}
@@ -406,9 +410,7 @@ export default function Disponibilidade() {
                       onSelect={(date) => date && handleDateClick(date)}
                       month={month}
                       locale={ptBR}
-                      className={`rounded-md border pointer-events-auto w-full ${
-                        viewMode === "anual" ? "[&_.rdp-cell]:p-0 [&_.rdp-day]:h-7 [&_.rdp-day]:w-7 [&_.rdp-head_cell]:w-7 [&_.rdp-caption]:text-sm" : ""
-                      }`}
+                      className="rounded-md border pointer-events-auto w-full"
                       modifiers={{
                         occupied: datasOcupadas,
                         blocked: datasBloqueadas,
@@ -452,13 +454,13 @@ export default function Disponibilidade() {
               <div className="flex items-center gap-2 mb-4">
                 <List className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-display font-semibold">
-                  Eventos em {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+                  Eventos {viewMode === "mensal" ? `em ${format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}` : viewMode === "estacao" ? `- ${getSeasonName()} ${getYear(selectedMonth)}` : `de ${selectedYear}`}
                 </h2>
               </div>
 
-              {eventosNoMes.length === 0 ? (
+              {eventosNoPeriodo.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
-                  Nenhum evento confirmado neste mês
+                  Nenhum evento confirmado neste período
                 </p>
               ) : (
                 <Table>
@@ -471,7 +473,7 @@ export default function Disponibilidade() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {eventosNoMes.map((evento) => (
+                    {eventosNoPeriodo.map((evento) => (
                       <TableRow key={evento.id}>
                         <TableCell>
                           <div className="flex flex-col">
@@ -501,12 +503,12 @@ export default function Disponibilidade() {
             </div>
 
             {/* Blocked Dates List */}
-            {bloqueadasNoMes.length > 0 && (
+            {bloqueadasNoPeriodo.length > 0 && (
               <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
                 <div className="flex items-center gap-2 mb-4">
                   <Ban className="h-5 w-5 text-warning" />
                   <h2 className="text-lg font-display font-semibold">
-                    Datas Bloqueadas em {format(selectedMonth, "MMMM", { locale: ptBR })}
+                    Datas Bloqueadas {viewMode === "mensal" ? `em ${format(selectedMonth, "MMMM", { locale: ptBR })}` : viewMode === "estacao" ? `- ${getSeasonName()}` : `de ${selectedYear}`}
                   </h2>
                 </div>
 
@@ -519,7 +521,7 @@ export default function Disponibilidade() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {bloqueadasNoMes.map((blocked) => (
+                    {bloqueadasNoPeriodo.map((blocked) => (
                       <TableRow key={blocked.id}>
                         <TableCell>
                           <div className="flex flex-col">
@@ -550,24 +552,24 @@ export default function Disponibilidade() {
 
           {/* Sidebar - Summary */}
           <div className="space-y-6">
-            {/* Month Stats */}
+            {/* Period Stats */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <h3 className="font-display font-semibold mb-4">
-                Resumo do Mês
+                Resumo {viewMode === "mensal" ? "do Mês" : viewMode === "estacao" ? "da Estação" : "do Ano"}
               </h3>
               
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg border border-destructive/20">
                   <span className="text-sm font-medium">Eventos</span>
                   <span className="text-2xl font-bold text-destructive">
-                    {eventosNoMes.length}
+                    {eventosNoPeriodo.length}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center p-3 bg-warning/10 rounded-lg border border-warning/20">
                   <span className="text-sm font-medium">Bloqueados</span>
                   <span className="text-2xl font-bold text-warning">
-                    {bloqueadasNoMes.length}
+                    {bloqueadasNoPeriodo.length}
                   </span>
                 </div>
                 
