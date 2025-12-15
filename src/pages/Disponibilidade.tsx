@@ -50,6 +50,8 @@ export default function Disponibilidade() {
   const [deleteTarget, setDeleteTarget] = useState<BlockedDate | null>(null);
   const [releaseTarget, setReleaseTarget] = useState<BlockedDate | null>(null);
   const [quoteTarget, setQuoteTarget] = useState<Date | null>(null);
+  const [blockFromCalendar, setBlockFromCalendar] = useState<Date | null>(null);
+  const [blockFromCalendarReason, setBlockFromCalendarReason] = useState("");
   const loading = loadingQuotes || loadingBlocked;
 
   // Filter only accepted quotes with event dates
@@ -153,7 +155,11 @@ export default function Disponibilidade() {
   };
 
   const handleDateClick = (date: Date) => {
-    // Check if it's a blocked date
+    // Check if it's an occupied date (event) - do nothing
+    const isOccupied = datasOcupadas.some((d) => isSameDay(d, date));
+    if (isOccupied) return;
+
+    // Check if it's a blocked date - offer to release
     const blockedDate = blockedDates.find((b) => 
       isSameDay(new Date(b.date + "T12:00:00"), date)
     );
@@ -162,11 +168,15 @@ export default function Disponibilidade() {
       return;
     }
 
-    // Check if it's an available date
-    const isAvailable = datasDisponiveis.some((d) => isSameDay(d, date));
-    if (isAvailable) {
+    // Check if it's an available weekend date - offer to create quote
+    const isAvailableWeekend = datasDisponiveis.some((d) => isSameDay(d, date));
+    if (isAvailableWeekend) {
       setQuoteTarget(date);
+      return;
     }
+
+    // Otherwise, it's a weekday or other date - offer to block
+    setBlockFromCalendar(date);
   };
 
   const handleConfirmQuote = () => {
@@ -179,6 +189,20 @@ export default function Disponibilidade() {
     if (!releaseTarget) return;
     await removeBlockedDate(releaseTarget.id);
     setReleaseTarget(null);
+  };
+
+  const handleBlockFromCalendar = async () => {
+    if (!blockFromCalendar || !blockFromCalendarReason.trim()) return;
+    
+    setIsSubmitting(true);
+    const formattedDate = format(blockFromCalendar, "yyyy-MM-dd");
+    const success = await addBlockedDate(formattedDate, blockFromCalendarReason.trim());
+    setIsSubmitting(false);
+    
+    if (success) {
+      setBlockFromCalendar(null);
+      setBlockFromCalendarReason("");
+    }
   };
 
   if (loading) {
@@ -242,7 +266,7 @@ export default function Disponibilidade() {
                   disabled={(date) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    return date < today || !isWeekend(date);
+                    return date < today;
                   }}
                 />
 
@@ -542,6 +566,50 @@ export default function Disponibilidade() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Block Date from Calendar Dialog */}
+      <Dialog open={!!blockFromCalendar} onOpenChange={() => {
+        setBlockFromCalendar(null);
+        setBlockFromCalendarReason("");
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bloquear Data</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Bloquear <strong>{blockFromCalendar && format(blockFromCalendar, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</strong>
+            </p>
+            <div>
+              <Label>Motivo</Label>
+              <Input
+                placeholder="Ex: Feriado, Manutenção, Evento privado..."
+                value={blockFromCalendarReason}
+                onChange={(e) => setBlockFromCalendarReason(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setBlockFromCalendar(null);
+              setBlockFromCalendarReason("");
+            }}>
+              Cancelar
+            </Button>
+            <Button
+              variant="gold"
+              onClick={handleBlockFromCalendar}
+              disabled={!blockFromCalendarReason.trim() || isSubmitting}
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Bloquear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
