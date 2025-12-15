@@ -393,56 +393,92 @@ export default function Disponibilidade() {
                 </div>
               )}
 
-              {/* Calendars Grid */}
-              <div className={`grid justify-items-center ${
-                viewMode === "anual" 
-                  ? "grid-cols-3 lg:grid-cols-4 gap-1" 
-                  : viewMode === "estacao" 
-                    ? "grid-cols-1 sm:grid-cols-3 gap-4" 
-                    : "grid-cols-1 place-items-center gap-4"
-              }`}>
-                {monthsToDisplay.map((month, index) => (
-                  <div key={index} className={`flex flex-col items-center ${
-                    viewMode === "anual" ? "w-full max-w-[140px]" : "w-full max-w-[320px]"
-                  }`}>
-                    {viewMode !== "mensal" && (
-                      <h3 className={`font-medium mb-0.5 capitalize ${
-                        viewMode === "anual" ? "text-[9px]" : "text-sm"
-                      }`}>
-                        {format(month, viewMode === "anual" ? "MMM" : "MMMM yyyy", { locale: ptBR })}
-                      </h3>
-                    )}
-                    <Calendar
-                      mode="single"
-                      selected={undefined}
-                      onSelect={(date) => date && handleDateClick(date)}
-                      month={month}
-                      locale={ptBR}
-                      className={`rounded border pointer-events-auto ${
-                        viewMode === "anual" 
-                          ? "[&]:p-0 [&_.rdp-months]:p-0 [&_.rdp-month]:p-0.5 [&_.rdp-table]:w-full [&_.rdp-cell]:p-0 [&_.rdp-day]:h-4 [&_.rdp-day]:w-4 [&_.rdp-day]:text-[7px] [&_.rdp-day]:p-0 [&_.rdp-head_cell]:w-4 [&_.rdp-head_cell]:text-[6px] [&_.rdp-head_cell]:p-0 [&_.rdp-caption]:hidden [&_.rdp-nav]:hidden [&_.rdp-tbody]:text-center" 
-                          : "w-full"
-                      }`}
-                      modifiers={{
-                        occupied: datasOcupadas,
-                        blocked: datasBloqueadas,
-                        available: datasDisponiveis,
-                      }}
-                      modifiersClassNames={{
-                        occupied: "bg-destructive/20 text-destructive font-semibold cursor-not-allowed",
-                        blocked: "bg-warning/20 text-warning font-semibold hover:bg-warning/30 cursor-pointer",
-                        available: "bg-success/20 text-success font-semibold hover:bg-success/30 cursor-pointer",
-                      }}
-                      disabled={(date) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return date < today;
-                      }}
-                      showOutsideDays={false}
-                    />
-                  </div>
-                ))}
-              </div>
+              {/* Calendars */}
+              {viewMode === "anual" ? (
+                /* Annual - List format */
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                  {monthsToDisplay.map((month, index) => {
+                    const monthStart = startOfMonth(month);
+                    const monthEnd = endOfMonth(month);
+                    const eventosDoMes = eventosAceitos.filter((e) => {
+                      const eventDate = new Date(e.date + "T12:00:00");
+                      return eventDate >= monthStart && eventDate <= monthEnd;
+                    });
+                    const bloqueadosDoMes = blockedDates.filter((b) => {
+                      const blockedDate = new Date(b.date + "T12:00:00");
+                      return blockedDate >= monthStart && blockedDate <= monthEnd;
+                    });
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const disponiveisDoMes = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter((day) => {
+                      if (!isWeekend(day)) return false;
+                      if (day < today) return false;
+                      return !allUnavailableDates.some((unavailable) => isSameDay(unavailable, day));
+                    });
+
+                    return (
+                      <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
+                        <span className="font-medium capitalize text-sm">
+                          {format(month, "MMMM", { locale: ptBR })}
+                        </span>
+                        <div className="flex items-center gap-4 text-xs">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-destructive" />
+                            <span>{eventosDoMes.length}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-warning" />
+                            <span>{bloqueadosDoMes.length}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-success" />
+                            <span>{disponiveisDoMes.length}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Season and Monthly - Calendar format */
+                <div className={`flex flex-col gap-6 items-center ${
+                  viewMode === "estacao" ? "max-h-[600px] overflow-y-auto pr-2" : ""
+                }`}>
+                  {monthsToDisplay.map((month, index) => (
+                    <div key={index} className="flex flex-col items-center w-full max-w-[320px]">
+                      {viewMode === "estacao" && (
+                        <h3 className="text-sm font-medium mb-2 capitalize">
+                          {format(month, "MMMM yyyy", { locale: ptBR })}
+                        </h3>
+                      )}
+                      <Calendar
+                        mode="single"
+                        selected={undefined}
+                        onSelect={(date) => date && handleDateClick(date)}
+                        month={month}
+                        locale={ptBR}
+                        className="rounded-md border pointer-events-auto w-full"
+                        modifiers={{
+                          occupied: datasOcupadas,
+                          blocked: datasBloqueadas,
+                          available: datasDisponiveis,
+                        }}
+                        modifiersClassNames={{
+                          occupied: "bg-destructive/20 text-destructive font-semibold cursor-not-allowed",
+                          blocked: "bg-warning/20 text-warning font-semibold hover:bg-warning/30 cursor-pointer",
+                          available: "bg-success/20 text-success font-semibold hover:bg-success/30 cursor-pointer",
+                        }}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return date < today;
+                        }}
+                        showOutsideDays={false}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Legend */}
               <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-sm">
