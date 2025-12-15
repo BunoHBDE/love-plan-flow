@@ -118,40 +118,43 @@ export function PaymentTermsForm({
     }
 
     const novasParcelas: Parcela[] = [];
+    
+    // First installment starts next month
+    const hoje = new Date();
+    const primeiraParcela = new Date(hoje.getFullYear(), hoje.getMonth() + 1, diaVencimento);
+    
     let dataUltimaParcela: Date;
 
     if (dataEvento) {
       const eventDate = new Date(dataEvento + "T12:00:00");
-      dataUltimaParcela = new Date(eventDate);
-      dataUltimaParcela.setDate(dataUltimaParcela.getDate() - 30);
-      dataUltimaParcela.setDate(diaVencimento);
-      
       const limitDate = new Date(eventDate);
       limitDate.setDate(limitDate.getDate() - 30);
+      
+      // Calculate last installment date (must be before 30 days of event)
+      dataUltimaParcela = new Date(limitDate.getFullYear(), limitDate.getMonth(), diaVencimento);
       if (dataUltimaParcela > limitDate) {
         dataUltimaParcela.setMonth(dataUltimaParcela.getMonth() - 1);
       }
     } else {
-      dataUltimaParcela = new Date();
-      dataUltimaParcela.setMonth(dataUltimaParcela.getMonth() + numeroParcelas);
-      dataUltimaParcela.setDate(diaVencimento);
+      // No event date: last installment = first + (numParcelas - 1) months
+      dataUltimaParcela = new Date(primeiraParcela);
+      dataUltimaParcela.setMonth(dataUltimaParcela.getMonth() + numeroParcelas - 1);
     }
 
-    // Calculate installments backwards from last date
-    for (let i = numeroParcelas; i >= 1; i--) {
-      const dataParcela = new Date(dataUltimaParcela);
-      dataParcela.setMonth(dataParcela.getMonth() - (numeroParcelas - i));
+    // Generate installments starting from first installment date
+    for (let i = 0; i < numeroParcelas; i++) {
+      const dataParcela = new Date(primeiraParcela);
+      dataParcela.setMonth(dataParcela.getMonth() + i);
 
       const valorParcela = saldoRestante / numeroParcelas;
 
       novasParcelas.push({
-        numero: i,
+        numero: i + 1,
         valor: valorParcela,
         dataVencimento: dataParcela.toISOString().split("T")[0],
       });
     }
 
-    novasParcelas.sort((a, b) => a.numero - b.numero);
     setParcelas(novasParcelas);
     setParcelaInputs(novasParcelas.map(p => ({ valor: p.valor.toFixed(2) })));
     setParcelasEditadas(false);
