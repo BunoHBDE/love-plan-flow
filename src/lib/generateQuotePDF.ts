@@ -27,6 +27,11 @@ interface ComposicaoPreco {
   buffetNome: string | null;
 }
 
+interface ExtraItem {
+  descricao: string;
+  valor: number;
+}
+
 interface QuoteData {
   id: string;
   clientName: string;
@@ -40,6 +45,7 @@ interface QuoteData {
   paymentTerms?: PaymentTerms;
   composicao?: ComposicaoPreco;
   pacoteNome?: string;
+  extras?: ExtraItem[];
 }
 
 const formatCurrency = (value: number): string => {
@@ -190,6 +196,28 @@ export const generateQuotePDF = (quote: QuoteData): void => {
       }
       doc.text(item.description, margin + 5, yPosition);
       doc.text(formatCurrency(item.value), pageWidth - margin - 5, yPosition, { align: "right" });
+      yPosition += 10;
+    });
+  }
+  
+  // Extras (if any)
+  if (quote.extras && quote.extras.length > 0) {
+    yPosition += 5;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...primaryColor);
+    doc.text("Valores Extras:", margin + 5, yPosition);
+    yPosition += 8;
+    
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...textColor);
+    
+    quote.extras.forEach((extra, index) => {
+      if (index % 2 === 0) {
+        doc.setFillColor(250, 247, 242);
+        doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
+      }
+      doc.text(extra.descricao, margin + 5, yPosition);
+      doc.text(formatCurrency(extra.valor), pageWidth - margin - 5, yPosition, { align: "right" });
       yPosition += 10;
     });
   }

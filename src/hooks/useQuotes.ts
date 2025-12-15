@@ -26,6 +26,7 @@ export interface Quote {
   numero_parcelas: number;
   dia_vencimento: number;
   parcelas_json: any;
+  extras_json: any;
   created_at: string;
   updated_at: string;
   client?: Client;
@@ -53,6 +54,7 @@ export interface QuoteInsert {
   numero_parcelas?: number;
   dia_vencimento?: number;
   parcelas_json?: any;
+  extras_json?: any;
 }
 
 export function useQuotes() {

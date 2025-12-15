@@ -147,6 +147,15 @@ export default function Orcamentos() {
       ano
     );
 
+    // Parse extras from quote data
+    const extrasJson = quote.extras_json as any[] | null;
+    const extras = extrasJson && extrasJson.length > 0
+      ? extrasJson.map((e: any) => ({
+          descricao: e.descricao,
+          valor: e.valor,
+        }))
+      : undefined;
+
     generateQuotePDF({
       id: quote.quote_number,
       clientName: quote.client?.nome || "Cliente",
@@ -169,6 +178,7 @@ export default function Orcamentos() {
         buffetNome: composicaoPreco.detalhes.buffetNome,
       } : undefined,
       pacoteNome: composicaoPreco?.detalhes.pacoteNome,
+      extras,
     });
   };
 
