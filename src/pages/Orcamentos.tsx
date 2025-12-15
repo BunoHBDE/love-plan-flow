@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { useQuotes, type Quote } from "@/hooks/useQuotes";
+import { calcularPrecoDetalhado, getAnoFromDate } from "@/lib/pricing";
 
 type QuoteStatus = "rascunho" | "enviado" | "aceito" | "recusado" | "expirado";
 
@@ -136,6 +137,16 @@ export default function Orcamentos() {
         }
       : undefined;
 
+    // Calculate composition
+    const ano = quote.data_evento ? getAnoFromDate(quote.data_evento) : (quote.ano_evento || new Date().getFullYear().toString());
+    const composicaoPreco = calcularPrecoDetalhado(
+      quote.pacote,
+      quote.dia_semana || "sabado",
+      quote.n_convidados,
+      quote.menu_buffet,
+      ano
+    );
+
     generateQuotePDF({
       id: quote.quote_number,
       clientName: quote.client?.nome || "Cliente",
@@ -149,6 +160,15 @@ export default function Orcamentos() {
         { description: `Pacote ${quote.pacote}`, value: Number(quote.valor_total) },
       ],
       paymentTerms,
+      composicao: composicaoPreco ? {
+        espaco: composicaoPreco.espaco,
+        decoracao: composicaoPreco.decoracao,
+        buffet: composicaoPreco.buffet,
+        custoConvidadoAdicional: composicaoPreco.custoConvidadoAdicional,
+        ano: composicaoPreco.detalhes.ano,
+        buffetNome: composicaoPreco.detalhes.buffetNome,
+      } : undefined,
+      pacoteNome: composicaoPreco?.detalhes.pacoteNome,
     });
   };
 
