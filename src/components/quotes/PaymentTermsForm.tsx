@@ -481,7 +481,11 @@ export function PaymentTermsForm({
                 {parcelas.map((parcela, index) => (
                   <div
                     key={parcela.numero}
-                    className="flex flex-wrap items-center gap-2 p-2 rounded bg-secondary/30"
+                    className={`flex flex-wrap items-center gap-2 p-2 rounded transition-colors ${
+                      indicesEditados.has(index) 
+                        ? "bg-amber-100 border border-amber-300 dark:bg-amber-900/30 dark:border-amber-700" 
+                        : "bg-secondary/30"
+                    }`}
                   >
                     <span className="font-medium text-sm w-20">
                       Parcela {parcela.numero}
