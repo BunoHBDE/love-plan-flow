@@ -394,21 +394,39 @@ export default function NovoOrcamento() {
     <MainLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4 animate-fade-in">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/orcamentos")}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">
-              Novo Orçamento
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Preencha os dados para gerar uma proposta
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/orcamentos")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-display font-bold text-foreground">
+                Novo Orçamento
+              </h1>
+              <p className="text-muted-foreground">
+                Preencha os dados para gerar uma proposta
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleSalvarOrcamento("rascunho")}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Salvar Rascunho
+            </Button>
+            <Button
+              variant="gold"
+              onClick={() => handleSalvarOrcamento("final")}
+            >
+              Salvar Orçamento
+            </Button>
           </div>
         </div>
 
@@ -416,10 +434,10 @@ export default function NovoOrcamento() {
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Block 1 - Cliente */}
-            <div className="bg-card rounded-xl shadow-soft border border-border p-6 animate-slide-up">
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
-                <User className="h-5 w-5 text-gold" />
-                <h2 className="text-lg font-display font-semibold">Cliente</h2>
+                <User className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">Dados do Cliente</h2>
               </div>
 
               <div className="space-y-4">
@@ -484,6 +502,27 @@ export default function NovoOrcamento() {
                     </p>
                   </div>
                 )}
+
+                {clienteId && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Nome</Label>
+                      <p className="font-medium">{nomeCliente}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Email</Label>
+                      <p className="font-medium">{email || "-"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Telefone</Label>
+                      <p className="font-medium">{telefone || "-"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">CPF</Label>
+                      <p className="font-medium">{cpf || "-"}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <ClientFormDialog
@@ -495,17 +534,17 @@ export default function NovoOrcamento() {
             </div>
 
             {/* Block 2 - Evento */}
-            <div className="bg-card rounded-xl shadow-soft border border-border p-6 animate-slide-up">
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
-                <Calendar className="h-5 w-5 text-gold" />
+                <Calendar className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-display font-semibold">Dados do Evento</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Canal de Entrada</Label>
+                <div>
+                  <Label className="text-muted-foreground text-sm">Canal de Entrada</Label>
                   <Select value={canalEntrada} onValueChange={setCanalEntrada}>
-                    <SelectTrigger>
+                    <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -518,10 +557,10 @@ export default function NovoOrcamento() {
                   </Select>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label>Tipo de Evento</Label>
+                <div>
+                  <Label className="text-muted-foreground text-sm">Tipo de Evento</Label>
                   <Select value={tipoEvento} onValueChange={setTipoEvento}>
-                    <SelectTrigger>
+                    <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -536,7 +575,7 @@ export default function NovoOrcamento() {
               </div>
 
               <div className="mt-4">
-                <Label className="mb-2 block">Data do Evento</Label>
+                <Label className="text-muted-foreground text-sm mb-2 block">Data do Evento</Label>
                 <RadioGroup
                   value={dataStatus}
                   onValueChange={(v) => setDataStatus(v as "com_data" | "sem_data")}
@@ -554,29 +593,29 @@ export default function NovoOrcamento() {
 
                 {dataStatus === "com_data" ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="dataEvento">Data</Label>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Data</Label>
                       <Input
-                        id="dataEvento"
                         type="date"
                         value={dataEvento}
                         onChange={(e) => setDataEvento(e.target.value)}
+                        className="mt-1"
                       />
                     </div>
                     {diaSemana && (
                       <div className="flex items-end">
                         <p className="text-sm text-muted-foreground pb-2">
-                          Dia da semana: <span className="font-medium text-foreground capitalize">{diaSemana}</span>
+                          Dia da semana: <span className="font-medium text-foreground capitalize">{diaSemana === "sabado" ? "Sábado" : "Domingo"}</span>
                         </p>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label>Dia da Semana *</Label>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Dia da Semana *</Label>
                       <Select value={diaSemana || ""} onValueChange={setDiaSemana}>
-                        <SelectTrigger>
+                        <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -585,10 +624,10 @@ export default function NovoOrcamento() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-2">
-                      <Label>Ano do Evento</Label>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Ano do Evento</Label>
                       <Select value={anoEvento || ""} onValueChange={setAnoEvento}>
-                        <SelectTrigger>
+                        <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -604,30 +643,41 @@ export default function NovoOrcamento() {
                 )}
               </div>
 
-              <div className="grid gap-2 mt-4">
-                <Label htmlFor="nConvidadosEvento">Nº de Convidados *</Label>
-                <Input
-                  id="nConvidadosEvento"
-                  type="number"
-                  value={nConvidados || ""}
-                  onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
-                  placeholder="150"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label className="text-muted-foreground text-sm">Número de Convidados *</Label>
+                  <Input
+                    type="number"
+                    value={nConvidados || ""}
+                    onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
+                    placeholder="150"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-sm">Data do Casamento</Label>
+                  <Input
+                    type="date"
+                    value={dataCasamento}
+                    onChange={(e) => setDataCasamento(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Block 3 - Pacote */}
-            <div className="bg-card rounded-xl shadow-soft border border-border p-6 animate-slide-up">
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
-                <Package className="h-5 w-5 text-gold" />
-                <h2 className="text-lg font-display font-semibold">Pacote e Valor</h2>
+                <Package className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">Pacote e Valores</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label>Pacote *</Label>
+                <div>
+                  <Label className="text-muted-foreground text-sm">Pacote *</Label>
                   <Select value={pacote} onValueChange={setPacote}>
-                    <SelectTrigger>
+                    <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Selecione o pacote" />
                     </SelectTrigger>
                     <SelectContent>
@@ -641,10 +691,10 @@ export default function NovoOrcamento() {
                 </div>
 
                 {needsMenu && (
-                  <div className="grid gap-2">
-                    <Label>Menu Buffet *</Label>
+                  <div>
+                    <Label className="text-muted-foreground text-sm">Menu Buffet *</Label>
                     <Select value={menuBuffet || ""} onValueChange={setMenuBuffet}>
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Selecione o menu" />
                       </SelectTrigger>
                       <SelectContent>
@@ -658,46 +708,35 @@ export default function NovoOrcamento() {
                   </div>
                 )}
               </div>
-
-              {valorOrcamento > 0 && (
-                <div className="bg-gold/10 border border-gold/20 rounded-lg p-4 mt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Valor Calculado</span>
-                    <span className="text-2xl font-display font-bold text-gold">
-                      {formatCurrency(valorOrcamento)}
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Block 4 - Observações */}
-            <div className="bg-card rounded-xl shadow-soft border border-border p-6 animate-slide-up">
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
-                <FileText className="h-5 w-5 text-gold" />
+                <FileText className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-display font-semibold">Observações</h2>
               </div>
 
               <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="observacoesInternas">Observações Internas</Label>
+                <div>
+                  <Label className="text-muted-foreground text-sm">Observações Internas</Label>
                   <Textarea
-                    id="observacoesInternas"
                     value={observacoesInternas}
                     onChange={(e) => setObservacoesInternas(e.target.value)}
                     placeholder="Notas internas sobre o cliente ou evento..."
                     rows={3}
+                    className="mt-1"
                   />
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="observacoesCliente">Observações para o Cliente</Label>
+                <div>
+                  <Label className="text-muted-foreground text-sm">Observações para o Cliente</Label>
                   <Textarea
-                    id="observacoesCliente"
                     value={observacoesCliente}
                     onChange={(e) => setObservacoesCliente(e.target.value)}
                     placeholder="Informações que aparecerão no orçamento..."
                     rows={3}
+                    className="mt-1"
                   />
                 </div>
               </div>
@@ -706,85 +745,59 @@ export default function NovoOrcamento() {
 
           {/* Summary Panel */}
           <div className="lg:col-span-1">
-            <div className="bg-card rounded-xl shadow-soft border border-border p-6 sticky top-6 animate-slide-up">
-              <h2 className="text-lg font-display font-semibold mb-4">Resumo do Orçamento</h2>
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border sticky top-6 animate-slide-up">
+              <h2 className="text-lg font-display font-semibold mb-4">Resumo</h2>
 
               <div className="space-y-4">
-                {nomeCliente && (
-                  <div className="flex items-start gap-3">
-                    <User className="h-4 w-4 mt-1 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Cliente</p>
-                      <p className="font-medium">{nomeCliente}</p>
-                    </div>
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-muted-foreground">Cliente</span>
+                  <span className="font-medium">{nomeCliente || "-"}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-muted-foreground">Telefone</span>
+                  <span className="font-medium">{telefone || "-"}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-muted-foreground">Tipo de Evento</span>
+                  <span className="font-medium">
+                    {tiposEvento.find((t) => t.value === tipoEvento)?.label || "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-muted-foreground">Data</span>
+                  <span className="font-medium">
+                    {dataEvento
+                      ? new Date(dataEvento + "T12:00:00").toLocaleDateString("pt-BR")
+                      : dataCasamento
+                      ? new Date(dataCasamento + "T12:00:00").toLocaleDateString("pt-BR")
+                      : diaSemana && anoEvento
+                      ? `${diaSemana === "sabado" ? "Sábado" : "Domingo"} - ${anoEvento}`
+                      : "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-muted-foreground">Convidados</span>
+                  <span className="font-medium">{nConvidados || "-"}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-muted-foreground">Pacote</span>
+                  <span className="font-medium">
+                    {pacotes.find((p) => p.value === pacote)?.label || "-"}
+                  </span>
+                </div>
+                {menuBuffet && (
+                  <div className="flex justify-between items-center py-2 border-b border-border">
+                    <span className="text-muted-foreground">Menu</span>
+                    <span className="font-medium">
+                      {menusBuffet.find((m) => m.value === menuBuffet)?.label}
+                    </span>
                   </div>
                 )}
 
-                {telefone && (
-                  <div className="flex items-start gap-3">
-                    <Phone className="h-4 w-4 mt-1 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Telefone</p>
-                      <p className="font-medium">{telefone}</p>
-                    </div>
-                  </div>
-                )}
-
-                {tipoEvento && (
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-4 w-4 mt-1 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Tipo de Evento</p>
-                      <p className="font-medium capitalize">
-                        {tiposEvento.find((t) => t.value === tipoEvento)?.label}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {(dataCasamento || dataEvento || (diaSemana && anoEvento)) && (
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-4 w-4 mt-1 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Data</p>
-                      <p className="font-medium">
-                        {dataEvento
-                          ? new Date(dataEvento + "T12:00:00").toLocaleDateString("pt-BR")
-                          : dataCasamento
-                          ? new Date(dataCasamento + "T12:00:00").toLocaleDateString("pt-BR")
-                          : `${diaSemana === "sabado" ? "Sábado" : "Domingo"} - ${anoEvento}`}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {nConvidados > 0 && (
-                  <div className="flex items-start gap-3">
-                    <Users className="h-4 w-4 mt-1 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Convidados</p>
-                      <p className="font-medium">{nConvidados} pessoas</p>
-                    </div>
-                  </div>
-                )}
-
-                {pacote && (
-                  <div className="flex items-start gap-3">
-                    <Package className="h-4 w-4 mt-1 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Pacote</p>
-                      <p className="font-medium capitalize">
-                        {pacotes.find((p) => p.value === pacote)?.label}
-                        {menuBuffet && ` + ${menusBuffet.find((m) => m.value === menuBuffet)?.label}`}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="border-t border-border pt-4 mt-4">
+                <div className="pt-4 border-t-2 border-primary/20">
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="text-2xl font-display font-bold text-gold">
+                    <span className="text-lg font-medium">Valor Total</span>
+                    <span className="text-2xl font-display font-bold text-primary">
                       {formatCurrency(valorOrcamento)}
                     </span>
                   </div>
@@ -795,31 +808,31 @@ export default function NovoOrcamento() {
                     ID Cliente: {clienteId}
                   </div>
                 )}
-              </div>
 
-              <div className="space-y-2 mt-6">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => handleSalvarOrcamento("rascunho")}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Salvar Rascunho
-                </Button>
-                <Button
-                  variant="gold"
-                  className="w-full"
-                  onClick={() => handleSalvarOrcamento("final")}
-                >
-                  Salvar Orçamento
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => navigate("/orcamentos")}
-                >
-                  Cancelar
-                </Button>
+                <div className="pt-4 space-y-2">
+                  <Button
+                    variant="gold"
+                    className="w-full"
+                    onClick={() => handleSalvarOrcamento("final")}
+                  >
+                    Salvar Orçamento
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleSalvarOrcamento("rascunho")}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar Rascunho
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => navigate("/orcamentos")}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
