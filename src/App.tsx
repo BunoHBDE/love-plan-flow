@@ -8,6 +8,7 @@ import Visitas from "./pages/Visitas";
 import Clientes from "./pages/Clientes";
 import Orcamentos from "./pages/Orcamentos";
 import NovoOrcamento from "./pages/NovoOrcamento";
+import EditarOrcamento from "./pages/EditarOrcamento";
 import Contratos from "./pages/Contratos";
 import Pagamentos from "./pages/Pagamentos";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/orcamentos" element={<Orcamentos />} />
           <Route path="/orcamentos/novo" element={<NovoOrcamento />} />
+          <Route path="/orcamentos/:id" element={<EditarOrcamento />} />
           <Route path="/contratos" element={<Contratos />} />
           <Route path="/pagamentos" element={<Pagamentos />} />
           <Route path="*" element={<NotFound />} />
