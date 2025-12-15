@@ -52,6 +52,7 @@ export default function Disponibilidade() {
   const [quoteTarget, setQuoteTarget] = useState<Date | null>(null);
   const [blockFromCalendar, setBlockFromCalendar] = useState<Date | null>(null);
   const [blockFromCalendarReason, setBlockFromCalendarReason] = useState("");
+  const [dateOptionsTarget, setDateOptionsTarget] = useState<Date | null>(null);
   const loading = loadingQuotes || loadingBlocked;
 
   // Filter only accepted quotes with event dates
@@ -175,8 +176,20 @@ export default function Disponibilidade() {
       return;
     }
 
-    // Otherwise, it's a weekday or other date - offer to block
-    setBlockFromCalendar(date);
+    // Otherwise, it's a weekday or other date - show options (block or make available)
+    setDateOptionsTarget(date);
+  };
+
+  const handleChooseBlock = () => {
+    if (!dateOptionsTarget) return;
+    setBlockFromCalendar(dateOptionsTarget);
+    setDateOptionsTarget(null);
+  };
+
+  const handleChooseAvailable = () => {
+    if (!dateOptionsTarget) return;
+    setQuoteTarget(dateOptionsTarget);
+    setDateOptionsTarget(null);
   };
 
   const handleConfirmQuote = () => {
@@ -608,6 +621,47 @@ export default function Disponibilidade() {
               Bloquear
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Date Options Dialog (Block or Make Available) */}
+      <Dialog open={!!dateOptionsTarget} onOpenChange={() => setDateOptionsTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>O que deseja fazer?</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Data selecionada: <strong>{dateOptionsTarget && format(dateOptionsTarget, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</strong>
+            </p>
+            
+            <div className="flex flex-col gap-3">
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3 border-warning/50 hover:bg-warning/10"
+                onClick={handleChooseBlock}
+              >
+                <Ban className="h-5 w-5 mr-3 text-warning" />
+                <div className="text-left">
+                  <div className="font-medium">Bloquear Data</div>
+                  <div className="text-xs text-muted-foreground">Impedir eventos nesta data</div>
+                </div>
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-3 border-success/50 hover:bg-success/10"
+                onClick={handleChooseAvailable}
+              >
+                <FileText className="h-5 w-5 mr-3 text-success" />
+                <div className="text-left">
+                  <div className="font-medium">Criar Orçamento</div>
+                  <div className="text-xs text-muted-foreground">Abrir evento para esta data</div>
+                </div>
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </MainLayout>
