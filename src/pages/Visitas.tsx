@@ -39,91 +39,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X, Users, Heart, Mail } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X, Users, Heart, Mail, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-
-interface Visit {
-  id: string;
-  clientName: string;
-  email: string;
-  phone: string;
-  date: string;
-  time: string;
-  status: "confirmada" | "agendada" | "cancelada" | "realizada";
-  notes?: string;
-  guestCount?: number;
-  weddingDateStatus: "defined" | "undefined";
-  weddingDate?: string;
-  weddingMonthEstimate?: string;
-  weddingYearEstimate?: string;
-}
-
-const initialVisits: Visit[] = [
-  {
-    id: "1",
-    clientName: "Maria Silva",
-    email: "maria@email.com",
-    phone: "(11) 99999-0001",
-    date: "2024-12-15",
-    time: "14:00",
-    status: "confirmada",
-    notes: "Interessada em casamento para 80 convidados",
-    guestCount: 80,
-    weddingDateStatus: "defined",
-    weddingDate: "2025-06-20",
-  },
-  {
-    id: "2",
-    clientName: "Ana Oliveira",
-    email: "ana@email.com",
-    phone: "(11) 99999-0002",
-    date: "2024-12-16",
-    time: "10:30",
-    status: "agendada",
-    guestCount: 150,
-    weddingDateStatus: "undefined",
-    weddingMonthEstimate: "03",
-    weddingYearEstimate: "2025",
-  },
-  {
-    id: "3",
-    clientName: "Juliana Santos",
-    email: "juliana@email.com",
-    phone: "(11) 99999-0003",
-    date: "2024-12-17",
-    time: "16:00",
-    status: "confirmada",
-    notes: "Segunda visita - quer ver decoração",
-    guestCount: 200,
-    weddingDateStatus: "defined",
-    weddingDate: "2025-09-15",
-  },
-  {
-    id: "4",
-    clientName: "Carla Costa",
-    email: "carla@email.com",
-    phone: "(11) 99999-0004",
-    date: "2024-12-10",
-    time: "11:00",
-    status: "realizada",
-    notes: "Muito interessada, aguardando orçamento",
-    guestCount: 100,
-    weddingDateStatus: "undefined",
-  },
-];
+import { useVisits, VisitInsert } from "@/hooks/useVisits";
+import { useClients } from "@/hooks/useClients";
 
 const statusStyles = {
   confirmada: "bg-success/10 text-success border-success/20",
+  agendado: "bg-warning/10 text-warning border-warning/20",
   agendada: "bg-warning/10 text-warning border-warning/20",
   cancelada: "bg-destructive/10 text-destructive border-destructive/20",
   realizada: "bg-primary/10 text-primary border-primary/20",
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   confirmada: "Confirmada",
+  agendado: "Agendada",
   agendada: "Agendada",
   cancelada: "Cancelada",
   realizada: "Realizada",
@@ -132,12 +65,20 @@ const statusLabels = {
 type SortOption = "date" | "time" | "status" | "name";
 
 export default function Visitas() {
-  const [visits, setVisits] = useState<Visit[]>(initialVisits);
+  const { visits, loading, createVisit, updateVisit, updateVisitStatus } = useVisits();
+  const { clients, searchClients } = useClients();
+  
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string[]>(["confirmada", "agendada"]);
+  const [statusFilter, setStatusFilter] = useState<string[]>(["confirmada", "agendado"]);
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [sortBy, setSortBy] = useState<SortOption>("date");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Client search for new visit
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientSearchResults, setClientSearchResults] = useState<any[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  
   const [newVisit, setNewVisit] = useState({
     clientName: "",
     email: "",
@@ -154,7 +95,7 @@ export default function Visitas() {
   const [weddingDatePickerOpen, setWeddingDatePickerOpen] = useState(false);
   
   // Details dialog state
-  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [selectedVisit, setSelectedVisit] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   
   // Edit dialog state
@@ -177,93 +118,95 @@ export default function Visitas() {
   
   // Unsaved changes confirmation dialog
   const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false);
-  
-  const { toast } = useToast();
 
   const filteredVisits = visits
     .filter((visit) => {
+      const clientName = visit.client?.nome || "";
+      const clientEmail = visit.client?.email || "";
       const matchesSearch =
-        visit.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        visit.email.toLowerCase().includes(searchTerm.toLowerCase());
+        clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        clientEmail.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter.length === 0 || statusFilter.includes(visit.status);
-      const matchesDate = !dateFilter || visit.date === format(dateFilter, "yyyy-MM-dd");
+      const matchesDate = !dateFilter || visit.visit_date === format(dateFilter, "yyyy-MM-dd");
       return matchesSearch && matchesStatus && matchesDate;
     })
     .sort((a, b) => {
       switch (sortBy) {
         case "date":
-          return new Date(a.date).getTime() - new Date(b.date).getTime();
+          return new Date(a.visit_date).getTime() - new Date(b.visit_date).getTime();
         case "time":
-          return a.time.localeCompare(b.time);
+          return a.visit_time.localeCompare(b.visit_time);
         case "status":
           return a.status.localeCompare(b.status);
         case "name":
-          return a.clientName.localeCompare(b.clientName);
+          return (a.client?.nome || "").localeCompare(b.client?.nome || "");
         default:
           return 0;
       }
     });
 
-  const handleCreateVisit = () => {
-    if (!newVisit.clientName || !newVisit.date || !newVisit.time) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha nome, data e horário.",
-        variant: "destructive",
-      });
-      return;
+  const handleClientSearch = async (term: string) => {
+    setClientSearch(term);
+    if (term.length >= 2) {
+      const results = await searchClients(term);
+      setClientSearchResults(results);
+    } else {
+      setClientSearchResults([]);
     }
-
-    if (newVisit.weddingDateStatus === "defined" && !newVisit.weddingDate) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, informe a data do casamento.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const visit: Visit = {
-      id: Date.now().toString(),
-      clientName: newVisit.clientName,
-      email: newVisit.email,
-      phone: newVisit.phone,
-      date: newVisit.date,
-      time: newVisit.time,
-      notes: newVisit.notes,
-      guestCount: newVisit.guestCount ? parseInt(newVisit.guestCount) : undefined,
-      weddingDateStatus: newVisit.weddingDateStatus,
-      weddingDate: newVisit.weddingDate || undefined,
-      weddingMonthEstimate: newVisit.weddingMonthEstimate || undefined,
-      weddingYearEstimate: newVisit.weddingYearEstimate || undefined,
-      status: "agendada",
-    };
-
-    setVisits([visit, ...visits]);
-    setNewVisit({
-      clientName: "",
-      email: "",
-      phone: "",
-      date: "",
-      time: "",
-      notes: "",
-      guestCount: "",
-      weddingDateStatus: "undefined",
-      weddingDate: "",
-      weddingMonthEstimate: "",
-      weddingYearEstimate: "",
-    });
-    setIsDialogOpen(false);
-
-    toast({
-      title: "Visita agendada!",
-      description: `Visita de ${visit.clientName} agendada para ${new Date(
-        visit.date
-      ).toLocaleDateString("pt-BR")} às ${visit.time}.`,
-    });
   };
 
-  const handleOpenDetails = (visit: Visit) => {
+  const selectClient = (client: any) => {
+    setSelectedClientId(client.id);
+    setNewVisit({
+      ...newVisit,
+      clientName: client.nome,
+      email: client.email || "",
+      phone: client.telefone || "",
+    });
+    setClientSearch(client.nome);
+    setClientSearchResults([]);
+  };
+
+  const handleCreateVisit = async () => {
+    if (!newVisit.date || !newVisit.time) {
+      return;
+    }
+
+    const visitData: VisitInsert = {
+      client_id: selectedClientId,
+      visit_date: newVisit.date,
+      visit_time: newVisit.time,
+      notes: newVisit.notes || null,
+      guest_count: newVisit.guestCount ? parseInt(newVisit.guestCount) : null,
+      wedding_date_status: newVisit.weddingDateStatus === "defined" ? "com_data" : "sem_data",
+      wedding_date: newVisit.weddingDate || null,
+      wedding_month: newVisit.weddingMonthEstimate || null,
+      wedding_year: newVisit.weddingYearEstimate || null,
+      status: "agendado",
+    };
+
+    const result = await createVisit(visitData);
+    if (result) {
+      setNewVisit({
+        clientName: "",
+        email: "",
+        phone: "",
+        date: "",
+        time: "",
+        notes: "",
+        guestCount: "",
+        weddingDateStatus: "undefined",
+        weddingDate: "",
+        weddingMonthEstimate: "",
+        weddingYearEstimate: "",
+      });
+      setSelectedClientId(null);
+      setClientSearch("");
+      setIsDialogOpen(false);
+    }
+  };
+
+  const handleOpenDetails = (visit: any) => {
     setSelectedVisit(visit);
     setIsDetailsOpen(true);
   };
@@ -271,30 +214,30 @@ export default function Visitas() {
   const handleOpenEdit = () => {
     if (!selectedVisit) return;
     setEditVisit({
-      clientName: selectedVisit.clientName,
-      email: selectedVisit.email,
-      phone: selectedVisit.phone,
-      date: selectedVisit.date,
-      time: selectedVisit.time,
+      clientName: selectedVisit.client?.nome || "",
+      email: selectedVisit.client?.email || "",
+      phone: selectedVisit.client?.telefone || "",
+      date: selectedVisit.visit_date,
+      time: selectedVisit.visit_time,
       notes: selectedVisit.notes || "",
-      guestCount: selectedVisit.guestCount?.toString() || "",
-      weddingDateStatus: selectedVisit.weddingDateStatus,
-      weddingDate: selectedVisit.weddingDate || "",
-      weddingMonthEstimate: selectedVisit.weddingMonthEstimate || "",
-      weddingYearEstimate: selectedVisit.weddingYearEstimate || "",
+      guestCount: selectedVisit.guest_count?.toString() || "",
+      weddingDateStatus: selectedVisit.wedding_date_status === "com_data" ? "defined" : "undefined",
+      weddingDate: selectedVisit.wedding_date || "",
+      weddingMonthEstimate: selectedVisit.wedding_month || "",
+      weddingYearEstimate: selectedVisit.wedding_year || "",
     });
     setOriginalEditVisit(JSON.stringify({
-      clientName: selectedVisit.clientName,
-      email: selectedVisit.email,
-      phone: selectedVisit.phone,
-      date: selectedVisit.date,
-      time: selectedVisit.time,
+      clientName: selectedVisit.client?.nome || "",
+      email: selectedVisit.client?.email || "",
+      phone: selectedVisit.client?.telefone || "",
+      date: selectedVisit.visit_date,
+      time: selectedVisit.visit_time,
       notes: selectedVisit.notes || "",
-      guestCount: selectedVisit.guestCount?.toString() || "",
-      weddingDateStatus: selectedVisit.weddingDateStatus,
-      weddingDate: selectedVisit.weddingDate || "",
-      weddingMonthEstimate: selectedVisit.weddingMonthEstimate || "",
-      weddingYearEstimate: selectedVisit.weddingYearEstimate || "",
+      guestCount: selectedVisit.guest_count?.toString() || "",
+      weddingDateStatus: selectedVisit.wedding_date_status === "com_data" ? "defined" : "undefined",
+      weddingDate: selectedVisit.wedding_date || "",
+      weddingMonthEstimate: selectedVisit.wedding_month || "",
+      weddingYearEstimate: selectedVisit.wedding_year || "",
     }));
     setIsDetailsOpen(false);
     setIsEditDialogOpen(true);
@@ -304,54 +247,29 @@ export default function Visitas() {
     return JSON.stringify(editVisit) !== originalEditVisit;
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!selectedVisit) return;
     
-    if (!editVisit.clientName || !editVisit.date || !editVisit.time) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha nome, data e horário.",
-        variant: "destructive",
-      });
+    if (!editVisit.date || !editVisit.time) {
       return;
     }
 
-    if (editVisit.weddingDateStatus === "defined" && !editVisit.weddingDate) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, informe a data do casamento.",
-        variant: "destructive",
-      });
-      return;
+    const updates = {
+      visit_date: editVisit.date,
+      visit_time: editVisit.time,
+      notes: editVisit.notes || null,
+      guest_count: editVisit.guestCount ? parseInt(editVisit.guestCount) : null,
+      wedding_date_status: editVisit.weddingDateStatus === "defined" ? "com_data" : "sem_data",
+      wedding_date: editVisit.weddingDate || null,
+      wedding_month: editVisit.weddingMonthEstimate || null,
+      wedding_year: editVisit.weddingYearEstimate || null,
+    };
+
+    const success = await updateVisit(selectedVisit.id, updates);
+    if (success) {
+      setIsEditDialogOpen(false);
+      setSelectedVisit(null);
     }
-
-    const updatedVisits = visits.map((v) =>
-      v.id === selectedVisit.id
-        ? {
-            ...v,
-            clientName: editVisit.clientName,
-            email: editVisit.email,
-            phone: editVisit.phone,
-            date: editVisit.date,
-            time: editVisit.time,
-            notes: editVisit.notes,
-            guestCount: editVisit.guestCount ? parseInt(editVisit.guestCount) : undefined,
-            weddingDateStatus: editVisit.weddingDateStatus,
-            weddingDate: editVisit.weddingDate || undefined,
-            weddingMonthEstimate: editVisit.weddingMonthEstimate || undefined,
-            weddingYearEstimate: editVisit.weddingYearEstimate || undefined,
-          }
-        : v
-    );
-
-    setVisits(updatedVisits);
-    setIsEditDialogOpen(false);
-    setSelectedVisit(null);
-
-    toast({
-      title: "Visita atualizada!",
-      description: `Os dados da visita de ${editVisit.clientName} foram salvos.`,
-    });
   };
 
   const handleCloseEdit = () => {
@@ -376,6 +294,10 @@ export default function Visitas() {
     setIsUnsavedDialogOpen(false);
   };
 
+  const handleStatusChange = async (visitId: string, newStatus: string) => {
+    await updateVisitStatus(visitId, newStatus);
+  };
+
   const months = [
     { value: "01", label: "Janeiro" },
     { value: "02", label: "Fevereiro" },
@@ -394,13 +316,13 @@ export default function Visitas() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
 
-  const getWeddingDateDisplay = (visit: Visit) => {
-    if (visit.weddingDateStatus === "defined" && visit.weddingDate) {
-      return new Date(visit.weddingDate).toLocaleDateString("pt-BR");
+  const getWeddingDateDisplay = (visit: any) => {
+    if (visit.wedding_date_status === "com_data" && visit.wedding_date) {
+      return new Date(visit.wedding_date).toLocaleDateString("pt-BR");
     }
-    if (visit.weddingMonthEstimate || visit.weddingYearEstimate) {
-      const monthLabel = months.find(m => m.value === visit.weddingMonthEstimate)?.label || "";
-      return `Previsão: ${monthLabel} ${visit.weddingYearEstimate || ""}`.trim();
+    if (visit.wedding_month || visit.wedding_year) {
+      const monthLabel = months.find(m => m.value === visit.wedding_month)?.label || "";
+      return `Previsão: ${monthLabel} ${visit.wedding_year || ""}`.trim();
     }
     return "Data não definida";
   };
@@ -437,42 +359,35 @@ export default function Visitas() {
               </DialogHeader>
 
               <div className="grid gap-4 py-4">
+                {/* Client Search */}
                 <div className="grid gap-2">
-                  <Label htmlFor="clientName">Nome do Cliente *</Label>
-                  <Input
-                    id="clientName"
-                    value={newVisit.clientName}
-                    onChange={(e) =>
-                      setNewVisit({ ...newVisit, clientName: e.target.value })
-                    }
-                    placeholder="Nome completo"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                  <Label>Cliente</Label>
+                  <div className="relative">
                     <Input
-                      id="email"
-                      type="email"
-                      value={newVisit.email}
-                      onChange={(e) =>
-                        setNewVisit({ ...newVisit, email: e.target.value })
-                      }
-                      placeholder="email@exemplo.com"
+                      value={clientSearch}
+                      onChange={(e) => handleClientSearch(e.target.value)}
+                      placeholder="Buscar cliente existente..."
                     />
+                    {clientSearchResults.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {clientSearchResults.map((client) => (
+                          <button
+                            key={client.id}
+                            onClick={() => selectClient(client)}
+                            className="w-full text-left px-3 py-2 hover:bg-muted transition-colors"
+                          >
+                            <div className="font-medium">{client.nome}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {client.telefone} {client.email && `• ${client.email}`}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      value={newVisit.phone}
-                      onChange={(e) =>
-                        setNewVisit({ ...newVisit, phone: e.target.value })
-                      }
-                      placeholder="(00) 00000-0000"
-                    />
-                  </div>
+                  {selectedClientId && (
+                    <p className="text-sm text-success">Cliente selecionado: {newVisit.clientName}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -662,11 +577,11 @@ export default function Visitas() {
 
           {/* Status filter buttons */}
           <div className="flex flex-wrap gap-2">
-            {(["confirmada", "agendada", "realizada", "cancelada"] as const).map((status) => {
+            {(["confirmada", "agendado", "realizada", "cancelada"] as const).map((status) => {
               const isSelected = statusFilter.includes(status);
-              const selectedStyles = {
+              const selectedStyles: Record<string, string> = {
                 confirmada: "bg-success text-success-foreground hover:bg-success/90 border-success",
-                agendada: "bg-warning text-warning-foreground hover:bg-warning/90 border-warning",
+                agendado: "bg-warning text-warning-foreground hover:bg-warning/90 border-warning",
                 realizada: "bg-primary text-primary-foreground hover:bg-primary/90 border-primary",
                 cancelada: "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-destructive",
               };
@@ -756,113 +671,114 @@ export default function Visitas() {
           </div>
         </div>
 
-        {/* Visits Grid */}
-        <div className="grid gap-4 animate-slide-up">
-          {filteredVisits.map((visit) => (
-            <div
-              key={visit.id}
-              className="bg-card rounded-xl p-6 shadow-soft border border-border transition-all duration-200 hover:shadow-medium"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-champagne flex-shrink-0">
-                    <User className="h-6 w-6 text-gold" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-foreground">
-                      {visit.clientName}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        {new Date(visit.date).toLocaleDateString("pt-BR")}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {visit.time}
-                      </span>
-                      {visit.phone && (
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-4 w-4" />
-                          {visit.phone}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-1">
-                      <span className="flex items-center gap-1">
-                        <Heart className="h-4 w-4 text-gold" />
-                        {getWeddingDateDisplay(visit)}
-                      </span>
-                      {visit.guestCount && (
-                        <span className="flex items-center gap-1">
-                          <Users className="h-4 w-4 text-gold" />
-                          {visit.guestCount} convidados
-                        </span>
-                      )}
-                    </div>
-                    {visit.notes && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {visit.notes}
-                      </p>
-                    )}
-                  </div>
-                </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
 
-                <div className="flex items-center gap-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium border cursor-pointer transition-all hover:opacity-80 ${
-                          statusStyles[visit.status]
-                        }`}
-                      >
-                        {statusLabels[visit.status]}
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-card">
-                      {(["confirmada", "agendada", "realizada", "cancelada"] as const).map((status) => (
-                        <DropdownMenuItem
-                          key={status}
-                          onClick={() => {
-                            setVisits(visits.map((v) =>
-                              v.id === visit.id ? { ...v, status } : v
-                            ));
-                            toast({
-                              title: "Status atualizado!",
-                              description: `Status alterado para "${statusLabels[status]}".`,
-                            });
-                          }}
-                          className={cn(
-                            "cursor-pointer",
-                            visit.status === status && "font-semibold"
-                          )}
+        {/* Visits Grid */}
+        {!loading && (
+          <div className="grid gap-4 animate-slide-up">
+            {filteredVisits.map((visit) => (
+              <div
+                key={visit.id}
+                className="bg-card rounded-xl p-6 shadow-soft border border-border transition-all duration-200 hover:shadow-medium"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-champagne flex-shrink-0">
+                      <User className="h-6 w-6 text-gold" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-foreground">
+                        {visit.client?.nome || "Cliente não vinculado"}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {new Date(visit.visit_date).toLocaleDateString("pt-BR")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {visit.visit_time}
+                        </span>
+                        {visit.client?.telefone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-4 w-4" />
+                            {visit.client.telefone}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-1">
+                        <span className="flex items-center gap-1">
+                          <Heart className="h-4 w-4 text-gold" />
+                          {getWeddingDateDisplay(visit)}
+                        </span>
+                        {visit.guest_count && (
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4 text-gold" />
+                            {visit.guest_count} convidados
+                          </span>
+                        )}
+                      </div>
+                      {visit.notes && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          {visit.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className={`px-4 py-1.5 rounded-full text-sm font-medium border cursor-pointer transition-all hover:opacity-80 ${
+                            statusStyles[visit.status as keyof typeof statusStyles] || statusStyles.agendado
+                          }`}
                         >
-                          <span className={`w-2 h-2 rounded-full mr-2 ${
-                            status === "confirmada" ? "bg-success" :
-                            status === "agendada" ? "bg-warning" :
-                            status === "realizada" ? "bg-primary" :
-                            "bg-destructive"
-                          }`} />
-                          {statusLabels[status]}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Button variant="elegant" size="sm" onClick={() => handleOpenDetails(visit)}>
-                    Detalhes
-                  </Button>
+                          {statusLabels[visit.status] || visit.status}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-card">
+                        {(["confirmada", "agendado", "realizada", "cancelada"] as const).map((status) => (
+                          <DropdownMenuItem
+                            key={status}
+                            onClick={() => handleStatusChange(visit.id, status)}
+                            className={cn(
+                              "cursor-pointer",
+                              visit.status === status && "font-semibold"
+                            )}
+                          >
+                            <span className={`w-2 h-2 rounded-full mr-2 ${
+                              status === "confirmada" ? "bg-success" :
+                              status === "agendado" ? "bg-warning" :
+                              status === "realizada" ? "bg-primary" :
+                              "bg-destructive"
+                            }`} />
+                            {statusLabels[status]}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button variant="elegant" size="sm" onClick={() => handleOpenDetails(visit)}>
+                      Detalhes
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {filteredVisits.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhuma visita encontrada</p>
-            </div>
-          )}
-        </div>
+            {filteredVisits.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma visita encontrada</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Details Dialog */}
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
@@ -880,61 +796,54 @@ export default function Visitas() {
                     <User className="h-8 w-8 text-gold" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">{selectedVisit.clientName}</h3>
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border mt-1 ${statusStyles[selectedVisit.status]}`}>
-                      {statusLabels[selectedVisit.status]}
+                    <h3 className="text-lg font-semibold text-foreground">{selectedVisit.client?.nome || "Sem cliente"}</h3>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border mt-1 ${statusStyles[selectedVisit.status as keyof typeof statusStyles] || statusStyles.agendado}`}>
+                      {statusLabels[selectedVisit.status] || selectedVisit.status}
                     </span>
                   </div>
                 </div>
 
                 <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border border-border">
-                  {selectedVisit.email && (
+                  {selectedVisit.client?.email && (
                     <div className="flex items-center gap-3">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-foreground">{selectedVisit.email}</span>
+                      <span className="text-foreground">{selectedVisit.client.email}</span>
                     </div>
                   )}
-                  {selectedVisit.phone && (
+                  {selectedVisit.client?.telefone && (
                     <div className="flex items-center gap-3">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-foreground">{selectedVisit.phone}</span>
+                      <span className="text-foreground">{selectedVisit.client.telefone}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-3">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-foreground">
-                      {new Date(selectedVisit.date).toLocaleDateString("pt-BR")} às {selectedVisit.time}
+                      {new Date(selectedVisit.visit_date).toLocaleDateString("pt-BR")} às {selectedVisit.visit_time}
                     </span>
                   </div>
-                </div>
-
-                <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border border-border">
                   <div className="flex items-center gap-3">
                     <Heart className="h-4 w-4 text-gold" />
-                    <span className="text-foreground">
-                      <strong>Data do Casamento:</strong> {getWeddingDateDisplay(selectedVisit)}
-                    </span>
+                    <span className="text-foreground">{getWeddingDateDisplay(selectedVisit)}</span>
                   </div>
-                  {selectedVisit.guestCount && (
+                  {selectedVisit.guest_count && (
                     <div className="flex items-center gap-3">
                       <Users className="h-4 w-4 text-gold" />
-                      <span className="text-foreground">
-                        <strong>Número de Convidados:</strong> {selectedVisit.guestCount}
-                      </span>
+                      <span className="text-foreground">{selectedVisit.guest_count} convidados</span>
                     </div>
                   )}
                 </div>
 
                 {selectedVisit.notes && (
                   <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                    <p className="text-sm text-muted-foreground font-medium mb-1">Observações:</p>
+                    <Label className="text-sm text-muted-foreground mb-2 block">Observações</Label>
                     <p className="text-foreground">{selectedVisit.notes}</p>
                   </div>
                 )}
               </div>
             )}
 
-            <DialogFooter className="gap-2">
+            <DialogFooter>
               <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
                 Fechar
               </Button>
@@ -946,50 +855,18 @@ export default function Visitas() {
         </Dialog>
 
         {/* Edit Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={(open) => !open && handleCloseEdit()}>
+        <Dialog open={isEditDialogOpen} onOpenChange={handleCloseEdit}>
           <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">
                 Editar Visita
               </DialogTitle>
               <DialogDescription>
-                Altere os dados da visita conforme necessário.
+                Atualize os dados da visita.
               </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="editClientName">Nome do Cliente *</Label>
-                <Input
-                  id="editClientName"
-                  value={editVisit.clientName}
-                  onChange={(e) => setEditVisit({ ...editVisit, clientName: e.target.value })}
-                  placeholder="Nome completo"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="editEmail">Email</Label>
-                  <Input
-                    id="editEmail"
-                    type="email"
-                    value={editVisit.email}
-                    onChange={(e) => setEditVisit({ ...editVisit, email: e.target.value })}
-                    placeholder="email@exemplo.com"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="editPhone">Telefone</Label>
-                  <Input
-                    id="editPhone"
-                    value={editVisit.phone}
-                    onChange={(e) => setEditVisit({ ...editVisit, phone: e.target.value })}
-                    placeholder="(00) 00000-0000"
-                  />
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="editDate">Data *</Label>
@@ -997,7 +874,9 @@ export default function Visitas() {
                     id="editDate"
                     type="date"
                     value={editVisit.date}
-                    onChange={(e) => setEditVisit({ ...editVisit, date: e.target.value })}
+                    onChange={(e) =>
+                      setEditVisit({ ...editVisit, date: e.target.value })
+                    }
                   />
                 </div>
                 <div className="grid gap-2">
@@ -1006,11 +885,14 @@ export default function Visitas() {
                     id="editTime"
                     type="time"
                     value={editVisit.time}
-                    onChange={(e) => setEditVisit({ ...editVisit, time: e.target.value })}
+                    onChange={(e) =>
+                      setEditVisit({ ...editVisit, time: e.target.value })
+                    }
                   />
                 </div>
               </div>
 
+              {/* Guest Count */}
               <div className="grid gap-2">
                 <Label htmlFor="editGuestCount">Número de Convidados</Label>
                 <Input
@@ -1018,11 +900,14 @@ export default function Visitas() {
                   type="number"
                   min="1"
                   value={editVisit.guestCount}
-                  onChange={(e) => setEditVisit({ ...editVisit, guestCount: e.target.value })}
+                  onChange={(e) =>
+                    setEditVisit({ ...editVisit, guestCount: e.target.value })
+                  }
                   placeholder="Ex: 150"
                 />
               </div>
 
+              {/* Wedding Date Section */}
               <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border border-border">
                 <Label className="font-medium">Data do Casamento</Label>
                 
@@ -1032,7 +917,9 @@ export default function Visitas() {
                       type="radio"
                       name="editWeddingDateStatus"
                       checked={editVisit.weddingDateStatus === "defined"}
-                      onChange={() => setEditVisit({ ...editVisit, weddingDateStatus: "defined", weddingMonthEstimate: "", weddingYearEstimate: "" })}
+                      onChange={() =>
+                        setEditVisit({ ...editVisit, weddingDateStatus: "defined", weddingMonthEstimate: "", weddingYearEstimate: "" })
+                      }
                       className="accent-primary"
                     />
                     <span className="text-sm">Data já definida</span>
@@ -1042,7 +929,9 @@ export default function Visitas() {
                       type="radio"
                       name="editWeddingDateStatus"
                       checked={editVisit.weddingDateStatus === "undefined"}
-                      onChange={() => setEditVisit({ ...editVisit, weddingDateStatus: "undefined", weddingDate: "" })}
+                      onChange={() =>
+                        setEditVisit({ ...editVisit, weddingDateStatus: "undefined", weddingDate: "" })
+                      }
                       className="accent-primary"
                     />
                     <span className="text-sm">Ainda sem data definida</span>
@@ -1051,7 +940,7 @@ export default function Visitas() {
 
                 {editVisit.weddingDateStatus === "defined" ? (
                   <div className="grid gap-2">
-                    <Label htmlFor="editWeddingDate">Data do Casamento *</Label>
+                    <Label>Data do Casamento *</Label>
                     <Popover open={editWeddingDatePickerOpen} onOpenChange={setEditWeddingDatePickerOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -1088,7 +977,9 @@ export default function Visitas() {
                       <Label>Mês Previsto (opcional)</Label>
                       <Select
                         value={editVisit.weddingMonthEstimate}
-                        onValueChange={(value) => setEditVisit({ ...editVisit, weddingMonthEstimate: value })}
+                        onValueChange={(value) =>
+                          setEditVisit({ ...editVisit, weddingMonthEstimate: value })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o mês" />
@@ -1106,7 +997,9 @@ export default function Visitas() {
                       <Label>Ano Previsto (opcional)</Label>
                       <Select
                         value={editVisit.weddingYearEstimate}
-                        onValueChange={(value) => setEditVisit({ ...editVisit, weddingYearEstimate: value })}
+                        onValueChange={(value) =>
+                          setEditVisit({ ...editVisit, weddingYearEstimate: value })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o ano" />
@@ -1129,37 +1022,39 @@ export default function Visitas() {
                 <Input
                   id="editNotes"
                   value={editVisit.notes}
-                  onChange={(e) => setEditVisit({ ...editVisit, notes: e.target.value })}
+                  onChange={(e) =>
+                    setEditVisit({ ...editVisit, notes: e.target.value })
+                  }
                   placeholder="Anotações sobre a visita..."
                 />
               </div>
             </div>
 
-            <DialogFooter className="gap-2">
+            <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={handleCloseEdit}>
                 Cancelar
               </Button>
               <Button variant="gold" onClick={handleSaveEdit}>
-                Salvar
+                Salvar Alterações
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 
-        {/* Unsaved Changes Confirmation */}
+        {/* Unsaved Changes Dialog */}
         <AlertDialog open={isUnsavedDialogOpen} onOpenChange={setIsUnsavedDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
               <AlertDialogDescription>
-                Você possui alterações que não foram salvas. O que deseja fazer?
+                Você tem alterações não salvas. O que deseja fazer?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <Button variant="outline" onClick={handleBackToEdit}>
                 Voltar e Editar
               </Button>
-              <Button variant="destructive" onClick={handleDiscardChanges}>
+              <Button variant="outline" onClick={handleDiscardChanges}>
                 Descartar
               </Button>
               <Button variant="gold" onClick={handleSaveAndClose}>

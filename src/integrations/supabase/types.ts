@@ -184,6 +184,62 @@ export type Database = {
         }
         Relationships: []
       }
+      visits: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          guest_count: number | null
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+          visit_date: string
+          visit_time: string
+          wedding_date: string | null
+          wedding_date_status: string
+          wedding_month: string | null
+          wedding_year: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          guest_count?: number | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          visit_date: string
+          visit_time: string
+          wedding_date?: string | null
+          wedding_date_status?: string
+          wedding_month?: string | null
+          wedding_year?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          guest_count?: number | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          visit_date?: string
+          visit_time?: string
+          wedding_date?: string | null
+          wedding_date_status?: string
+          wedding_month?: string | null
+          wedding_year?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
