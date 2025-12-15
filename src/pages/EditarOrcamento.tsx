@@ -252,7 +252,7 @@ export default function EditarOrcamento() {
     }
   };
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
     if (!quoteData) return;
 
     // Parse payment terms from quote data
@@ -270,7 +270,7 @@ export default function EditarOrcamento() {
         }
       : undefined;
 
-    await generateQuotePDF({
+    generateQuotePDF({
       id: quoteData.quote_number,
       clientName: quoteData.client?.nome || "Cliente",
       guestCount,

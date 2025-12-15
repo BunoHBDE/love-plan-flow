@@ -121,7 +121,7 @@ export default function Orcamentos() {
     }).format(value);
   };
 
-  const handleDownloadPDF = async (quote: Quote) => {
+  const handleDownloadPDF = (quote: Quote) => {
     // Parse payment terms from quote data
     const parcelasJson = quote.parcelas_json as any[] | null;
     const paymentTerms = parcelasJson && parcelasJson.length > 0
@@ -147,7 +147,7 @@ export default function Orcamentos() {
       ano
     );
 
-    await generateQuotePDF({
+    generateQuotePDF({
       id: quote.quote_number,
       clientName: quote.client?.nome || "Cliente",
       weddingDate: quote.data_evento || "",
