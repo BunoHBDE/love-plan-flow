@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
@@ -30,13 +31,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, List, Users, Loader2, Plus, Ban, Trash2 } from "lucide-react";
+import { CalendarDays, List, Users, Loader2, Plus, Ban, Trash2, FileText } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useBlockedDates, type BlockedDate } from "@/hooks/useBlockedDates";
 
 export default function Disponibilidade() {
+  const navigate = useNavigate();
   const { quotes, loading: loadingQuotes } = useQuotes();
   const { blockedDates, loading: loadingBlocked, addBlockedDate, removeBlockedDate } = useBlockedDates();
   
@@ -149,6 +151,14 @@ export default function Disponibilidade() {
     setDeleteTarget(null);
   };
 
+  const handleDateClick = (date: Date) => {
+    const isAvailable = datasDisponiveis.some((d) => isSameDay(d, date));
+    if (isAvailable) {
+      const formattedDate = format(date, "yyyy-MM-dd");
+      navigate(`/orcamentos/novo?data_evento=${formattedDate}`);
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -192,6 +202,7 @@ export default function Disponibilidade() {
                 <Calendar
                   mode="single"
                   selected={undefined}
+                  onSelect={(date) => date && handleDateClick(date)}
                   onMonthChange={setSelectedMonth}
                   month={selectedMonth}
                   locale={ptBR}
@@ -202,9 +213,9 @@ export default function Disponibilidade() {
                     available: datasDisponiveis,
                   }}
                   modifiersClassNames={{
-                    occupied: "bg-destructive/20 text-destructive font-semibold",
-                    blocked: "bg-warning/20 text-warning font-semibold",
-                    available: "bg-success/20 text-success font-semibold",
+                    occupied: "bg-destructive/20 text-destructive font-semibold cursor-not-allowed",
+                    blocked: "bg-warning/20 text-warning font-semibold cursor-not-allowed",
+                    available: "bg-success/20 text-success font-semibold hover:bg-success/30 cursor-pointer",
                   }}
                   disabled={(date) => {
                     const today = new Date();
@@ -377,17 +388,21 @@ export default function Disponibilidade() {
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {datasDisponiveis.slice(0, 10).map((date, index) => (
-                    <div
+                    <button
                       key={index}
-                      className="flex justify-between items-center p-2 bg-success/5 rounded border border-success/10"
+                      onClick={() => handleDateClick(date)}
+                      className="w-full flex justify-between items-center p-2 bg-success/5 rounded border border-success/10 hover:bg-success/15 transition-colors cursor-pointer"
                     >
                       <span className="text-sm font-medium">
                         {format(date, "dd/MM", { locale: ptBR })}
                       </span>
-                      <Badge variant="outline" className="text-xs">
-                        {date.getDay() === 6 ? "Sáb" : "Dom"}
-                      </Badge>
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {date.getDay() === 6 ? "Sáb" : "Dom"}
+                        </Badge>
+                        <FileText className="h-3 w-3 text-success" />
+                      </div>
+                    </button>
                   ))}
                 </div>
               )}

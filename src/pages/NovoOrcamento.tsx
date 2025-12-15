@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,9 +119,19 @@ function getDiaSemana(dateString: string): string | null {
 
 export default function NovoOrcamento() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { searchClients, createClient } = useClients();
   const { createQuote } = useQuotes();
+
+  // Pre-fill event date from URL params
+  useEffect(() => {
+    const dataEventoParam = searchParams.get("data_evento");
+    if (dataEventoParam) {
+      setDataStatus("com_data");
+      setDataEvento(dataEventoParam);
+    }
+  }, [searchParams]);
 
   // Client state
   const [clienteId, setClienteId] = useState<string | null>(null);
