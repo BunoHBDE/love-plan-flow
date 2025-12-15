@@ -29,6 +29,7 @@ interface PaymentTermsFormProps {
   valorTotal: number;
   dataEvento: string | null;
   onChange: (data: PaymentTermsData) => void;
+  onValidationChange?: (hasErrors: boolean) => void;
 }
 
 const diasVencimento = [5, 10, 15, 20, 25];
@@ -37,6 +38,7 @@ export function PaymentTermsForm({
   valorTotal,
   dataEvento,
   onChange,
+  onValidationChange,
 }: PaymentTermsFormProps) {
   const [percentualSinal, setPercentualSinal] = useState(10);
   const [percentualInput, setPercentualInput] = useState("10");
@@ -178,6 +180,11 @@ export function PaymentTermsForm({
       parcelas,
     });
   }, [percentualEfetivo, valorSinal, numeroParcelas, diaVencimento, parcelas]);
+
+  // Notify parent of validation errors
+  useEffect(() => {
+    onValidationChange?.(errosDataParcela.size > 0);
+  }, [errosDataParcela, onValidationChange]);
 
   const handlePercentualChange = (value: string) => {
     setPercentualInput(value);

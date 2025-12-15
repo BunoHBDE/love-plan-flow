@@ -164,6 +164,7 @@ export default function NovoOrcamento() {
     diaVencimento: 10,
     parcelas: [],
   });
+  const [hasPaymentErrors, setHasPaymentErrors] = useState(false);
 
   // Calculate price when relevant fields change
   useEffect(() => {
@@ -683,6 +684,7 @@ export default function NovoOrcamento() {
               valorTotal={valorOrcamento}
               dataEvento={dataStatus === "com_data" ? dataEvento : null}
               onChange={setPaymentTerms}
+              onValidationChange={setHasPaymentErrors}
             />
 
             {/* Block 5 - Observações */}
@@ -775,7 +777,7 @@ export default function NovoOrcamento() {
                     variant="gold"
                     className="w-full"
                     onClick={() => handleSalvarOrcamento("enviado")}
-                    disabled={isSaving}
+                    disabled={isSaving || hasPaymentErrors}
                   >
                     {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Salvar Orçamento
@@ -784,7 +786,7 @@ export default function NovoOrcamento() {
                     variant="outline"
                     className="w-full"
                     onClick={() => handleSalvarOrcamento("rascunho")}
-                    disabled={isSaving}
+                    disabled={isSaving || hasPaymentErrors}
                   >
                     <Save className="h-4 w-4 mr-2" />
                     Salvar Rascunho
