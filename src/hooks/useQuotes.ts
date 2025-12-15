@@ -21,6 +21,11 @@ export interface Quote {
   status: string;
   observacoes_internas: string | null;
   observacoes_cliente: string | null;
+  percentual_sinal: number;
+  valor_sinal: number;
+  numero_parcelas: number;
+  dia_vencimento: number;
+  parcelas_json: any;
   created_at: string;
   updated_at: string;
   client?: Client;
@@ -43,6 +48,11 @@ export interface QuoteInsert {
   status?: string;
   observacoes_internas?: string | null;
   observacoes_cliente?: string | null;
+  percentual_sinal?: number;
+  valor_sinal?: number;
+  numero_parcelas?: number;
+  dia_vencimento?: number;
+  parcelas_json?: any;
 }
 
 export function useQuotes() {

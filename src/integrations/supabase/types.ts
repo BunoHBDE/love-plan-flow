@@ -98,17 +98,22 @@ export type Database = {
           data_evento: string | null
           data_status: string
           dia_semana: string | null
+          dia_vencimento: number
           id: string
           menu_buffet: string | null
           n_convidados: number
+          numero_parcelas: number
           observacoes_cliente: string | null
           observacoes_internas: string | null
           pacote: string
+          parcelas_json: Json | null
+          percentual_sinal: number
           quote_number: string
           status: string
           tipo_evento: string | null
           updated_at: string
           validade: string | null
+          valor_sinal: number
           valor_total: number
         }
         Insert: {
@@ -119,17 +124,22 @@ export type Database = {
           data_evento?: string | null
           data_status?: string
           dia_semana?: string | null
+          dia_vencimento?: number
           id?: string
           menu_buffet?: string | null
           n_convidados?: number
+          numero_parcelas?: number
           observacoes_cliente?: string | null
           observacoes_internas?: string | null
           pacote: string
+          parcelas_json?: Json | null
+          percentual_sinal?: number
           quote_number: string
           status?: string
           tipo_evento?: string | null
           updated_at?: string
           validade?: string | null
+          valor_sinal?: number
           valor_total?: number
         }
         Update: {
@@ -140,17 +150,22 @@ export type Database = {
           data_evento?: string | null
           data_status?: string
           dia_semana?: string | null
+          dia_vencimento?: number
           id?: string
           menu_buffet?: string | null
           n_convidados?: number
+          numero_parcelas?: number
           observacoes_cliente?: string | null
           observacoes_internas?: string | null
           pacote?: string
+          parcelas_json?: Json | null
+          percentual_sinal?: number
           quote_number?: string
           status?: string
           tipo_evento?: string | null
           updated_at?: string
           validade?: string | null
+          valor_sinal?: number
           valor_total?: number
         }
         Relationships: [
