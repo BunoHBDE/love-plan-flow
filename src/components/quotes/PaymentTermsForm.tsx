@@ -39,6 +39,12 @@ export function PaymentTermsForm({
 }: PaymentTermsFormProps) {
   const [percentualSinal, setPercentualSinal] = useState(10);
   const [percentualInput, setPercentualInput] = useState("10");
+  const [valorSinalInput, setValorSinalInput] = useState("");
+  const [valorSinalManual, setValorSinalManual] = useState<number | null>(null);
+  
+  const [valorParcelaFinalInput, setValorParcelaFinalInput] = useState("");
+  const [valorParcelaFinal, setValorParcelaFinal] = useState<number | null>(null);
+  
   const [numeroParcelas, setNumeroParcelas] = useState(1);
   const [diaVencimento, setDiaVencimento] = useState(10);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
@@ -46,9 +52,25 @@ export function PaymentTermsForm({
   const [erroParcelamento, setErroParcelamento] = useState<string | null>(null);
   const [erroSinal, setErroSinal] = useState(false);
 
-  const valorSinal = (valorTotal * percentualSinal) / 100;
+  // Calculate valorSinal: use manual if set, otherwise from percentage
+  const valorSinalCalculado = (valorTotal * percentualSinal) / 100;
+  const valorSinal = valorSinalManual !== null ? valorSinalManual : valorSinalCalculado;
+  const percentualEfetivo = valorTotal > 0 ? (valorSinal / valorTotal) * 100 : 0;
+  
   const saldoRestante = valorTotal - valorSinal;
-  const valorParcela = numeroParcelas > 0 ? saldoRestante / numeroParcelas : 0;
+  
+  // Calculate installment values considering final installment
+  const parcelaFinalValor = valorParcelaFinal !== null ? valorParcelaFinal : 0;
+  const saldoParaDemaisParcelas = saldoRestante - parcelaFinalValor;
+  const numParcelasRegulares = numeroParcelas > 1 ? numeroParcelas - 1 : 0;
+  const valorParcelaRegular = numParcelasRegulares > 0 ? saldoParaDemaisParcelas / numParcelasRegulares : saldoRestante;
+
+  // Sync percentage input when valorTotal changes
+  useEffect(() => {
+    if (valorSinalManual === null) {
+      setValorSinalInput(valorSinalCalculado.toFixed(2));
+    }
+  }, [valorTotal, percentualSinal, valorSinalManual, valorSinalCalculado]);
 
   // Calculate max installments based on event date
   useEffect(() => {
@@ -65,7 +87,6 @@ export function PaymentTermsForm({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Calculate months between today and last payment date
     let months = 0;
     const tempDate = new Date(today);
     
@@ -100,22 +121,17 @@ export function PaymentTermsForm({
     let dataUltimaParcela: Date;
 
     if (dataEvento) {
-      // Last installment 30 days before event, adjusted to due day
       const eventDate = new Date(dataEvento + "T12:00:00");
       dataUltimaParcela = new Date(eventDate);
       dataUltimaParcela.setDate(dataUltimaParcela.getDate() - 30);
-      
-      // Adjust to the chosen due day
       dataUltimaParcela.setDate(diaVencimento);
       
-      // If the adjusted date is after 30 days before event, go back one month
       const limitDate = new Date(eventDate);
       limitDate.setDate(limitDate.getDate() - 30);
       if (dataUltimaParcela > limitDate) {
         dataUltimaParcela.setMonth(dataUltimaParcela.getMonth() - 1);
       }
     } else {
-      // If no event date, start from next month
       dataUltimaParcela = new Date();
       dataUltimaParcela.setMonth(dataUltimaParcela.getMonth() + numeroParcelas);
       dataUltimaParcela.setDate(diaVencimento);
@@ -126,6 +142,17 @@ export function PaymentTermsForm({
       const dataParcela = new Date(dataUltimaParcela);
       dataParcela.setMonth(dataParcela.getMonth() - (numeroParcelas - i));
 
+      const isUltimaParcela = i === numeroParcelas;
+      let valorParcela: number;
+      
+      if (valorParcelaFinal !== null && numeroParcelas > 1) {
+        // If final installment value is set
+        valorParcela = isUltimaParcela ? valorParcelaFinal : valorParcelaRegular;
+      } else {
+        // All installments equal
+        valorParcela = saldoRestante / numeroParcelas;
+      }
+
       novasParcelas.push({
         numero: i,
         valor: valorParcela,
@@ -133,24 +160,24 @@ export function PaymentTermsForm({
       });
     }
 
-    // Sort by installment number
     novasParcelas.sort((a, b) => a.numero - b.numero);
     setParcelas(novasParcelas);
-  }, [numeroParcelas, diaVencimento, saldoRestante, dataEvento, valorParcela]);
+  }, [numeroParcelas, diaVencimento, saldoRestante, dataEvento, valorParcelaFinal, valorParcelaRegular]);
 
   // Notify parent of changes
   useEffect(() => {
     onChange({
-      percentualSinal,
+      percentualSinal: Math.round(percentualEfetivo),
       valorSinal,
       numeroParcelas,
       diaVencimento,
       parcelas,
     });
-  }, [percentualSinal, valorSinal, numeroParcelas, diaVencimento, parcelas]);
+  }, [percentualEfetivo, valorSinal, numeroParcelas, diaVencimento, parcelas]);
 
   const handlePercentualChange = (value: string) => {
     setPercentualInput(value);
+    setValorSinalManual(null); // Reset manual value when percentage changes
     const num = parseInt(value);
     if (!isNaN(num)) {
       if (num < 10) {
@@ -172,6 +199,55 @@ export function PaymentTermsForm({
       const clamped = Math.min(num, 100);
       setPercentualSinal(clamped);
       setPercentualInput(clamped.toString());
+    }
+    setValorSinalManual(null);
+  };
+
+  const handleValorSinalChange = (value: string) => {
+    setValorSinalInput(value);
+  };
+
+  const handleValorSinalBlur = () => {
+    const num = parseFloat(valorSinalInput.replace(",", "."));
+    const minSinal = valorTotal * 0.1;
+    
+    if (isNaN(num) || num < minSinal) {
+      // Reset to percentage-based value
+      setValorSinalManual(null);
+      setValorSinalInput(valorSinalCalculado.toFixed(2));
+      if (num < minSinal && !isNaN(num)) {
+        setErroSinal(true);
+        setTimeout(() => setErroSinal(false), 2000);
+      }
+    } else if (num > valorTotal) {
+      setValorSinalManual(valorTotal);
+      setValorSinalInput(valorTotal.toFixed(2));
+    } else {
+      setValorSinalManual(num);
+      setValorSinalInput(num.toFixed(2));
+      // Update percentage display
+      const newPercentual = Math.round((num / valorTotal) * 100);
+      setPercentualInput(newPercentual.toString());
+      setPercentualSinal(newPercentual);
+    }
+  };
+
+  const handleValorParcelaFinalChange = (value: string) => {
+    setValorParcelaFinalInput(value);
+  };
+
+  const handleValorParcelaFinalBlur = () => {
+    const num = parseFloat(valorParcelaFinalInput.replace(",", "."));
+    
+    if (isNaN(num) || num <= 0 || valorParcelaFinalInput === "") {
+      setValorParcelaFinal(null);
+      setValorParcelaFinalInput("");
+    } else if (num > saldoRestante) {
+      setValorParcelaFinal(saldoRestante);
+      setValorParcelaFinalInput(saldoRestante.toFixed(2));
+    } else {
+      setValorParcelaFinal(num);
+      setValorParcelaFinalInput(num.toFixed(2));
     }
   };
 
@@ -200,10 +276,10 @@ export function PaymentTermsForm({
         {/* Sinal */}
         <div className="p-4 bg-muted/50 rounded-lg border border-border">
           <h3 className="font-medium mb-3">Sinal (Entrada)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label className="text-muted-foreground text-sm">
-                Percentual do Sinal (mín. 10%)
+                Percentual (mín. 10%)
               </Label>
               <div className="flex items-center gap-2">
                 <Input
@@ -213,22 +289,26 @@ export function PaymentTermsForm({
                   value={percentualInput}
                   onChange={(e) => handlePercentualChange(e.target.value)}
                   onBlur={handlePercentualBlur}
-                  className="w-24"
+                  className="w-20"
                 />
                 <span className="text-muted-foreground">%</span>
               </div>
-              {erroSinal && (
-                <p className="text-destructive text-xs mt-1 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  Mínimo de 10%
-                </p>
-              )}
             </div>
             <div>
-              <Label className="text-muted-foreground text-sm">Valor do Sinal</Label>
-              <p className="font-semibold text-lg text-primary py-1">
-                {formatCurrency(valorSinal)}
-              </p>
+              <Label className="text-muted-foreground text-sm">
+                Valor do Sinal
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">R$</span>
+                <Input
+                  type="text"
+                  value={valorSinalInput}
+                  onChange={(e) => handleValorSinalChange(e.target.value)}
+                  onBlur={handleValorSinalBlur}
+                  className="w-32"
+                  placeholder="0,00"
+                />
+              </div>
             </div>
             <div>
               <Label className="text-muted-foreground text-sm">Saldo Restante</Label>
@@ -236,13 +316,21 @@ export function PaymentTermsForm({
                 {formatCurrency(saldoRestante)}
               </p>
             </div>
+            <div>
+              {erroSinal && (
+                <p className="text-destructive text-xs mt-6 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Mínimo de 10% ({formatCurrency(valorTotal * 0.1)})
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Parcelamento */}
         <div className="p-4 bg-muted/50 rounded-lg border border-border">
           <h3 className="font-medium mb-3">Parcelamento do Saldo</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <Label className="text-muted-foreground text-sm">
                 Número de Parcelas (máx. {maxParcelas})
@@ -257,7 +345,7 @@ export function PaymentTermsForm({
                 <SelectContent>
                   {Array.from({ length: maxParcelas }, (_, i) => i + 1).map((n) => (
                     <SelectItem key={n} value={n.toString()}>
-                      {n}x de {formatCurrency(saldoRestante / n)}
+                      {n}x
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -283,6 +371,27 @@ export function PaymentTermsForm({
                 </SelectContent>
               </Select>
             </div>
+            {numeroParcelas > 1 && (
+              <div>
+                <Label className="text-muted-foreground text-sm">
+                  Valor da Parcela Final (opcional)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">R$</span>
+                  <Input
+                    type="text"
+                    value={valorParcelaFinalInput}
+                    onChange={(e) => handleValorParcelaFinalChange(e.target.value)}
+                    onBlur={handleValorParcelaFinalBlur}
+                    className="w-32"
+                    placeholder="0,00"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Demais parcelas: {formatCurrency(valorParcelaRegular)}
+                </p>
+              </div>
+            )}
           </div>
 
           {erroParcelamento && (
@@ -312,10 +421,17 @@ export function PaymentTermsForm({
                 {parcelas.map((parcela) => (
                   <div
                     key={parcela.numero}
-                    className="flex items-center gap-2 p-2 bg-secondary/30 rounded"
+                    className={`flex items-center gap-2 p-2 rounded ${
+                      parcela.numero === numeroParcelas && valorParcelaFinal !== null
+                        ? "bg-accent/20 border border-accent/30"
+                        : "bg-secondary/30"
+                    }`}
                   >
                     <span className="font-medium text-sm w-20">
                       Parcela {parcela.numero}
+                      {parcela.numero === numeroParcelas && valorParcelaFinal !== null && (
+                        <span className="text-xs text-muted-foreground"> (final)</span>
+                      )}
                     </span>
                     <span className="text-sm text-muted-foreground">
                       Vencimento: {formatDate(parcela.dataVencimento)}
