@@ -2,108 +2,9 @@ import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Heart, Calendar, Phone, Mail, Plus, Search, MapPin } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Heart, Phone, Mail, Plus, Search, MapPin, Loader2 } from "lucide-react";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
-
-interface Address {
-  street: string;
-  number: string;
-  complement: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  cep: string;
-}
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  cpf: string;
-  weddingDate?: string;
-  guestCount?: number;
-  address: Address;
-  status: "lead" | "orcamento" | "contrato" | "pago";
-}
-
-const initialClients: Client[] = [
-  {
-    id: "1",
-    name: "Maria Silva",
-    email: "maria@email.com",
-    phone: "(11) 99999-0001",
-    cpf: "123.456.789-00",
-    weddingDate: "2025-06-15",
-    guestCount: 150,
-    address: {
-      street: "Rua das Flores",
-      number: "100",
-      complement: "Apto 12",
-      neighborhood: "Jardim Primavera",
-      city: "São Paulo",
-      state: "SP",
-      cep: "01234-567",
-    },
-    status: "contrato",
-  },
-  {
-    id: "2",
-    name: "Ana Oliveira",
-    email: "ana@email.com",
-    phone: "(11) 99999-0002",
-    cpf: "987.654.321-00",
-    weddingDate: "2025-08-20",
-    guestCount: 100,
-    address: {
-      street: "Av. Brasil",
-      number: "500",
-      complement: "",
-      neighborhood: "Centro",
-      city: "Rio de Janeiro",
-      state: "RJ",
-      cep: "20000-000",
-    },
-    status: "orcamento",
-  },
-  {
-    id: "3",
-    name: "Juliana Martins",
-    email: "juliana@email.com",
-    phone: "(11) 99999-0003",
-    cpf: "456.789.123-00",
-    weddingDate: "2025-05-10",
-    guestCount: 200,
-    address: {
-      street: "Rua do Sol",
-      number: "250",
-      complement: "Casa",
-      neighborhood: "Bela Vista",
-      city: "Belo Horizonte",
-      state: "MG",
-      cep: "30000-000",
-    },
-    status: "pago",
-  },
-  {
-    id: "4",
-    name: "Carla Ferreira",
-    email: "carla@email.com",
-    phone: "(11) 99999-0004",
-    cpf: "789.123.456-00",
-    address: {
-      street: "",
-      number: "",
-      complement: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-      cep: "",
-    },
-    status: "lead",
-  },
-];
+import { useClients, Client, ClientInsert } from "@/hooks/useClients";
 
 const statusLabels = {
   lead: "Novo Lead",
@@ -120,30 +21,33 @@ const statusStyles = {
 };
 
 export default function Clientes() {
-  const [clients, setClients] = useState<Client[]>(initialClients);
+  const { clients, loading, createClient } = useClients();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const filteredClients = clients.filter(
     (client) =>
-      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.cpf.includes(searchTerm)
+      client.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (client.cpf?.includes(searchTerm) ?? false) ||
+      client.telefone.includes(searchTerm)
   );
 
-  const handleClientCreated = (clientData: ClientFormData & { id: string }) => {
-    const client: Client = {
-      id: clientData.id,
-      name: clientData.name,
-      email: clientData.email,
-      phone: clientData.phone,
-      cpf: clientData.cpf,
-      weddingDate: undefined,
-      guestCount: undefined,
-      address: clientData.address,
-      status: "lead",
+  const handleClientCreated = async (clientData: ClientFormData & { id: string }) => {
+    const clientInsert: ClientInsert = {
+      nome: clientData.name,
+      email: clientData.email || null,
+      telefone: clientData.phone,
+      cpf: clientData.cpf || null,
+      cep: clientData.address.cep || null,
+      rua: clientData.address.street || null,
+      numero: clientData.address.number || null,
+      complemento: clientData.address.complement || null,
+      bairro: clientData.address.neighborhood || null,
+      cidade: clientData.address.city || null,
+      estado_uf: clientData.address.state || null,
     };
-    setClients([client, ...clients]);
+    await createClient(clientInsert);
   };
 
   return (
@@ -176,79 +80,86 @@ export default function Clientes() {
         <div className="relative max-w-md animate-slide-up">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, email ou CPF..."
+            placeholder="Buscar por nome, email, CPF ou telefone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+
         {/* Clients Grid */}
-        <div className="grid gap-4 md:grid-cols-2 animate-slide-up">
-          {filteredClients.map((client) => (
-            <div
-              key={client.id}
-              className="bg-card rounded-xl p-6 shadow-soft border border-border transition-all duration-200 hover:shadow-medium group cursor-pointer"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-light">
-                    <Heart className="h-6 w-6 text-rose" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-semibold text-foreground text-lg">
-                      {client.name}
-                    </h3>
-                    <span
-                      className={`inline-block px-3 py-0.5 rounded-full text-xs font-medium border mt-1 ${
-                        statusStyles[client.status]
-                      }`}
-                    >
-                      {statusLabels[client.status]}
-                    </span>
+        {!loading && (
+          <div className="grid gap-4 md:grid-cols-2 animate-slide-up">
+            {filteredClients.map((client) => (
+              <div
+                key={client.id}
+                className="bg-card rounded-xl p-6 shadow-soft border border-border transition-all duration-200 hover:shadow-medium group cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-light">
+                      <Heart className="h-6 w-6 text-rose" />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-semibold text-foreground text-lg">
+                        {client.nome}
+                      </h3>
+                      <span
+                        className="inline-block px-3 py-0.5 rounded-full text-xs font-medium border mt-1 bg-rose-light text-rose border-rose/20"
+                      >
+                        {statusLabels.lead}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  <span>{client.email || "Sem email"}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  <span>{client.phone || "Sem telefone"}</span>
-                </div>
-                {client.address.city && (
+                <div className="space-y-2 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    <span>{client.address.city}, {client.address.state}</span>
+                    <Mail className="h-4 w-4" />
+                    <span>{client.email || "Sem email"}</span>
                   </div>
-                )}
-              </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    <span>{client.telefone || "Sem telefone"}</span>
+                  </div>
+                  {client.cidade && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>{client.cidade}, {client.estado_uf}</span>
+                    </div>
+                  )}
+                </div>
 
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                <span className="text-sm text-muted-foreground">
-                  CPF: {client.cpf || "Não informado"}
-                </span>
-                <Button
-                  variant="elegant"
-                  size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  Ver Detalhes
-                </Button>
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                  <span className="text-sm text-muted-foreground">
+                    CPF: {client.cpf || "Não informado"}
+                  </span>
+                  <Button
+                    variant="elegant"
+                    size="sm"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    Ver Detalhes
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {filteredClients.length === 0 && (
-            <div className="col-span-2 text-center py-12 text-muted-foreground">
-              <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum cliente encontrado</p>
-            </div>
-          )}
-        </div>
+            {filteredClients.length === 0 && (
+              <div className="col-span-2 text-center py-12 text-muted-foreground">
+                <Heart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum cliente encontrado</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </MainLayout>
   );
