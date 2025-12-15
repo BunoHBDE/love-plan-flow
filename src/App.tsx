@@ -11,7 +11,9 @@ import NovoOrcamento from "./pages/NovoOrcamento";
 import EditarOrcamento from "./pages/EditarOrcamento";
 import Contratos from "./pages/Contratos";
 import Pagamentos from "./pages/Pagamentos";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -22,14 +24,15 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/visitas" element={<Visitas />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/orcamentos" element={<Orcamentos />} />
-          <Route path="/orcamentos/novo" element={<NovoOrcamento />} />
-          <Route path="/orcamentos/:id" element={<EditarOrcamento />} />
-          <Route path="/contratos" element={<Contratos />} />
-          <Route path="/pagamentos" element={<Pagamentos />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+          <Route path="/visitas" element={<ProtectedRoute><Visitas /></ProtectedRoute>} />
+          <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+          <Route path="/orcamentos" element={<ProtectedRoute><Orcamentos /></ProtectedRoute>} />
+          <Route path="/orcamentos/novo" element={<ProtectedRoute><NovoOrcamento /></ProtectedRoute>} />
+          <Route path="/orcamentos/:id" element={<ProtectedRoute><EditarOrcamento /></ProtectedRoute>} />
+          <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
+          <Route path="/pagamentos" element={<ProtectedRoute><Pagamentos /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
