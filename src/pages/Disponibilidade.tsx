@@ -49,6 +49,7 @@ export default function Disponibilidade() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BlockedDate | null>(null);
   const [releaseTarget, setReleaseTarget] = useState<BlockedDate | null>(null);
+  const [quoteTarget, setQuoteTarget] = useState<Date | null>(null);
   const loading = loadingQuotes || loadingBlocked;
 
   // Filter only accepted quotes with event dates
@@ -164,9 +165,14 @@ export default function Disponibilidade() {
     // Check if it's an available date
     const isAvailable = datasDisponiveis.some((d) => isSameDay(d, date));
     if (isAvailable) {
-      const formattedDate = format(date, "yyyy-MM-dd");
-      navigate(`/orcamentos/novo?data_evento=${formattedDate}`);
+      setQuoteTarget(date);
     }
+  };
+
+  const handleConfirmQuote = () => {
+    if (!quoteTarget) return;
+    const formattedDate = format(quoteTarget, "yyyy-MM-dd");
+    navigate(`/orcamentos/novo?data_evento=${formattedDate}`);
   };
 
   const handleConfirmRelease = async () => {
@@ -509,6 +515,29 @@ export default function Disponibilidade() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmRelease} className="bg-success hover:bg-success/90">
               Liberar Data
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Create Quote Dialog */}
+      <AlertDialog open={!!quoteTarget} onOpenChange={() => setQuoteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Criar Orçamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja criar um novo orçamento para{" "}
+              <strong>{quoteTarget && format(quoteTarget, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</strong>?
+              <br />
+              <span className="text-muted-foreground">
+                {quoteTarget && (quoteTarget.getDay() === 6 ? "Sábado" : "Domingo")}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmQuote}>
+              Criar Orçamento
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
