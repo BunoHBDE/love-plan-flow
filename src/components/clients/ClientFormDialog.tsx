@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { MapPin, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Client } from "@/hooks/useClients";
 
 export interface ClientFormData {
   name: string;
@@ -60,19 +61,47 @@ const brazilianStates = [
 interface ClientFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onClientCreated: (client: ClientFormData & { id: string }) => void;
+  onClientCreated?: (client: ClientFormData & { id: string }) => void;
+  onClientUpdated?: (client: ClientFormData) => void;
   showSaveAndSearch?: boolean;
+  editingClient?: Client | null;
 }
 
 export function ClientFormDialog({
   open,
   onOpenChange,
   onClientCreated,
+  onClientUpdated,
   showSaveAndSearch = false,
+  editingClient = null,
 }: ClientFormDialogProps) {
   const [formData, setFormData] = useState<ClientFormData>(initialFormData);
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const { toast } = useToast();
+
+  const isEditing = !!editingClient;
+
+  useEffect(() => {
+    if (editingClient) {
+      setFormData({
+        name: editingClient.nome,
+        email: editingClient.email || "",
+        phone: editingClient.telefone,
+        cpf: editingClient.cpf || "",
+        address: {
+          street: editingClient.rua || "",
+          number: editingClient.numero || "",
+          complement: editingClient.complemento || "",
+          neighborhood: editingClient.bairro || "",
+          city: editingClient.cidade || "",
+          state: editingClient.estado_uf || "",
+          cep: editingClient.cep || "",
+        },
+      });
+    } else {
+      setFormData(initialFormData);
+    }
+  }, [editingClient, open]);
 
   const formatCPF = (value: string) => {
     const numbers = value.replace(/\D/g, "");
@@ -151,21 +180,27 @@ export function ClientFormDialog({
       return;
     }
 
-    const newClient = {
-      ...formData,
-      id: Date.now().toString(),
-    };
+    if (isEditing && onClientUpdated) {
+      onClientUpdated(formData);
+    } else if (onClientCreated) {
+      const newClient = {
+        ...formData,
+        id: Date.now().toString(),
+      };
+      onClientCreated(newClient);
+    }
 
-    onClientCreated(newClient);
     setFormData(initialFormData);
     onOpenChange(false);
 
-    toast({
-      title: "Cliente cadastrado!",
-      description: andSearch
-        ? `${formData.name} foi adicionado. Agora você pode buscá-lo.`
-        : `${formData.name} foi adicionado com sucesso.`,
-    });
+    if (!isEditing) {
+      toast({
+        title: "Cliente cadastrado!",
+        description: andSearch
+          ? `${formData.name} foi adicionado. Agora você pode buscá-lo.`
+          : `${formData.name} foi adicionado com sucesso.`,
+      });
+    }
   };
 
   const resetAndClose = () => {
@@ -178,10 +213,10 @@ export function ClientFormDialog({
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
-            Cadastrar Novo Cliente
+            {isEditing ? "Editar Cliente" : "Cadastrar Novo Cliente"}
           </DialogTitle>
           <DialogDescription>
-            Adicione as informações do cliente.
+            {isEditing ? "Atualize as informações do cliente." : "Adicione as informações do cliente."}
           </DialogDescription>
         </DialogHeader>
 
@@ -375,13 +410,13 @@ export function ClientFormDialog({
           <Button variant="outline" onClick={resetAndClose}>
             Cancelar
           </Button>
-          {showSaveAndSearch && (
+          {showSaveAndSearch && !isEditing && (
             <Button variant="outline" onClick={() => handleSubmit(true)}>
               Salvar e Buscar
             </Button>
           )}
           <Button variant="gold" onClick={() => handleSubmit(false)}>
-            Salvar Cliente
+            {isEditing ? "Salvar Alterações" : "Salvar Cliente"}
           </Button>
         </div>
       </DialogContent>
