@@ -776,14 +776,6 @@ export default function Visitas() {
                     <Button variant="elegant" size="sm" onClick={() => handleOpenDetails(visit)}>
                       Detalhes
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setDeletingVisit(visit)}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -861,13 +853,26 @@ export default function Visitas() {
               </div>
             )}
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
-                Fechar
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  setIsDetailsOpen(false);
+                  setDeletingVisit(selectedVisit);
+                }}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
               </Button>
-              <Button variant="gold" onClick={handleOpenEdit}>
-                Editar
-              </Button>
+              <div className="flex gap-2 sm:ml-auto">
+                <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
+                  Fechar
+                </Button>
+                <Button variant="gold" onClick={handleOpenEdit}>
+                  Editar
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
