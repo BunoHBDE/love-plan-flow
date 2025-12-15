@@ -31,8 +31,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, List, Users, Loader2, Plus, Ban, Trash2, FileText } from "lucide-react";
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend } from "date-fns";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CalendarDays, List, Users, Loader2, Plus, Ban, Trash2, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend, addMonths, setMonth, getMonth, getYear, setYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useBlockedDates, type BlockedDate } from "@/hooks/useBlockedDates";
@@ -43,6 +44,8 @@ export default function Disponibilidade() {
   const { blockedDates, loading: loadingBlocked, addBlockedDate, removeBlockedDate } = useBlockedDates();
   
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [viewMode, setViewMode] = useState<"mensal" | "estacao" | "anual">("mensal");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newBlockedDate, setNewBlockedDate] = useState("");
   const [newBlockedReason, setNewBlockedReason] = useState("");
@@ -54,6 +57,54 @@ export default function Disponibilidade() {
   const [blockFromCalendarReason, setBlockFromCalendarReason] = useState("");
   const [dateOptionsTarget, setDateOptionsTarget] = useState<Date | null>(null);
   const loading = loadingQuotes || loadingBlocked;
+
+  // Get months to display based on view mode
+  const monthsToDisplay = useMemo(() => {
+    if (viewMode === "mensal") {
+      return [selectedMonth];
+    }
+    
+    if (viewMode === "estacao") {
+      // Seasons in Brazil (Southern Hemisphere):
+      // Verão: Dec, Jan, Feb | Outono: Mar, Apr, May | Inverno: Jun, Jul, Aug | Primavera: Sep, Oct, Nov
+      const currentMonth = getMonth(selectedMonth);
+      let seasonStart: number;
+      
+      if (currentMonth >= 11 || currentMonth <= 1) {
+        // Verão
+        seasonStart = 11; // December
+      } else if (currentMonth >= 2 && currentMonth <= 4) {
+        // Outono
+        seasonStart = 2; // March
+      } else if (currentMonth >= 5 && currentMonth <= 7) {
+        // Inverno
+        seasonStart = 5; // June
+      } else {
+        // Primavera
+        seasonStart = 8; // September
+      }
+      
+      const year = getYear(selectedMonth);
+      const adjustedYear = currentMonth === 0 || currentMonth === 1 ? year : (seasonStart === 11 ? year : year);
+      
+      return [
+        setMonth(setYear(new Date(), seasonStart === 11 && currentMonth <= 1 ? year - 1 : year), seasonStart),
+        addMonths(setMonth(setYear(new Date(), seasonStart === 11 && currentMonth <= 1 ? year - 1 : year), seasonStart), 1),
+        addMonths(setMonth(setYear(new Date(), seasonStart === 11 && currentMonth <= 1 ? year - 1 : year), seasonStart), 2),
+      ];
+    }
+    
+    // Annual - all 12 months of selected year
+    return Array.from({ length: 12 }, (_, i) => setMonth(setYear(new Date(), selectedYear), i));
+  }, [viewMode, selectedMonth, selectedYear]);
+
+  const getSeasonName = () => {
+    const currentMonth = getMonth(selectedMonth);
+    if (currentMonth >= 11 || currentMonth <= 1) return "Verão";
+    if (currentMonth >= 2 && currentMonth <= 4) return "Outono";
+    if (currentMonth >= 5 && currentMonth <= 7) return "Inverno";
+    return "Primavera";
+  };
 
   // Filter only accepted quotes with event dates
   const eventosAceitos = useMemo(() => {
@@ -252,51 +303,146 @@ export default function Disponibilidade() {
           {/* Calendar Section */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-              <div className="flex items-center gap-2 mb-4">
-                <CalendarDays className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Calendário</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-display font-semibold">Calendário</h2>
+                </div>
+
+                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as typeof viewMode)}>
+                  <TabsList>
+                    <TabsTrigger value="mensal">Mensal</TabsTrigger>
+                    <TabsTrigger value="estacao">Estação</TabsTrigger>
+                    <TabsTrigger value="anual">Anual</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
 
-              <div className="flex flex-col items-center">
-                <Calendar
-                  mode="single"
-                  selected={undefined}
-                  onSelect={(date) => date && handleDateClick(date)}
-                  onMonthChange={setSelectedMonth}
-                  month={selectedMonth}
-                  locale={ptBR}
-                  className="rounded-md border pointer-events-auto"
-                  modifiers={{
-                    occupied: datasOcupadas,
-                    blocked: datasBloqueadas,
-                    available: datasDisponiveis,
-                  }}
-                  modifiersClassNames={{
-                    occupied: "bg-destructive/20 text-destructive font-semibold cursor-not-allowed",
-                    blocked: "bg-warning/20 text-warning font-semibold hover:bg-warning/30 cursor-pointer",
-                    available: "bg-success/20 text-success font-semibold hover:bg-success/30 cursor-pointer",
-                  }}
-                  disabled={(date) => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return date < today;
-                  }}
-                />
+              {/* Navigation for view modes */}
+              {viewMode === "mensal" && (
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-medium min-w-[180px] text-center">
+                    {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
 
-                {/* Legend */}
-                <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-destructive/20 border border-destructive/30" />
-                    <span className="text-muted-foreground">Evento</span>
+              {viewMode === "estacao" && (
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedMonth(addMonths(selectedMonth, -3))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-medium min-w-[180px] text-center">
+                    {getSeasonName()} {getYear(selectedMonth)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedMonth(addMonths(selectedMonth, 3))}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {viewMode === "anual" && (
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedYear(selectedYear - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-medium min-w-[100px] text-center">
+                    {selectedYear}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedYear(selectedYear + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Calendars Grid */}
+              <div className={`grid gap-4 ${
+                viewMode === "anual" 
+                  ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" 
+                  : viewMode === "estacao" 
+                    ? "grid-cols-1 md:grid-cols-3" 
+                    : "grid-cols-1"
+              }`}>
+                {monthsToDisplay.map((month, index) => (
+                  <div key={index} className="flex flex-col items-center">
+                    {viewMode !== "mensal" && (
+                      <h3 className="text-sm font-medium mb-2 capitalize">
+                        {format(month, "MMMM", { locale: ptBR })}
+                      </h3>
+                    )}
+                    <Calendar
+                      mode="single"
+                      selected={undefined}
+                      onSelect={(date) => date && handleDateClick(date)}
+                      month={month}
+                      locale={ptBR}
+                      className={`rounded-md border pointer-events-auto ${
+                        viewMode === "anual" ? "text-xs scale-90" : ""
+                      }`}
+                      modifiers={{
+                        occupied: datasOcupadas,
+                        blocked: datasBloqueadas,
+                        available: datasDisponiveis,
+                      }}
+                      modifiersClassNames={{
+                        occupied: "bg-destructive/20 text-destructive font-semibold cursor-not-allowed",
+                        blocked: "bg-warning/20 text-warning font-semibold hover:bg-warning/30 cursor-pointer",
+                        available: "bg-success/20 text-success font-semibold hover:bg-success/30 cursor-pointer",
+                      }}
+                      disabled={(date) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date < today;
+                      }}
+                      showOutsideDays={false}
+                    />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-warning/20 border border-warning/30" />
-                    <span className="text-muted-foreground">Bloqueado</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-success/20 border border-success/30" />
-                    <span className="text-muted-foreground">Disponível</span>
-                  </div>
+                ))}
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-destructive/20 border border-destructive/30" />
+                  <span className="text-muted-foreground">Evento</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-warning/20 border border-warning/30" />
+                  <span className="text-muted-foreground">Bloqueado</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-success/20 border border-success/30" />
+                  <span className="text-muted-foreground">Disponível</span>
                 </div>
               </div>
             </div>
