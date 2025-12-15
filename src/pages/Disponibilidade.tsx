@@ -48,7 +48,7 @@ export default function Disponibilidade() {
   const [newBlockedReason, setNewBlockedReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BlockedDate | null>(null);
-
+  const [releaseTarget, setReleaseTarget] = useState<BlockedDate | null>(null);
   const loading = loadingQuotes || loadingBlocked;
 
   // Filter only accepted quotes with event dates
@@ -152,11 +152,27 @@ export default function Disponibilidade() {
   };
 
   const handleDateClick = (date: Date) => {
+    // Check if it's a blocked date
+    const blockedDate = blockedDates.find((b) => 
+      isSameDay(new Date(b.date + "T12:00:00"), date)
+    );
+    if (blockedDate) {
+      setReleaseTarget(blockedDate);
+      return;
+    }
+
+    // Check if it's an available date
     const isAvailable = datasDisponiveis.some((d) => isSameDay(d, date));
     if (isAvailable) {
       const formattedDate = format(date, "yyyy-MM-dd");
       navigate(`/orcamentos/novo?data_evento=${formattedDate}`);
     }
+  };
+
+  const handleConfirmRelease = async () => {
+    if (!releaseTarget) return;
+    await removeBlockedDate(releaseTarget.id);
+    setReleaseTarget(null);
   };
 
   if (loading) {
@@ -214,7 +230,7 @@ export default function Disponibilidade() {
                   }}
                   modifiersClassNames={{
                     occupied: "bg-destructive/20 text-destructive font-semibold cursor-not-allowed",
-                    blocked: "bg-warning/20 text-warning font-semibold cursor-not-allowed",
+                    blocked: "bg-warning/20 text-warning font-semibold hover:bg-warning/30 cursor-pointer",
                     available: "bg-success/20 text-success font-semibold hover:bg-success/30 cursor-pointer",
                   }}
                   disabled={(date) => {
@@ -470,6 +486,29 @@ export default function Disponibilidade() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelete}>
               Desbloquear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Release Date Confirmation Dialog (from calendar click) */}
+      <AlertDialog open={!!releaseTarget} onOpenChange={() => setReleaseTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Liberar Data</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja liberar a data{" "}
+              <strong>{releaseTarget && formatDate(releaseTarget.date)}</strong>?
+              <br />
+              <span className="text-muted-foreground">
+                Motivo do bloqueio: {releaseTarget?.reason}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRelease} className="bg-success hover:bg-success/90">
+              Liberar Data
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
