@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Calendar,
@@ -10,8 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Heart,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -24,6 +27,22 @@ const navItems = [
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const { signOut, profile } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: 'Erro ao sair da conta',
+        variant: 'destructive',
+      });
+    } else {
+      navigate('/auth');
+    }
+  };
 
   return (
     <aside
@@ -71,8 +90,22 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Collapse Button */}
-      <div className="p-3 border-t border-sidebar-border">
+      {/* User & Logout */}
+      <div className="p-3 border-t border-sidebar-border space-y-2">
+        {!collapsed && profile && (
+          <div className="px-3 py-2 text-sm text-muted-foreground animate-fade-in">
+            {profile.full_name || profile.email}
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSignOut}
+          className={cn("w-full text-destructive hover:text-destructive hover:bg-destructive/10", collapsed && "justify-center")}
+        >
+          <LogOut className="h-4 w-4" />
+          {!collapsed && <span className="ml-2">Sair</span>}
+        </Button>
         <Button
           variant="ghost"
           size="sm"
