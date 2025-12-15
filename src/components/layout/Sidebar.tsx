@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Heart,
   LogOut,
+  CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +22,7 @@ const navItems = [
   { icon: Calendar, label: "Visitas", path: "/visitas" },
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: FileText, label: "Orçamentos", path: "/orcamentos" },
+  { icon: CalendarCheck, label: "Disponibilidade", path: "/disponibilidade" },
   { icon: FileText, label: "Contratos", path: "/contratos" },
   { icon: CreditCard, label: "Pagamentos", path: "/pagamentos" },
 ];

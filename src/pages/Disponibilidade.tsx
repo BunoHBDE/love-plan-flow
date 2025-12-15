@@ -1,0 +1,270 @@
+import { useState, useMemo } from "react";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CalendarDays, List, Users, Loader2 } from "lucide-react";
+import { format, isSameDay, isSameMonth, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { useQuotes } from "@/hooks/useQuotes";
+import { cn } from "@/lib/utils";
+
+export default function Disponibilidade() {
+  const { quotes, loading } = useQuotes();
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+
+  // Filter only accepted quotes with event dates
+  const eventosAceitos = useMemo(() => {
+    return quotes
+      .filter((q) => q.status === "aceito" && q.data_evento)
+      .map((q) => ({
+        id: q.id,
+        date: q.data_evento!,
+        clientName: q.client?.nome || "Cliente",
+        guestCount: q.n_convidados,
+        pacote: q.pacote,
+        quoteNumber: q.quote_number,
+      }));
+  }, [quotes]);
+
+  // Get occupied dates
+  const datasOcupadas = useMemo(() => {
+    return eventosAceitos.map((e) => new Date(e.date + "T12:00:00"));
+  }, [eventosAceitos]);
+
+  // Get events in selected month
+  const eventosNoMes = useMemo(() => {
+    const start = startOfMonth(selectedMonth);
+    const end = endOfMonth(selectedMonth);
+    
+    return eventosAceitos.filter((e) => {
+      const eventDate = new Date(e.date + "T12:00:00");
+      return eventDate >= start && eventDate <= end;
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [eventosAceitos, selectedMonth]);
+
+  // Get available weekend dates in selected month
+  const datasDisponiveis = useMemo(() => {
+    const start = startOfMonth(selectedMonth);
+    const end = endOfMonth(selectedMonth);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const allDays = eachDayOfInterval({ start, end });
+    
+    return allDays.filter((day) => {
+      // Only weekends (Saturday and Sunday)
+      if (!isWeekend(day)) return false;
+      // Only future dates
+      if (day < today) return false;
+      // Not already occupied
+      return !datasOcupadas.some((occupied) => isSameDay(occupied, day));
+    });
+  }, [selectedMonth, datasOcupadas]);
+
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString + "T12:00:00"), "dd 'de' MMMM", { locale: ptBR });
+  };
+
+  const getDayOfWeek = (dateString: string) => {
+    const date = new Date(dateString + "T12:00:00");
+    return date.getDay() === 6 ? "Sábado" : "Domingo";
+  };
+
+  const isDateOccupied = (date: Date) => {
+    return datasOcupadas.some((occupied) => isSameDay(occupied, date));
+  };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  return (
+    <MainLayout>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="animate-fade-in">
+          <h1 className="text-3xl font-display font-bold text-foreground">
+            Disponibilidade
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Consulte datas disponíveis e eventos confirmados
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Calendar Section */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+              <div className="flex items-center gap-2 mb-4">
+                <CalendarDays className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">Calendário</h2>
+              </div>
+
+              <div className="flex flex-col items-center">
+                <Calendar
+                  mode="single"
+                  selected={undefined}
+                  onMonthChange={setSelectedMonth}
+                  month={selectedMonth}
+                  locale={ptBR}
+                  className="rounded-md border pointer-events-auto"
+                  modifiers={{
+                    occupied: datasOcupadas,
+                    available: datasDisponiveis,
+                  }}
+                  modifiersClassNames={{
+                    occupied: "bg-destructive/20 text-destructive font-semibold",
+                    available: "bg-success/20 text-success font-semibold",
+                  }}
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return date < today || !isWeekend(date);
+                  }}
+                />
+
+                {/* Legend */}
+                <div className="flex items-center gap-6 mt-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-destructive/20 border border-destructive/30" />
+                    <span className="text-muted-foreground">Ocupado</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-success/20 border border-success/30" />
+                    <span className="text-muted-foreground">Disponível</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-muted border border-border" />
+                    <span className="text-muted-foreground">Dia de semana</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Events List */}
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+              <div className="flex items-center gap-2 mb-4">
+                <List className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">
+                  Eventos em {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+                </h2>
+              </div>
+
+              {eventosNoMes.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  Nenhum evento confirmado neste mês
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Convidados</TableHead>
+                      <TableHead>Pacote</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {eventosNoMes.map((evento) => (
+                      <TableRow key={evento.id}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{formatDate(evento.date)}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {getDayOfWeek(evento.date)}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{evento.clientName}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            {evento.guestCount}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="capitalize">
+                            {evento.pacote}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar - Summary */}
+          <div className="space-y-6">
+            {/* Month Stats */}
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+              <h3 className="font-display font-semibold mb-4">
+                Resumo do Mês
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                  <span className="text-sm font-medium">Datas Ocupadas</span>
+                  <span className="text-2xl font-bold text-destructive">
+                    {eventosNoMes.length}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-success/10 rounded-lg border border-success/20">
+                  <span className="text-sm font-medium">Datas Disponíveis</span>
+                  <span className="text-2xl font-bold text-success">
+                    {datasDisponiveis.length}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Available Dates List */}
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+              <h3 className="font-display font-semibold mb-4">
+                Próximas Datas Disponíveis
+              </h3>
+              
+              {datasDisponiveis.length === 0 ? (
+                <p className="text-muted-foreground text-sm text-center py-4">
+                  Sem datas disponíveis neste mês
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {datasDisponiveis.slice(0, 10).map((date, index) => (
+                    <div
+                      key={index}
+                      className="flex justify-between items-center p-2 bg-success/5 rounded border border-success/10"
+                    >
+                      <span className="text-sm font-medium">
+                        {format(date, "dd/MM", { locale: ptBR })}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {date.getDay() === 6 ? "Sáb" : "Dom"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </MainLayout>
+  );
+}
