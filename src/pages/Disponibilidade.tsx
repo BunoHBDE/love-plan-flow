@@ -386,18 +386,18 @@ export default function Disponibilidade() {
               )}
 
               {/* Calendars Grid */}
-              <div className={`grid gap-4 ${
+              <div className={`grid gap-6 justify-items-center ${
                 viewMode === "anual" 
-                  ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" 
+                  ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" 
                   : viewMode === "estacao" 
-                    ? "grid-cols-1 md:grid-cols-3" 
-                    : "grid-cols-1"
+                    ? "grid-cols-1 sm:grid-cols-3" 
+                    : "grid-cols-1 place-items-center"
               }`}>
                 {monthsToDisplay.map((month, index) => (
-                  <div key={index} className="flex flex-col items-center">
+                  <div key={index} className="flex flex-col items-center w-full max-w-[280px]">
                     {viewMode !== "mensal" && (
                       <h3 className="text-sm font-medium mb-2 capitalize">
-                        {format(month, "MMMM", { locale: ptBR })}
+                        {format(month, "MMMM yyyy", { locale: ptBR })}
                       </h3>
                     )}
                     <Calendar
@@ -406,8 +406,8 @@ export default function Disponibilidade() {
                       onSelect={(date) => date && handleDateClick(date)}
                       month={month}
                       locale={ptBR}
-                      className={`rounded-md border pointer-events-auto ${
-                        viewMode === "anual" ? "text-xs scale-90" : ""
+                      className={`rounded-md border pointer-events-auto w-full ${
+                        viewMode === "anual" ? "[&_.rdp-cell]:p-0 [&_.rdp-day]:h-7 [&_.rdp-day]:w-7 [&_.rdp-head_cell]:w-7 [&_.rdp-caption]:text-sm" : ""
                       }`}
                       modifiers={{
                         occupied: datasOcupadas,
