@@ -39,12 +39,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X, Users, Heart, Mail, Loader2 } from "lucide-react";
+import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X, Users, Heart, Mail, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useVisits, VisitInsert } from "@/hooks/useVisits";
+import { useVisits, VisitInsert, Visit } from "@/hooks/useVisits";
 import { useClients } from "@/hooks/useClients";
+import { DeleteVisitDialog } from "@/components/visits/DeleteVisitDialog";
 
 const statusStyles = {
   confirmada: "bg-success/10 text-success border-success/20",
@@ -65,7 +66,7 @@ const statusLabels: Record<string, string> = {
 type SortOption = "date" | "time" | "status" | "name";
 
 export default function Visitas() {
-  const { visits, loading, createVisit, updateVisit, updateVisitStatus } = useVisits();
+  const { visits, loading, createVisit, updateVisit, updateVisitStatus, deleteVisit } = useVisits();
   const { clients, searchClients } = useClients();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -118,6 +119,9 @@ export default function Visitas() {
   
   // Unsaved changes confirmation dialog
   const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false);
+
+  // Delete dialog state
+  const [deletingVisit, setDeletingVisit] = useState<Visit | null>(null);
 
   const filteredVisits = visits
     .filter((visit) => {
@@ -296,6 +300,12 @@ export default function Visitas() {
 
   const handleStatusChange = async (visitId: string, newStatus: string) => {
     await updateVisitStatus(visitId, newStatus);
+  };
+
+  const handleDeleteVisit = async () => {
+    if (!deletingVisit) return;
+    await deleteVisit(deletingVisit.id);
+    setDeletingVisit(null);
   };
 
   const months = [
@@ -766,6 +776,14 @@ export default function Visitas() {
                     <Button variant="elegant" size="sm" onClick={() => handleOpenDetails(visit)}>
                       Detalhes
                     </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setDeletingVisit(visit)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1063,6 +1081,14 @@ export default function Visitas() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Delete Visit Dialog */}
+        <DeleteVisitDialog
+          open={!!deletingVisit}
+          onOpenChange={(open) => !open && setDeletingVisit(null)}
+          visit={deletingVisit}
+          onConfirm={handleDeleteVisit}
+        />
       </div>
     </MainLayout>
   );
