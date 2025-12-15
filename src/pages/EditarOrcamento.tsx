@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -28,111 +27,14 @@ import {
   Package,
   FileText,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { cn } from "@/lib/utils";
+import { useQuotes, type Quote } from "@/hooks/useQuotes";
 
-// Mock data - will come from database later
-const mockQuotes = [
-  {
-    id: "ORC-001",
-    clientName: "Maria & João",
-    email: "maria@email.com",
-    phone: "(11) 99999-0001",
-    cpf: "123.456.789-00",
-    weddingDate: "2025-06-15",
-    guestCount: 150,
-    totalValue: 25000,
-    status: "enviado" as const,
-    createdAt: "2024-12-01",
-    validUntil: "2024-12-31",
-    canalEntrada: "instagram",
-    tipoEvento: "casamento",
-    pacote: "jardim",
-    menuBuffet: null,
-    diaSemana: "sabado",
-    observacoesInternas: "Cliente muito interessada, responde rápido",
-    observacoesCliente: "Preferência por decoração rústica",
-    items: [
-      { description: "Locação do Espaço", value: 15000 },
-      { description: "Decoração Básica", value: 5000 },
-      { description: "Serviço de Buffet", value: 5000 },
-    ],
-  },
-  {
-    id: "ORC-002",
-    clientName: "Ana & Pedro",
-    email: "ana@email.com",
-    phone: "(11) 99999-0002",
-    cpf: "987.654.321-00",
-    weddingDate: "2025-08-20",
-    guestCount: 100,
-    totalValue: 18000,
-    status: "rascunho" as const,
-    createdAt: "2024-12-05",
-    validUntil: "2025-01-05",
-    canalEntrada: "google",
-    tipoEvento: "casamento",
-    pacote: "essencia",
-    menuBuffet: "brasileirinho",
-    diaSemana: "domingo",
-    observacoesInternas: "",
-    observacoesCliente: "",
-    items: [
-      { description: "Locação do Espaço", value: 12000 },
-      { description: "Decoração Premium", value: 6000 },
-    ],
-  },
-  {
-    id: "ORC-003",
-    clientName: "Juliana & Lucas",
-    email: "juliana@email.com",
-    phone: "(11) 99999-0003",
-    cpf: "",
-    weddingDate: "2025-05-10",
-    guestCount: 200,
-    totalValue: 35000,
-    status: "aceito" as const,
-    createdAt: "2024-11-20",
-    validUntil: "2024-12-20",
-    canalEntrada: "indicacao",
-    tipoEvento: "casamento",
-    pacote: "florescer",
-    menuBuffet: "massas",
-    diaSemana: "sabado",
-    observacoesInternas: "Indicação do casamento Silva",
-    observacoesCliente: "Open bar premium incluso",
-    items: [
-      { description: "Locação do Espaço", value: 20000 },
-      { description: "Decoração Luxo", value: 10000 },
-      { description: "Open Bar", value: 5000 },
-    ],
-  },
-  {
-    id: "ORC-004",
-    clientName: "Carla & Bruno",
-    email: "carla@email.com",
-    phone: "(11) 99999-0004",
-    cpf: "",
-    weddingDate: "2025-09-25",
-    guestCount: 80,
-    totalValue: 12000,
-    status: "recusado" as const,
-    createdAt: "2024-11-15",
-    validUntil: "2024-12-15",
-    canalEntrada: "feira",
-    tipoEvento: "casamento",
-    pacote: "harmonia",
-    menuBuffet: null,
-    diaSemana: "domingo",
-    observacoesInternas: "Orçamento acima do esperado",
-    observacoesCliente: "",
-    items: [{ description: "Locação do Espaço", value: 12000 }],
-  },
-];
-
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   rascunho: "Rascunho",
   enviado: "Enviado",
   aceito: "Aceito",
@@ -140,7 +42,7 @@ const statusLabels = {
   expirado: "Expirado",
 };
 
-const statusStyles = {
+const statusStyles: Record<string, string> = {
   rascunho: "bg-muted text-muted-foreground border-border",
   enviado: "bg-primary/10 text-primary border-primary/20",
   aceito: "bg-success/10 text-success border-success/20",
@@ -148,9 +50,7 @@ const statusStyles = {
   expirado: "bg-warning/10 text-warning border-warning/20",
 };
 
-const allStatuses: Array<"rascunho" | "enviado" | "aceito" | "recusado" | "expirado"> = [
-  "rascunho", "enviado", "aceito", "recusado", "expirado"
-];
+const allStatuses = ["rascunho", "enviado", "aceito", "recusado", "expirado"];
 
 const canaisEntrada = [
   { value: "instagram", label: "Instagram" },
@@ -235,16 +135,13 @@ export default function EditarOrcamento() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { getQuoteById, updateQuote } = useQuotes();
+  
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-
-  // Quote data
-  const [quoteData, setQuoteData] = useState<typeof mockQuotes[0] | null>(null);
+  const [quoteData, setQuoteData] = useState<Quote | null>(null);
   
   // Editable fields
-  const [clientName, setClientName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [cpf, setCpf] = useState("");
   const [guestCount, setGuestCount] = useState(0);
   const [weddingDate, setWeddingDate] = useState("");
   const [canalEntrada, setCanalEntrada] = useState("");
@@ -252,7 +149,7 @@ export default function EditarOrcamento() {
   const [pacote, setPacote] = useState("");
   const [menuBuffet, setMenuBuffet] = useState<string | null>(null);
   const [diaSemana, setDiaSemana] = useState<string | null>(null);
-  const [status, setStatus] = useState<"rascunho" | "enviado" | "aceito" | "recusado" | "expirado">("rascunho");
+  const [status, setStatus] = useState("rascunho");
   const [observacoesInternas, setObservacoesInternas] = useState("");
   const [observacoesCliente, setObservacoesCliente] = useState("");
   const [validUntil, setValidUntil] = useState("");
@@ -260,26 +157,28 @@ export default function EditarOrcamento() {
 
   // Load quote data
   useEffect(() => {
-    const quote = mockQuotes.find((q) => q.id === id);
-    if (quote) {
-      setQuoteData(quote);
-      setClientName(quote.clientName);
-      setEmail(quote.email);
-      setPhone(quote.phone);
-      setCpf(quote.cpf);
-      setGuestCount(quote.guestCount);
-      setWeddingDate(quote.weddingDate);
-      setCanalEntrada(quote.canalEntrada);
-      setTipoEvento(quote.tipoEvento);
-      setPacote(quote.pacote);
-      setMenuBuffet(quote.menuBuffet);
-      setDiaSemana(quote.diaSemana);
-      setStatus(quote.status);
-      setObservacoesInternas(quote.observacoesInternas);
-      setObservacoesCliente(quote.observacoesCliente);
-      setValidUntil(quote.validUntil);
-      setValorOrcamento(quote.totalValue);
-    }
+    const loadQuote = async () => {
+      if (!id) return;
+      setLoading(true);
+      const quote = await getQuoteById(id);
+      if (quote) {
+        setQuoteData(quote);
+        setGuestCount(quote.n_convidados);
+        setWeddingDate(quote.data_evento || "");
+        setCanalEntrada(quote.canal_entrada || "");
+        setTipoEvento(quote.tipo_evento || "");
+        setPacote(quote.pacote);
+        setMenuBuffet(quote.menu_buffet);
+        setDiaSemana(quote.dia_semana);
+        setStatus(quote.status);
+        setObservacoesInternas(quote.observacoes_internas || "");
+        setObservacoesCliente(quote.observacoes_cliente || "");
+        setValidUntil(quote.validade || "");
+        setValorOrcamento(Number(quote.valor_total));
+      }
+      setLoading(false);
+    };
+    loadQuote();
   }, [id]);
 
   // Recalculate price
@@ -320,32 +219,72 @@ export default function EditarOrcamento() {
     return new Date(dateString + "T12:00:00").toLocaleDateString("pt-BR");
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Orçamento salvo!",
-      description: "As alterações foram salvas com sucesso.",
+  const handleSave = async () => {
+    if (!quoteData) return;
+    
+    const success = await updateQuote(quoteData.id, {
+      n_convidados: guestCount,
+      data_evento: weddingDate || null,
+      canal_entrada: canalEntrada || null,
+      tipo_evento: tipoEvento || null,
+      pacote,
+      menu_buffet: menuBuffet,
+      dia_semana: diaSemana,
+      status,
+      observacoes_internas: observacoesInternas || null,
+      observacoes_cliente: observacoesCliente || null,
+      validade: validUntil || null,
+      valor_total: valorOrcamento,
     });
-    setIsEditing(false);
+    
+    if (success) {
+      setIsEditing(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    setStatus(newStatus);
+    if (!isEditing && quoteData) {
+      await updateQuote(quoteData.id, { status: newStatus });
+    }
   };
 
   const handleDownloadPDF = () => {
     if (!quoteData) return;
     generateQuotePDF({
-      ...quoteData,
-      clientName,
+      id: quoteData.quote_number,
+      clientName: quoteData.client?.nome || "Cliente",
       guestCount,
       weddingDate,
       totalValue: valorOrcamento,
-      status,
+      status: status as any,
+      createdAt: quoteData.created_at.split("T")[0],
       validUntil,
+      items: [
+        { description: `Pacote ${pacote}`, value: valorOrcamento },
+      ],
     });
   };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (!quoteData) {
     return (
       <MainLayout>
-        <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
           <p className="text-muted-foreground">Orçamento não encontrado</p>
+          <Button variant="outline" onClick={() => navigate("/orcamentos")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar aos Orçamentos
+          </Button>
         </div>
       </MainLayout>
     );
@@ -363,16 +302,16 @@ export default function EditarOrcamento() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-display font-bold text-foreground">
-                  Orçamento {quoteData.id}
+                  Orçamento {quoteData.quote_number}
                 </h1>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
                       className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border cursor-pointer hover:opacity-80 transition-opacity ${
-                        statusStyles[status]
+                        statusStyles[status] || statusStyles.rascunho
                       }`}
                     >
-                      {statusLabels[status]}
+                      {statusLabels[status] || status}
                       <ChevronDown className="h-3 w-3" />
                     </button>
                   </DropdownMenuTrigger>
@@ -380,7 +319,7 @@ export default function EditarOrcamento() {
                     {allStatuses.map((s) => (
                       <DropdownMenuItem
                         key={s}
-                        onClick={() => setStatus(s)}
+                        onClick={() => handleStatusChange(s)}
                         className={cn("cursor-pointer", status === s && "bg-accent")}
                       >
                         <span
@@ -399,7 +338,7 @@ export default function EditarOrcamento() {
                 </DropdownMenu>
               </div>
               <p className="text-muted-foreground">
-                Criado em {formatDate(quoteData.createdAt)}
+                Criado em {formatDate(quoteData.created_at.split("T")[0])}
               </p>
             </div>
           </div>
@@ -440,48 +379,19 @@ export default function EditarOrcamento() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground text-sm">Nome</Label>
-                  {isEditing ? (
-                    <Input 
-                      value={clientName} 
-                      onChange={(e) => setClientName(e.target.value)} 
-                    />
-                  ) : (
-                    <p className="font-medium">{clientName}</p>
-                  )}
+                  <p className="font-medium">{quoteData.client?.nome || "-"}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-sm">Email</Label>
-                  {isEditing ? (
-                    <Input 
-                      type="email"
-                      value={email} 
-                      onChange={(e) => setEmail(e.target.value)} 
-                    />
-                  ) : (
-                    <p className="font-medium">{email || "-"}</p>
-                  )}
+                  <p className="font-medium">{quoteData.client?.email || "-"}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-sm">Telefone</Label>
-                  {isEditing ? (
-                    <Input 
-                      value={phone} 
-                      onChange={(e) => setPhone(e.target.value)} 
-                    />
-                  ) : (
-                    <p className="font-medium">{phone || "-"}</p>
-                  )}
+                  <p className="font-medium">{quoteData.client?.telefone || "-"}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-sm">CPF</Label>
-                  {isEditing ? (
-                    <Input 
-                      value={cpf} 
-                      onChange={(e) => setCpf(e.target.value)} 
-                    />
-                  ) : (
-                    <p className="font-medium">{cpf || "-"}</p>
-                  )}
+                  <p className="font-medium">{quoteData.client?.cpf || "-"}</p>
                 </div>
               </div>
             </div>
@@ -537,54 +447,37 @@ export default function EditarOrcamento() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-muted-foreground text-sm">Data do Casamento</Label>
+                  <Label className="text-muted-foreground text-sm">Data do Evento</Label>
                   {isEditing ? (
-                    <Input 
+                    <Input
                       type="date"
-                      value={weddingDate} 
-                      onChange={(e) => setWeddingDate(e.target.value)} 
+                      value={weddingDate}
+                      onChange={(e) => setWeddingDate(e.target.value)}
                     />
                   ) : (
                     <p className="font-medium">{formatDate(weddingDate)}</p>
                   )}
                 </div>
                 <div>
-                  <Label className="text-muted-foreground text-sm">Dia da Semana</Label>
-                  {isEditing ? (
-                    <Select value={diaSemana || ""} onValueChange={setDiaSemana}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sabado">Sábado</SelectItem>
-                        <SelectItem value="domingo">Domingo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="font-medium">
-                      {diaSemana === "sabado" ? "Sábado" : diaSemana === "domingo" ? "Domingo" : "-"}
-                    </p>
-                  )}
-                </div>
-                <div>
                   <Label className="text-muted-foreground text-sm">Número de Convidados</Label>
                   {isEditing ? (
-                    <Input 
+                    <Input
                       type="number"
-                      value={guestCount} 
-                      onChange={(e) => setGuestCount(parseInt(e.target.value) || 0)} 
+                      min="1"
+                      value={guestCount}
+                      onChange={(e) => setGuestCount(parseInt(e.target.value) || 0)}
                     />
                   ) : (
                     <p className="font-medium">{guestCount}</p>
                   )}
                 </div>
                 <div>
-                  <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
+                  <Label className="text-muted-foreground text-sm">Validade</Label>
                   {isEditing ? (
-                    <Input 
+                    <Input
                       type="date"
-                      value={validUntil} 
-                      onChange={(e) => setValidUntil(e.target.value)} 
+                      value={validUntil}
+                      onChange={(e) => setValidUntil(e.target.value)}
                     />
                   ) : (
                     <p className="font-medium">{formatDate(validUntil)}</p>
@@ -597,7 +490,7 @@ export default function EditarOrcamento() {
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
                 <Package className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Pacote e Valores</h2>
+                <h2 className="text-lg font-display font-semibold">Pacote e Serviços</h2>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -624,7 +517,7 @@ export default function EditarOrcamento() {
                 </div>
                 {(pacote === "essencia" || pacote === "florescer") && (
                   <div>
-                    <Label className="text-muted-foreground text-sm">Menu do Buffet</Label>
+                    <Label className="text-muted-foreground text-sm">Menu Buffet</Label>
                     {isEditing ? (
                       <Select value={menuBuffet || ""} onValueChange={setMenuBuffet}>
                         <SelectTrigger>
@@ -645,28 +538,23 @@ export default function EditarOrcamento() {
                     )}
                   </div>
                 )}
-              </div>
-
-              {/* Items list */}
-              <div className="mt-6">
-                <Label className="text-muted-foreground text-sm mb-2 block">Itens do Orçamento</Label>
-                <div className="border border-border rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-secondary/30">
-                      <tr>
-                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Descrição</th>
-                        <th className="text-right p-3 text-sm font-medium text-muted-foreground">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {quoteData.items.map((item, index) => (
-                        <tr key={index} className="border-t border-border">
-                          <td className="p-3">{item.description}</td>
-                          <td className="p-3 text-right">{formatCurrency(item.value)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div>
+                  <Label className="text-muted-foreground text-sm">Dia da Semana</Label>
+                  {isEditing ? (
+                    <Select value={diaSemana || ""} onValueChange={setDiaSemana}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sabado">Sábado</SelectItem>
+                        <SelectItem value="domingo">Domingo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">
+                      {diaSemana === "sabado" ? "Sábado" : diaSemana === "domingo" ? "Domingo" : "-"}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -682,27 +570,27 @@ export default function EditarOrcamento() {
                 <div>
                   <Label className="text-muted-foreground text-sm">Observações Internas</Label>
                   {isEditing ? (
-                    <Textarea 
-                      value={observacoesInternas} 
+                    <Textarea
+                      value={observacoesInternas}
                       onChange={(e) => setObservacoesInternas(e.target.value)}
-                      placeholder="Notas internas sobre o orçamento..."
-                      className="mt-1"
+                      placeholder="Anotações internas..."
+                      rows={3}
                     />
                   ) : (
-                    <p className="font-medium mt-1">{observacoesInternas || "-"}</p>
+                    <p className="font-medium whitespace-pre-wrap">{observacoesInternas || "-"}</p>
                   )}
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-sm">Observações para o Cliente</Label>
                   {isEditing ? (
-                    <Textarea 
-                      value={observacoesCliente} 
+                    <Textarea
+                      value={observacoesCliente}
                       onChange={(e) => setObservacoesCliente(e.target.value)}
-                      placeholder="Informações adicionais para o cliente..."
-                      className="mt-1"
+                      placeholder="Observações que aparecerão no orçamento..."
+                      rows={3}
                     />
                   ) : (
-                    <p className="font-medium mt-1">{observacoesCliente || "-"}</p>
+                    <p className="font-medium whitespace-pre-wrap">{observacoesCliente || "-"}</p>
                   )}
                 </div>
               </div>
@@ -710,59 +598,47 @@ export default function EditarOrcamento() {
           </div>
 
           {/* Sidebar - Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-card rounded-xl p-6 shadow-soft border border-border sticky top-6 animate-slide-up">
+          <div className="space-y-6">
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up sticky top-6">
               <h2 className="text-lg font-display font-semibold mb-4">Resumo</h2>
               
               <div className="space-y-4">
-                <div className="flex justify-between items-center py-2 border-b border-border">
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Cliente</span>
-                  <span className="font-medium">{clientName}</span>
+                  <span className="font-medium">{quoteData.client?.nome || "-"}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Data do Evento</span>
-                  <span className="font-medium">{formatDate(weddingDate)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-border">
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Convidados</span>
                   <span className="font-medium">{guestCount}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-border">
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Pacote</span>
                   <span className="font-medium">
                     {pacotes.find((p) => p.value === pacote)?.label || "-"}
                   </span>
                 </div>
                 {menuBuffet && (
-                  <div className="flex justify-between items-center py-2 border-b border-border">
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Menu</span>
                     <span className="font-medium">
-                      {menusBuffet.find((m) => m.value === menuBuffet)?.label}
+                      {menusBuffet.find((m) => m.value === menuBuffet)?.label || "-"}
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Validade</span>
-                  <span className="font-medium">{formatDate(validUntil)}</span>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Dia</span>
+                  <span className="font-medium">
+                    {diaSemana === "sabado" ? "Sábado" : diaSemana === "domingo" ? "Domingo" : "-"}
+                  </span>
                 </div>
                 
-                <div className="pt-4 border-t-2 border-primary/20">
+                <div className="border-t border-border pt-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-medium">Valor Total</span>
-                    <span className="text-2xl font-display font-bold text-primary">
+                    <span className="text-lg font-semibold">Total</span>
+                    <span className="text-2xl font-display font-bold text-gold">
                       {formatCurrency(valorOrcamento)}
                     </span>
                   </div>
-                </div>
-
-                <div className="pt-4 space-y-2">
-                  <Button variant="gold" className="w-full" onClick={handleDownloadPDF}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixar PDF
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={() => navigate("/contratos/novo")}>
-                    Gerar Contrato
-                  </Button>
                 </div>
               </div>
             </div>
