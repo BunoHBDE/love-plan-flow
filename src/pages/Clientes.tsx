@@ -2,8 +2,9 @@ import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Heart, Phone, Mail, Plus, Search, MapPin, Loader2 } from "lucide-react";
+import { Heart, Phone, Mail, Plus, Search, MapPin, Loader2, Pencil, Trash2 } from "lucide-react";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
+import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
 import { useClients, Client, ClientInsert } from "@/hooks/useClients";
 
 const statusLabels = {
@@ -13,17 +14,12 @@ const statusLabels = {
   pago: "Pagamento Completo",
 };
 
-const statusStyles = {
-  lead: "bg-rose-light text-rose border-rose/20",
-  orcamento: "bg-warning/10 text-warning border-warning/20",
-  contrato: "bg-primary/10 text-primary border-primary/20",
-  pago: "bg-success/10 text-success border-success/20",
-};
-
 export default function Clientes() {
-  const { clients, loading, createClient } = useClients();
+  const { clients, loading, createClient, updateClient, deleteClient } = useClients();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [deletingClient, setDeletingClient] = useState<Client | null>(null);
 
   const filteredClients = clients.filter(
     (client) =>
@@ -50,6 +46,45 @@ export default function Clientes() {
     await createClient(clientInsert);
   };
 
+  const handleClientUpdated = async (clientData: ClientFormData) => {
+    if (!editingClient) return;
+    
+    const updates: Partial<ClientInsert> = {
+      nome: clientData.name,
+      email: clientData.email || null,
+      telefone: clientData.phone,
+      cpf: clientData.cpf || null,
+      cep: clientData.address.cep || null,
+      rua: clientData.address.street || null,
+      numero: clientData.address.number || null,
+      complemento: clientData.address.complement || null,
+      bairro: clientData.address.neighborhood || null,
+      cidade: clientData.address.city || null,
+      estado_uf: clientData.address.state || null,
+    };
+    
+    await updateClient(editingClient.id, updates);
+    setEditingClient(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingClient) return;
+    await deleteClient(deletingClient.id);
+    setDeletingClient(null);
+  };
+
+  const openEditDialog = (client: Client) => {
+    setEditingClient(client);
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingClient(null);
+    }
+  };
+
   return (
     <MainLayout>
       <div className="space-y-8">
@@ -71,8 +106,17 @@ export default function Clientes() {
 
           <ClientFormDialog
             open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
+            onOpenChange={handleDialogClose}
             onClientCreated={handleClientCreated}
+            onClientUpdated={handleClientUpdated}
+            editingClient={editingClient}
+          />
+
+          <DeleteClientDialog
+            open={!!deletingClient}
+            onOpenChange={(open) => !open && setDeletingClient(null)}
+            client={deletingClient}
+            onConfirm={handleDeleteConfirm}
           />
         </div>
 
@@ -100,7 +144,7 @@ export default function Clientes() {
             {filteredClients.map((client) => (
               <div
                 key={client.id}
-                className="bg-card rounded-xl p-6 shadow-soft border border-border transition-all duration-200 hover:shadow-medium group cursor-pointer"
+                className="bg-card rounded-xl p-6 shadow-soft border border-border transition-all duration-200 hover:shadow-medium group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -117,6 +161,24 @@ export default function Clientes() {
                         {statusLabels.lead}
                       </span>
                     </div>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => openEditDialog(client)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setDeletingClient(client)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
 
@@ -141,13 +203,6 @@ export default function Clientes() {
                   <span className="text-sm text-muted-foreground">
                     CPF: {client.cpf || "Não informado"}
                   </span>
-                  <Button
-                    variant="elegant"
-                    size="sm"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    Ver Detalhes
-                  </Button>
                 </div>
               </div>
             ))}
