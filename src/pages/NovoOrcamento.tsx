@@ -662,7 +662,7 @@ export default function NovoOrcamento() {
 
             {/* Block 4 - Condições de Pagamento */}
             <PaymentTermsForm
-              valorTotal={valorOrcamento}
+              valorTotal={valorOrcamento + extras.reduce((sum, e) => sum + e.valor, 0)}
               dataEvento={dataStatus === "com_data" ? dataEvento : null}
               onChange={setPaymentTerms}
               onValidationChange={setHasPaymentErrors}
@@ -779,6 +779,21 @@ export default function NovoOrcamento() {
                   </div>
                 )}
 
+                {/* Extras no resumo */}
+                {extras.length > 0 && (
+                  <div className="pt-4 space-y-2">
+                    <h3 className="text-sm font-semibold text-primary">Valores Extras</h3>
+                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                      {extras.map((extra) => (
+                        <div key={extra.id} className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-xs">{extra.descricao}</span>
+                          <span className="font-medium text-sm">{formatCurrency(extra.valor)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center py-2 border-b border-border">
                   <span className="text-muted-foreground text-sm">Validade</span>
                   <span className="font-medium text-sm">{formatDate(validadeOrcamento)}</span>
@@ -788,7 +803,7 @@ export default function NovoOrcamento() {
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-medium">Valor Total</span>
                     <span className="text-2xl font-display font-bold text-primary">
-                      {formatCurrency(valorOrcamento)}
+                      {formatCurrency(valorOrcamento + extras.reduce((sum, e) => sum + e.valor, 0))}
                     </span>
                   </div>
                 </div>
