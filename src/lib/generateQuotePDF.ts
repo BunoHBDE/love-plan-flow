@@ -18,6 +18,15 @@ interface PaymentTerms {
   parcelas: Parcela[];
 }
 
+interface ComposicaoPreco {
+  espaco: number;
+  decoracao: number;
+  buffet: number | null;
+  custoConvidadoAdicional: number;
+  ano: string;
+  buffetNome: string | null;
+}
+
 interface QuoteData {
   id: string;
   clientName: string;
@@ -29,6 +38,8 @@ interface QuoteData {
   validUntil: string;
   items: QuoteItem[];
   paymentTerms?: PaymentTerms;
+  composicao?: ComposicaoPreco;
+  pacoteNome?: string;
 }
 
 const formatCurrency = (value: number): string => {
@@ -117,13 +128,13 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   
   yPosition += 20;
 
-  // Items Section
+  // Items Section - Composição do Valor
   doc.setFillColor(...primaryColor);
   doc.rect(margin, yPosition, contentWidth, 8, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("ITENS DO ORÇAMENTO", margin + 5, yPosition + 6);
+  doc.text("COMPOSIÇÃO DO VALOR", margin + 5, yPosition + 6);
   
   yPosition += 15;
   
@@ -133,26 +144,48 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   doc.setTextColor(...primaryColor);
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("Descrição", margin + 5, yPosition + 7);
+  doc.text("Item", margin + 5, yPosition + 7);
   doc.text("Valor", pageWidth - margin - 30, yPosition + 7, { align: "right" });
   
   yPosition += 15;
   
-  // Items
+  // Composição items
   doc.setTextColor(...textColor);
   doc.setFont("helvetica", "normal");
   
-  quote.items.forEach((item, index) => {
-    // Alternate row background
-    if (index % 2 === 0) {
+  if (quote.composicao) {
+    // Espaço
+    doc.setFillColor(250, 247, 242);
+    doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
+    doc.text(`Espaço (${quote.composicao.ano})`, margin + 5, yPosition);
+    doc.text(formatCurrency(quote.composicao.espaco), pageWidth - margin - 5, yPosition, { align: "right" });
+    yPosition += 10;
+    
+    // Decoração
+    doc.text("Decoração", margin + 5, yPosition);
+    doc.text(formatCurrency(quote.composicao.decoracao), pageWidth - margin - 5, yPosition, { align: "right" });
+    yPosition += 10;
+    
+    // Buffet (se houver)
+    if (quote.composicao.buffet !== null) {
       doc.setFillColor(250, 247, 242);
       doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
+      doc.text(`Buffet (${quote.composicao.buffetNome || "Menu"})`, margin + 5, yPosition);
+      doc.text(formatCurrency(quote.composicao.buffet), pageWidth - margin - 5, yPosition, { align: "right" });
+      yPosition += 10;
     }
-    
-    doc.text(item.description, margin + 5, yPosition);
-    doc.text(formatCurrency(item.value), pageWidth - margin - 5, yPosition, { align: "right" });
-    yPosition += 10;
-  });
+  } else {
+    // Fallback: show items
+    quote.items.forEach((item, index) => {
+      if (index % 2 === 0) {
+        doc.setFillColor(250, 247, 242);
+        doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
+      }
+      doc.text(item.description, margin + 5, yPosition);
+      doc.text(formatCurrency(item.value), pageWidth - margin - 5, yPosition, { align: "right" });
+      yPosition += 10;
+    });
+  }
   
   // Separator line
   doc.setDrawColor(...goldColor);
@@ -170,7 +203,20 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   doc.text("TOTAL:", pageWidth - margin - 75, yPosition + 3);
   doc.text(formatCurrency(quote.totalValue), pageWidth - margin - 5, yPosition + 3, { align: "right" });
   
-  yPosition += 25;
+  yPosition += 15;
+  
+  // Custo por convidado adicional
+  if (quote.composicao) {
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Valor por convidado adicional: ", margin, yPosition);
+    doc.setFont("helvetica", "normal");
+    doc.text(formatCurrency(quote.composicao.custoConvidadoAdicional), margin + 60, yPosition);
+    yPosition += 10;
+  }
+  
+  yPosition += 10;
 
   // Payment Terms Section (if available)
   if (quote.paymentTerms && quote.paymentTerms.parcelas.length > 0) {
