@@ -15,7 +15,7 @@ import {
   Search,
   Download,
   Eye,
-  Send,
+  Pencil,
   CalendarIcon,
   X,
 } from "lucide-react";
@@ -325,17 +325,15 @@ export default function Orcamentos() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" title="Ver">
+                        <Button variant="ghost" size="icon" title="Visualizar">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" title="Download">
+                        <Button variant="ghost" size="icon" title="Editar">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" title="Baixar PDF">
                           <Download className="h-4 w-4" />
                         </Button>
-                        {quote.status === "rascunho" && (
-                          <Button variant="ghost" size="icon" title="Enviar">
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        )}
                       </div>
                     </td>
                   </tr>
