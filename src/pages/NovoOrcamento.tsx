@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
 import { useClients, type Client, type ClientInsert } from "@/hooks/useClients";
 import { useQuotes } from "@/hooks/useQuotes";
+import { PaymentTermsForm, type PaymentTermsData } from "@/components/quotes/PaymentTermsForm";
 
 const canaisEntrada = [
   { value: "instagram", label: "Instagram" },
@@ -154,6 +155,15 @@ export default function NovoOrcamento() {
   // Observations
   const [observacoesInternas, setObservacoesInternas] = useState("");
   const [observacoesCliente, setObservacoesCliente] = useState("");
+
+  // Payment terms
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermsData>({
+    percentualSinal: 10,
+    valorSinal: 0,
+    numeroParcelas: 1,
+    diaVencimento: 10,
+    parcelas: [],
+  });
 
   // Calculate price when relevant fields change
   useEffect(() => {
@@ -329,6 +339,11 @@ export default function NovoOrcamento() {
       status,
       observacoes_internas: observacoesInternas || null,
       observacoes_cliente: observacoesCliente || null,
+      percentual_sinal: paymentTerms.percentualSinal,
+      valor_sinal: paymentTerms.valorSinal,
+      numero_parcelas: paymentTerms.numeroParcelas,
+      dia_vencimento: paymentTerms.diaVencimento,
+      parcelas_json: paymentTerms.parcelas,
     });
 
     setIsSaving(false);
@@ -663,7 +678,14 @@ export default function NovoOrcamento() {
               </div>
             </div>
 
-            {/* Block 4 - Observações */}
+            {/* Block 4 - Condições de Pagamento */}
+            <PaymentTermsForm
+              valorTotal={valorOrcamento}
+              dataEvento={dataStatus === "com_data" ? dataEvento : null}
+              onChange={setPaymentTerms}
+            />
+
+            {/* Block 5 - Observações */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="h-5 w-5 text-primary" />
