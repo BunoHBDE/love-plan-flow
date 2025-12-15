@@ -674,7 +674,7 @@ export default function EditarOrcamento() {
             {/* Payment Terms - Only show when editing */}
             {isEditing && (
               <PaymentTermsForm
-                valorTotal={valorOrcamento}
+                valorTotal={valorOrcamento + extras.reduce((sum, e) => sum + e.valor, 0)}
                 dataEvento={weddingDate || null}
                 onChange={setPaymentTerms}
                 onValidationChange={setHasPaymentErrors}
@@ -772,12 +772,27 @@ export default function EditarOrcamento() {
                     </div>
                   </div>
                 )}
+
+                {/* Extras no resumo */}
+                {extras.length > 0 && (
+                  <div className="pt-4 space-y-2">
+                    <h3 className="text-sm font-semibold text-primary">Valores Extras</h3>
+                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                      {extras.map((extra) => (
+                        <div key={extra.id} className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-xs">{extra.descricao}</span>
+                          <span className="font-medium text-sm">{formatCurrency(extra.valor)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 <div className="border-t-2 border-primary/20 pt-4">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold">Total</span>
                     <span className="text-2xl font-display font-bold text-gold">
-                      {formatCurrency(valorOrcamento)}
+                      {formatCurrency(valorOrcamento + extras.reduce((sum, e) => sum + e.valor, 0))}
                     </span>
                   </div>
                 </div>
