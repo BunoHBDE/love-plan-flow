@@ -64,10 +64,25 @@ export function PaymentTermsForm({
   
   const saldoRestante = valorTotal - valorSinal;
 
+  // Format number to Brazilian format for display (1.234,56)
+  const formatNumberBR = (value: number) => {
+    return value.toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  // Parse Brazilian formatted number to float
+  const parseNumberBR = (value: string): number => {
+    // Remove dots (thousand separator) and replace comma with dot (decimal separator)
+    const normalized = value.replace(/\./g, "").replace(",", ".");
+    return parseFloat(normalized);
+  };
+
   // Sync percentage input when valorTotal changes
   useEffect(() => {
     if (valorSinalManual === null) {
-      setValorSinalInput(valorSinalCalculado.toFixed(2));
+      setValorSinalInput(formatNumberBR(valorSinalCalculado));
     }
   }, [valorTotal, percentualSinal, valorSinalManual, valorSinalCalculado]);
 
@@ -156,7 +171,7 @@ export function PaymentTermsForm({
     }
 
     setParcelas(novasParcelas);
-    setParcelaInputs(novasParcelas.map(p => ({ valor: p.valor.toFixed(2) })));
+    setParcelaInputs(novasParcelas.map(p => ({ valor: formatNumberBR(p.valor) })));
     setParcelasEditadas(false);
     setIndicesEditados(new Set());
   };
@@ -222,23 +237,23 @@ export function PaymentTermsForm({
   };
 
   const handleValorSinalBlur = () => {
-    const num = parseFloat(valorSinalInput.replace(",", "."));
+    const num = parseNumberBR(valorSinalInput);
     const minSinal = valorTotal * 0.1;
     
     if (isNaN(num) || num < minSinal) {
       // Reset to percentage-based value
       setValorSinalManual(null);
-      setValorSinalInput(valorSinalCalculado.toFixed(2));
+      setValorSinalInput(formatNumberBR(valorSinalCalculado));
       if (num < minSinal && !isNaN(num)) {
         setErroSinal(true);
         setTimeout(() => setErroSinal(false), 2000);
       }
     } else if (num > valorTotal) {
       setValorSinalManual(valorTotal);
-      setValorSinalInput(valorTotal.toFixed(2));
+      setValorSinalInput(formatNumberBR(valorTotal));
     } else {
       setValorSinalManual(num);
-      setValorSinalInput(num.toFixed(2));
+      setValorSinalInput(formatNumberBR(num));
       // Update percentage display
       const newPercentual = Math.round((num / valorTotal) * 100);
       setPercentualInput(newPercentual.toString());
@@ -272,7 +287,7 @@ export function PaymentTermsForm({
     });
     
     setParcelas(novasParcelas);
-    setParcelaInputs(novasParcelas.map(p => ({ valor: p.valor.toFixed(2) })));
+    setParcelaInputs(novasParcelas.map(p => ({ valor: formatNumberBR(p.valor) })));
   };
 
   // Handle individual installment value change
@@ -286,11 +301,11 @@ export function PaymentTermsForm({
     const input = parcelaInputs[index]?.valor;
     if (input === undefined) return;
     
-    const num = parseFloat(input.replace(",", "."));
+    const num = parseNumberBR(input);
     if (isNaN(num) || num < 0) {
       // Reset to current value
       const newInputs = [...parcelaInputs];
-      newInputs[index] = { valor: parcelas[index].valor.toFixed(2) };
+      newInputs[index] = { valor: formatNumberBR(parcelas[index].valor) };
       setParcelaInputs(newInputs);
       return;
     }
@@ -302,7 +317,7 @@ export function PaymentTermsForm({
     setIndicesEditados(prev => new Set(prev).add(index));
     
     const newInputs = [...parcelaInputs];
-    newInputs[index] = { valor: num.toFixed(2) };
+    newInputs[index] = { valor: formatNumberBR(num) };
     setParcelaInputs(newInputs);
   };
 
@@ -545,7 +560,7 @@ export function PaymentTermsForm({
                         <span className="text-xs text-muted-foreground">R$</span>
                         <Input
                           type="text"
-                          value={parcelaInputs[index]?.valor ?? parcela.valor.toFixed(2)}
+                          value={parcelaInputs[index]?.valor ?? formatNumberBR(parcela.valor)}
                           onChange={(e) => handleParcelaValueChange(index, e.target.value)}
                           onBlur={() => handleParcelaValueBlur(index)}
                           className="w-24 h-8 text-sm text-right"
