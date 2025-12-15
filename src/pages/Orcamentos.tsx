@@ -112,6 +112,14 @@ const statusStyles = {
   expirado: "bg-warning/10 text-warning border-warning/20",
 };
 
+const statusSelectedStyles = {
+  rascunho: "bg-muted-foreground text-muted hover:bg-muted-foreground/90 border-muted-foreground",
+  enviado: "bg-primary text-primary-foreground hover:bg-primary/90 border-primary",
+  aceito: "bg-success text-success-foreground hover:bg-success/90 border-success",
+  recusado: "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-destructive",
+  expirado: "bg-warning text-warning-foreground hover:bg-warning/90 border-warning",
+};
+
 const allStatuses: Quote["status"][] = ["rascunho", "enviado", "aceito", "recusado", "expirado"];
 
 export default function Orcamentos() {
@@ -243,22 +251,23 @@ export default function Orcamentos() {
           {/* Status filters */}
           <div className="flex flex-wrap gap-2">
             <span className="text-sm text-muted-foreground mr-2 self-center">Status:</span>
-            {allStatuses.map((status) => (
-              <Button
-                key={status}
-                variant="outline"
-                size="sm"
-                onClick={() => toggleStatus(status)}
-                className={cn(
-                  "border transition-colors",
-                  selectedStatuses.includes(status)
-                    ? statusStyles[status]
-                    : "bg-transparent"
-                )}
-              >
-                {statusLabels[status]}
-              </Button>
-            ))}
+            {allStatuses.map((status) => {
+              const isSelected = selectedStatuses.includes(status);
+              return (
+                <Button
+                  key={status}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleStatus(status)}
+                  className={cn(
+                    "transition-all",
+                    isSelected && statusSelectedStyles[status]
+                  )}
+                >
+                  {statusLabels[status]}
+                </Button>
+              );
+            })}
           </div>
         </div>
 
