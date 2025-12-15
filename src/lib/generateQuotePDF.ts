@@ -5,6 +5,19 @@ interface QuoteItem {
   value: number;
 }
 
+interface Parcela {
+  numero: number;
+  valor: number;
+  dataVencimento: string;
+}
+
+interface PaymentTerms {
+  percentualSinal: number;
+  valorSinal: number;
+  numeroParcelas: number;
+  parcelas: Parcela[];
+}
+
 interface QuoteData {
   id: string;
   clientName: string;
@@ -15,6 +28,7 @@ interface QuoteData {
   createdAt: string;
   validUntil: string;
   items: QuoteItem[];
+  paymentTerms?: PaymentTerms;
 }
 
 const formatCurrency = (value: number): string => {
@@ -158,7 +172,90 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   
   yPosition += 25;
 
+  // Payment Terms Section (if available)
+  if (quote.paymentTerms && quote.paymentTerms.parcelas.length > 0) {
+    // Check if we need a new page
+    const estimatedPaymentHeight = 50 + (quote.paymentTerms.parcelas.length * 10);
+    if (yPosition + estimatedPaymentHeight > doc.internal.pageSize.getHeight() - 60) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFillColor(...primaryColor);
+    doc.rect(margin, yPosition, contentWidth, 8, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("CONDIÇÕES DE PAGAMENTO", margin + 5, yPosition + 6);
+    
+    yPosition += 15;
+    
+    // Signal info
+    doc.setTextColor(...textColor);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Sinal (Entrada):", margin, yPosition);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `${formatCurrency(quote.paymentTerms.valorSinal)} (${quote.paymentTerms.percentualSinal}%) - na assinatura do contrato`,
+      margin + 40,
+      yPosition
+    );
+    
+    yPosition += 12;
+    
+    // Installments table header
+    doc.setFillColor(...lightBg);
+    doc.rect(margin, yPosition, contentWidth, 10, "F");
+    doc.setTextColor(...primaryColor);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Parcela", margin + 5, yPosition + 7);
+    doc.text("Vencimento", margin + 50, yPosition + 7);
+    doc.text("Valor", pageWidth - margin - 30, yPosition + 7, { align: "right" });
+    
+    yPosition += 15;
+    
+    // Installments rows
+    doc.setTextColor(...textColor);
+    doc.setFont("helvetica", "normal");
+    
+    quote.paymentTerms.parcelas.forEach((parcela, index) => {
+      // Alternate row background
+      if (index % 2 === 0) {
+        doc.setFillColor(250, 247, 242);
+        doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
+      }
+      
+      doc.text(`${parcela.numero}ª parcela`, margin + 5, yPosition);
+      doc.text(formatDate(parcela.dataVencimento), margin + 50, yPosition);
+      doc.text(formatCurrency(parcela.valor), pageWidth - margin - 5, yPosition, { align: "right" });
+      yPosition += 10;
+    });
+    
+    // Installments total
+    const totalParcelas = quote.paymentTerms.parcelas.reduce((sum, p) => sum + p.valor, 0);
+    doc.setDrawColor(...goldColor);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    
+    yPosition += 8;
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Total Parcelado:", margin + 50, yPosition);
+    doc.text(formatCurrency(totalParcelas), pageWidth - margin - 5, yPosition, { align: "right" });
+    
+    yPosition += 20;
+  }
+
   // Validity Section
+  // Check if we need a new page
+  if (yPosition > doc.internal.pageSize.getHeight() - 80) {
+    doc.addPage();
+    yPosition = 20;
+  }
+
   doc.setFillColor(...primaryColor);
   doc.rect(margin, yPosition, contentWidth, 8, "F");
   doc.setTextColor(255, 255, 255);
@@ -191,7 +288,6 @@ export const generateQuotePDF = (quote: QuoteData): void => {
     "• Este orçamento é válido pelo período indicado acima.",
     "• Os valores podem sofrer alterações após o vencimento.",
     "• Reserva confirmada mediante assinatura do contrato e pagamento do sinal.",
-    "• Consulte condições de pagamento e política de cancelamento.",
   ];
   
   terms.forEach((term) => {
