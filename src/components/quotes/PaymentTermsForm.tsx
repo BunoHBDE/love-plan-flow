@@ -347,9 +347,10 @@ export function PaymentTermsForm({
   };
 
   // Calculate limit date for display
-  const dataLimiteVencimento = dataEvento
+  const dataLimiteVencimento = dataEvento && dataEvento.length >= 10
     ? (() => {
         const eventDate = new Date(dataEvento + "T12:00:00");
+        if (isNaN(eventDate.getTime())) return null;
         const limitDate = new Date(eventDate);
         limitDate.setDate(limitDate.getDate() - 30);
         return limitDate.toISOString().split("T")[0];
