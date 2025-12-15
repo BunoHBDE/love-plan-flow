@@ -38,11 +38,13 @@ export function PaymentTermsForm({
   onChange,
 }: PaymentTermsFormProps) {
   const [percentualSinal, setPercentualSinal] = useState(10);
+  const [percentualInput, setPercentualInput] = useState("10");
   const [numeroParcelas, setNumeroParcelas] = useState(1);
   const [diaVencimento, setDiaVencimento] = useState(10);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [maxParcelas, setMaxParcelas] = useState(12);
   const [erroParcelamento, setErroParcelamento] = useState<string | null>(null);
+  const [erroSinal, setErroSinal] = useState(false);
 
   const valorSinal = (valorTotal * percentualSinal) / 100;
   const saldoRestante = valorTotal - valorSinal;
@@ -148,14 +150,29 @@ export function PaymentTermsForm({
   }, [percentualSinal, valorSinal, numeroParcelas, diaVencimento, parcelas]);
 
   const handlePercentualChange = (value: string) => {
-    let num = parseInt(value) || 10;
-    if (num < 10) {
-      num = 10;
+    setPercentualInput(value);
+    const num = parseInt(value);
+    if (!isNaN(num)) {
+      if (num < 10) {
+        setErroSinal(true);
+      } else {
+        setErroSinal(false);
+        setPercentualSinal(Math.min(num, 100));
+      }
     }
-    if (num > 100) {
-      num = 100;
+  };
+
+  const handlePercentualBlur = () => {
+    const num = parseInt(percentualInput);
+    if (isNaN(num) || num < 10) {
+      setPercentualSinal(10);
+      setPercentualInput("10");
+      setErroSinal(false);
+    } else {
+      const clamped = Math.min(num, 100);
+      setPercentualSinal(clamped);
+      setPercentualInput(clamped.toString());
     }
-    setPercentualSinal(num);
   };
 
   const formatCurrency = (value: number) => {
@@ -193,13 +210,14 @@ export function PaymentTermsForm({
                   type="number"
                   min={10}
                   max={100}
-                  value={percentualSinal}
+                  value={percentualInput}
                   onChange={(e) => handlePercentualChange(e.target.value)}
+                  onBlur={handlePercentualBlur}
                   className="w-24"
                 />
                 <span className="text-muted-foreground">%</span>
               </div>
-              {percentualSinal < 10 && (
+              {erroSinal && (
                 <p className="text-destructive text-xs mt-1 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   Mínimo de 10%
