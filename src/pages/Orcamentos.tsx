@@ -30,6 +30,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { generateQuotePDF } from "@/lib/generateQuotePDF";
 
 interface Quote {
   id: string;
@@ -387,7 +388,12 @@ export default function Orcamentos() {
                         <Button variant="ghost" size="icon" title="Editar">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" title="Baixar PDF">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Baixar PDF"
+                          onClick={() => generateQuotePDF(quote)}
+                        >
                           <Download className="h-4 w-4" />
                         </Button>
                       </div>
