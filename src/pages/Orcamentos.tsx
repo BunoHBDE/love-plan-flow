@@ -382,10 +382,20 @@ export default function Orcamentos() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" title="Visualizar">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Visualizar"
+                          onClick={() => navigate(`/orcamentos/${quote.id}`)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" title="Editar">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Editar"
+                          onClick={() => navigate(`/orcamentos/${quote.id}`)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button 
