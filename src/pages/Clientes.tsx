@@ -138,8 +138,8 @@ export default function Clientes() {
       email: clientData.email,
       phone: clientData.phone,
       cpf: clientData.cpf,
-      weddingDate: clientData.weddingDate || undefined,
-      guestCount: clientData.guestCount ? parseInt(clientData.guestCount) : undefined,
+      weddingDate: undefined,
+      guestCount: undefined,
       address: clientData.address,
       status: "lead",
     };
