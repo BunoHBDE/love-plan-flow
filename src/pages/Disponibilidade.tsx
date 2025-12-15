@@ -393,15 +393,23 @@ export default function Disponibilidade() {
                 </div>
               )}
 
-              {/* Calendars - Vertical layout */}
-              <div className={`flex flex-col gap-6 items-center ${
-                viewMode === "anual" ? "max-h-[600px] overflow-y-auto pr-2" : ""
+              {/* Calendars Grid */}
+              <div className={`grid gap-4 justify-items-center ${
+                viewMode === "anual" 
+                  ? "grid-cols-3 lg:grid-cols-4" 
+                  : viewMode === "estacao" 
+                    ? "grid-cols-1 sm:grid-cols-3" 
+                    : "grid-cols-1 place-items-center"
               }`}>
                 {monthsToDisplay.map((month, index) => (
-                  <div key={index} className="flex flex-col items-center w-full max-w-[320px]">
+                  <div key={index} className={`flex flex-col items-center ${
+                    viewMode === "anual" ? "w-full" : "w-full max-w-[320px]"
+                  }`}>
                     {viewMode !== "mensal" && (
-                      <h3 className="text-sm font-medium mb-2 capitalize">
-                        {format(month, "MMMM yyyy", { locale: ptBR })}
+                      <h3 className={`font-medium mb-1 capitalize ${
+                        viewMode === "anual" ? "text-xs" : "text-sm"
+                      }`}>
+                        {format(month, viewMode === "anual" ? "MMM" : "MMMM yyyy", { locale: ptBR })}
                       </h3>
                     )}
                     <Calendar
@@ -410,7 +418,11 @@ export default function Disponibilidade() {
                       onSelect={(date) => date && handleDateClick(date)}
                       month={month}
                       locale={ptBR}
-                      className="rounded-md border pointer-events-auto w-full"
+                      className={`rounded-md border pointer-events-auto ${
+                        viewMode === "anual" 
+                          ? "[&_.rdp-months]:p-1 [&_.rdp-cell]:p-0 [&_.rdp-day]:h-6 [&_.rdp-day]:w-6 [&_.rdp-day]:text-[10px] [&_.rdp-head_cell]:w-6 [&_.rdp-head_cell]:text-[10px] [&_.rdp-caption]:text-xs [&_.rdp-caption]:hidden [&_.rdp-nav]:hidden" 
+                          : "w-full"
+                      }`}
                       modifiers={{
                         occupied: datasOcupadas,
                         blocked: datasBloqueadas,
