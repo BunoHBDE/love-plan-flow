@@ -37,6 +37,13 @@ import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFor
 import { useClients, type Client, type ClientInsert } from "@/hooks/useClients";
 import { useQuotes } from "@/hooks/useQuotes";
 import { PaymentTermsForm, type PaymentTermsData } from "@/components/quotes/PaymentTermsForm";
+import { 
+  calcularPrecoDetalhado, 
+  getDiaSemana, 
+  getAnoFromDate,
+  formatCurrency as formatCurrencyUtil,
+  type ComposicaoPreco 
+} from "@/lib/pricing";
 
 const canaisEntrada = [
   { value: "instagram", label: "Instagram" },
@@ -55,7 +62,7 @@ const tiposEvento = [
 
 const pacotes = [
   { value: "harmonia", label: "Harmonia" },
-  { value: "jardim", label: "Jardim" },
+  { value: "jardim", label: "Jardim dos Sonhos" },
   { value: "essencia", label: "Essência" },
   { value: "florescer", label: "Florescer" },
 ];
@@ -64,58 +71,6 @@ const menusBuffet = [
   { value: "massas", label: "Massas" },
   { value: "brasileirinho", label: "Brasileirinho" },
 ];
-
-function calcularPreco(
-  pacote: string,
-  diaSemana: string,
-  n: number,
-  menu: string | null
-): number {
-  if (n <= 0) return 0;
-
-  if (pacote === "harmonia") {
-    if (diaSemana === "sabado") return 10100 + 31 * n;
-    if (diaSemana === "domingo") return 9100 + 31 * n;
-  }
-
-  if (pacote === "jardim") {
-    if (diaSemana === "sabado") return 12300 + 55 * n;
-    if (diaSemana === "domingo") return 10800 + 52 * n;
-  }
-
-  if (pacote === "essencia") {
-    if (menu === "brasileirinho") {
-      if (diaSemana === "sabado") return 10620 + 151 * n;
-      if (diaSemana === "domingo") return 9620 + 151 * n;
-    }
-    if (menu === "massas") {
-      if (diaSemana === "sabado") return 10740 + 182 * n;
-      if (diaSemana === "domingo") return 9740 + 182 * n;
-    }
-  }
-
-  if (pacote === "florescer") {
-    if (menu === "brasileirinho") {
-      if (diaSemana === "sabado") return 12820 + 175 * n;
-      if (diaSemana === "domingo") return 11320 + 172 * n;
-    }
-    if (menu === "massas") {
-      if (diaSemana === "sabado") return 12940 + 206 * n;
-      if (diaSemana === "domingo") return 11440 + 203 * n;
-    }
-  }
-
-  return 0;
-}
-
-function getDiaSemana(dateString: string): string | null {
-  if (!dateString) return null;
-  const date = new Date(dateString + "T12:00:00");
-  const day = date.getDay();
-  if (day === 6) return "sabado";
-  if (day === 0) return "domingo";
-  return null;
-}
 
 export default function NovoOrcamento() {
   const navigate = useNavigate();
@@ -161,6 +116,7 @@ export default function NovoOrcamento() {
   const [pacote, setPacote] = useState("");
   const [menuBuffet, setMenuBuffet] = useState<string | null>(null);
   const [valorOrcamento, setValorOrcamento] = useState(0);
+  const [composicaoPreco, setComposicaoPreco] = useState<ComposicaoPreco | null>(null);
 
   // Observations
   const [observacoesInternas, setObservacoesInternas] = useState("");
@@ -179,16 +135,22 @@ export default function NovoOrcamento() {
   // Calculate price when relevant fields change
   useEffect(() => {
     const dia = dataStatus === "com_data" ? getDiaSemana(dataEvento) : diaSemana;
+    const ano = dataStatus === "com_data" && dataEvento ? getAnoFromDate(dataEvento) : (anoEvento || new Date().getFullYear().toString());
+    
     if (pacote && dia && nConvidados > 0) {
-      const needsMenu = pacote === "essencia" || pacote === "florescer";
-      if (!needsMenu || (needsMenu && menuBuffet)) {
-        const valor = calcularPreco(pacote, dia, nConvidados, menuBuffet);
-        setValorOrcamento(valor);
+      const composicao = calcularPrecoDetalhado(pacote, dia, nConvidados, menuBuffet, ano);
+      if (composicao) {
+        setComposicaoPreco(composicao);
+        setValorOrcamento(composicao.total);
+      } else {
+        setComposicaoPreco(null);
+        setValorOrcamento(0);
       }
     } else {
+      setComposicaoPreco(null);
       setValorOrcamento(0);
     }
-  }, [pacote, diaSemana, dataEvento, dataStatus, nConvidados, menuBuffet]);
+  }, [pacote, diaSemana, dataEvento, dataStatus, nConvidados, menuBuffet, anoEvento]);
 
   // Update diaSemana when dataEvento changes
   useEffect(() => {
@@ -733,16 +695,16 @@ export default function NovoOrcamento() {
           {/* Sidebar - Summary */}
           <div className="lg:col-span-1">
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border sticky top-6 animate-slide-up">
-              <h2 className="text-lg font-display font-semibold mb-4">Resumo</h2>
+              <h2 className="text-lg font-display font-semibold mb-4">Resumo do Orçamento</h2>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Cliente</span>
-                  <span className="font-medium">{nomeCliente || "-"}</span>
+                  <span className="text-muted-foreground text-sm">Cliente</span>
+                  <span className="font-medium text-sm">{nomeCliente || "-"}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Data do Evento</span>
-                  <span className="font-medium">
+                  <span className="text-muted-foreground text-sm">Data do Evento</span>
+                  <span className="font-medium text-sm">
                     {dataEvento
                       ? formatDate(dataEvento)
                       : diaSemana && anoEvento
@@ -751,26 +713,56 @@ export default function NovoOrcamento() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Convidados</span>
-                  <span className="font-medium">{nConvidados || "-"}</span>
+                  <span className="text-muted-foreground text-sm">Convidados</span>
+                  <span className="font-medium text-sm">{nConvidados || "-"}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Pacote</span>
-                  <span className="font-medium">
-                    {pacotes.find((p) => p.value === pacote)?.label || "-"}
+                  <span className="text-muted-foreground text-sm">Pacote</span>
+                  <span className="font-medium text-sm">
+                    {composicaoPreco?.detalhes.pacoteNome || pacotes.find((p) => p.value === pacote)?.label || "-"}
                   </span>
                 </div>
-                {menuBuffet && (
+                {composicaoPreco?.detalhes.buffetNome && (
                   <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-muted-foreground">Menu</span>
-                    <span className="font-medium">
-                      {menusBuffet.find((m) => m.value === menuBuffet)?.label}
-                    </span>
+                    <span className="text-muted-foreground text-sm">Buffet</span>
+                    <span className="font-medium text-sm">{composicaoPreco.detalhes.buffetNome}</span>
                   </div>
                 )}
+
+                {/* Composição do Valor */}
+                {composicaoPreco && (
+                  <div className="pt-4 space-y-2">
+                    <h3 className="text-sm font-semibold text-primary">Composição do Valor</h3>
+                    
+                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground text-xs">Espaço ({composicaoPreco.detalhes.ano})</span>
+                        <span className="font-medium text-sm">{formatCurrency(composicaoPreco.espaco)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground text-xs">Decoração</span>
+                        <span className="font-medium text-sm">{formatCurrency(composicaoPreco.decoracao)}</span>
+                      </div>
+                      {composicaoPreco.buffet !== null && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground text-xs">Buffet ({composicaoPreco.detalhes.buffetNome})</span>
+                          <span className="font-medium text-sm">{formatCurrency(composicaoPreco.buffet)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t border-primary/20">
+                      <span className="font-medium text-sm">Valor por Convidado Adicional</span>
+                      <span className="font-semibold text-primary text-sm">
+                        {formatCurrency(composicaoPreco.custoConvidadoAdicional)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Validade</span>
-                  <span className="font-medium">{formatDate(validadeOrcamento)}</span>
+                  <span className="text-muted-foreground text-sm">Validade</span>
+                  <span className="font-medium text-sm">{formatDate(validadeOrcamento)}</span>
                 </div>
 
                 <div className="pt-4 border-t-2 border-primary/20">
