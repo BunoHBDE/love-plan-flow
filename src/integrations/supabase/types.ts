@@ -123,6 +123,7 @@ export type Database = {
           data_status: string
           dia_semana: string | null
           dia_vencimento: number
+          extras_json: Json | null
           id: string
           menu_buffet: string | null
           n_convidados: number
@@ -149,6 +150,7 @@ export type Database = {
           data_status?: string
           dia_semana?: string | null
           dia_vencimento?: number
+          extras_json?: Json | null
           id?: string
           menu_buffet?: string | null
           n_convidados?: number
@@ -175,6 +177,7 @@ export type Database = {
           data_status?: string
           dia_semana?: string | null
           dia_vencimento?: number
+          extras_json?: Json | null
           id?: string
           menu_buffet?: string | null
           n_convidados?: number

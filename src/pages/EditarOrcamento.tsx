@@ -28,12 +28,14 @@ import {
   FileText,
   ChevronDown,
   Loader2,
+  DollarSign,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { cn } from "@/lib/utils";
 import { useQuotes, type Quote } from "@/hooks/useQuotes";
 import { PaymentTermsForm, type PaymentTermsData, type Parcela } from "@/components/quotes/PaymentTermsForm";
+import { ExtrasForm, type ExtraItem } from "@/components/quotes/ExtrasForm";
 import { 
   calcularPrecoDetalhado, 
   getDiaSemana, 
@@ -123,6 +125,9 @@ export default function EditarOrcamento() {
   });
   const [hasPaymentErrors, setHasPaymentErrors] = useState(false);
 
+  // Extras state
+  const [extras, setExtras] = useState<ExtraItem[]>([]);
+
   // Load quote data
   useEffect(() => {
     const loadQuote = async () => {
@@ -165,6 +170,16 @@ export default function EditarOrcamento() {
               dataVencimento: p.dataVencimento,
             })),
           });
+        }
+
+        // Load extras
+        const extrasJson = quote.extras_json as any[] | null;
+        if (extrasJson && extrasJson.length > 0) {
+          setExtras(extrasJson.map((e: any) => ({
+            id: e.id || crypto.randomUUID(),
+            descricao: e.descricao,
+            valor: e.valor,
+          })));
         }
       }
       setLoading(false);
@@ -220,6 +235,9 @@ export default function EditarOrcamento() {
   const handleSave = async () => {
     if (!quoteData) return;
     
+    const totalExtras = extras.reduce((sum, e) => sum + e.valor, 0);
+    const valorFinal = valorOrcamento + totalExtras;
+    
     const success = await updateQuote(quoteData.id, {
       n_convidados: guestCount,
       data_evento: weddingDate || null,
@@ -232,12 +250,13 @@ export default function EditarOrcamento() {
       observacoes_internas: observacoesInternas || null,
       observacoes_cliente: observacoesCliente || null,
       validade: validUntil || null,
-      valor_total: valorOrcamento,
+      valor_total: valorFinal,
       percentual_sinal: paymentTerms.percentualSinal,
       valor_sinal: paymentTerms.valorSinal,
       numero_parcelas: paymentTerms.numeroParcelas,
       dia_vencimento: paymentTerms.diaVencimento,
       parcelas_json: paymentTerms.parcelas,
+      extras_json: extras,
     });
     
     if (success) {
@@ -257,7 +276,7 @@ export default function EditarOrcamento() {
 
     // Parse payment terms from quote data
     const parcelasJson = quoteData.parcelas_json as any[] | null;
-    const paymentTerms = parcelasJson && parcelasJson.length > 0
+    const paymentTermsData = parcelasJson && parcelasJson.length > 0
       ? {
           percentualSinal: quoteData.percentual_sinal,
           valorSinal: quoteData.valor_sinal,
@@ -270,19 +289,31 @@ export default function EditarOrcamento() {
         }
       : undefined;
 
+    // Parse extras from quote data
+    const extrasJson = quoteData.extras_json as any[] | null;
+    const extrasData = extrasJson && extrasJson.length > 0
+      ? extrasJson.map((e: any) => ({
+          descricao: e.descricao,
+          valor: e.valor,
+        }))
+      : undefined;
+
+    const totalExtras = extras.reduce((sum, e) => sum + e.valor, 0);
+    const valorFinal = valorOrcamento + totalExtras;
+
     generateQuotePDF({
       id: quoteData.quote_number,
       clientName: quoteData.client?.nome || "Cliente",
       guestCount,
       weddingDate,
-      totalValue: valorOrcamento,
+      totalValue: valorFinal,
       status: status as any,
       createdAt: quoteData.created_at.split("T")[0],
       validUntil,
       items: [
         { description: `Pacote ${pacote}`, value: valorOrcamento },
       ],
-      paymentTerms,
+      paymentTerms: paymentTermsData,
       composicao: composicaoPreco ? {
         espaco: composicaoPreco.espaco,
         decoracao: composicaoPreco.decoracao,
@@ -292,6 +323,7 @@ export default function EditarOrcamento() {
         buffetNome: composicaoPreco.detalhes.buffetNome,
       } : undefined,
       pacoteNome: composicaoPreco?.detalhes.pacoteNome,
+      extras: extrasData,
     });
   };
 
@@ -586,6 +618,20 @@ export default function EditarOrcamento() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Extras */}
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">Valores Extras</h2>
+              </div>
+              
+              <ExtrasForm 
+                extras={extras} 
+                onChange={setExtras} 
+                disabled={!isEditing}
+              />
             </div>
 
             {/* Observations */}

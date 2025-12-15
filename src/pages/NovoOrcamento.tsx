@@ -37,6 +37,7 @@ import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFor
 import { useClients, type Client, type ClientInsert } from "@/hooks/useClients";
 import { useQuotes } from "@/hooks/useQuotes";
 import { PaymentTermsForm, type PaymentTermsData } from "@/components/quotes/PaymentTermsForm";
+import { ExtrasForm, type ExtraItem } from "@/components/quotes/ExtrasForm";
 import { 
   calcularPrecoDetalhado, 
   getDiaSemana, 
@@ -44,6 +45,7 @@ import {
   formatCurrency as formatCurrencyUtil,
   type ComposicaoPreco 
 } from "@/lib/pricing";
+import { DollarSign } from "lucide-react";
 
 const canaisEntrada = [
   { value: "instagram", label: "Instagram" },
@@ -121,6 +123,9 @@ export default function NovoOrcamento() {
   // Observations
   const [observacoesInternas, setObservacoesInternas] = useState("");
   const [observacoesCliente, setObservacoesCliente] = useState("");
+
+  // Extras
+  const [extras, setExtras] = useState<ExtraItem[]>([]);
 
   // Payment terms
   const [paymentTerms, setPaymentTerms] = useState<PaymentTermsData>({
@@ -296,6 +301,9 @@ export default function NovoOrcamento() {
 
     setIsSaving(true);
 
+    const totalExtras = extras.reduce((sum, e) => sum + e.valor, 0);
+    const valorFinal = valorOrcamento + totalExtras;
+
     const quote = await createQuote({
       client_id: clienteId,
       canal_entrada: canalEntrada || null,
@@ -307,7 +315,7 @@ export default function NovoOrcamento() {
       n_convidados: nConvidados,
       pacote,
       menu_buffet: menuBuffet,
-      valor_total: valorOrcamento,
+      valor_total: valorFinal,
       validade: validadeOrcamento || null,
       status,
       observacoes_internas: observacoesInternas || null,
@@ -317,6 +325,7 @@ export default function NovoOrcamento() {
       numero_parcelas: paymentTerms.numeroParcelas,
       dia_vencimento: paymentTerms.diaVencimento,
       parcelas_json: paymentTerms.parcelas,
+      extras_json: extras,
     });
 
     setIsSaving(false);
@@ -659,7 +668,17 @@ export default function NovoOrcamento() {
               onValidationChange={setHasPaymentErrors}
             />
 
-            {/* Block 5 - Observações */}
+            {/* Block 5 - Valores Extras */}
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">Valores Extras</h2>
+              </div>
+
+              <ExtrasForm extras={extras} onChange={setExtras} />
+            </div>
+
+            {/* Block 6 - Observações */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="h-5 w-5 text-primary" />
