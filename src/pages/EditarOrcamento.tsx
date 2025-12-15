@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { cn } from "@/lib/utils";
 import { useQuotes, type Quote } from "@/hooks/useQuotes";
+import { PaymentTermsForm, type PaymentTermsData, type Parcela } from "@/components/quotes/PaymentTermsForm";
 
 const statusLabels: Record<string, string> = {
   rascunho: "Rascunho",
@@ -155,6 +156,16 @@ export default function EditarOrcamento() {
   const [validUntil, setValidUntil] = useState("");
   const [valorOrcamento, setValorOrcamento] = useState(0);
 
+  // Payment terms state
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermsData>({
+    percentualSinal: 10,
+    valorSinal: 0,
+    numeroParcelas: 1,
+    diaVencimento: 10,
+    parcelas: [],
+  });
+  const [hasPaymentErrors, setHasPaymentErrors] = useState(false);
+
   // Load quote data
   useEffect(() => {
     const loadQuote = async () => {
@@ -175,6 +186,22 @@ export default function EditarOrcamento() {
         setObservacoesCliente(quote.observacoes_cliente || "");
         setValidUntil(quote.validade || "");
         setValorOrcamento(Number(quote.valor_total));
+        
+        // Load payment terms
+        const parcelasJson = quote.parcelas_json as any[] | null;
+        if (parcelasJson && parcelasJson.length > 0) {
+          setPaymentTerms({
+            percentualSinal: quote.percentual_sinal,
+            valorSinal: quote.valor_sinal,
+            numeroParcelas: quote.numero_parcelas,
+            diaVencimento: quote.dia_vencimento,
+            parcelas: parcelasJson.map((p: any) => ({
+              numero: p.numero,
+              valor: p.valor,
+              dataVencimento: p.dataVencimento,
+            })),
+          });
+        }
       }
       setLoading(false);
     };
@@ -235,6 +262,11 @@ export default function EditarOrcamento() {
       observacoes_cliente: observacoesCliente || null,
       validade: validUntil || null,
       valor_total: valorOrcamento,
+      percentual_sinal: paymentTerms.percentualSinal,
+      valor_sinal: paymentTerms.valorSinal,
+      numero_parcelas: paymentTerms.numeroParcelas,
+      dia_vencimento: paymentTerms.diaVencimento,
+      parcelas_json: paymentTerms.parcelas,
     });
     
     if (success) {
@@ -370,7 +402,7 @@ export default function EditarOrcamento() {
                 <Button variant="outline" onClick={() => setIsEditing(false)}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSave}>
+                <Button variant="gold" onClick={handleSave} disabled={hasPaymentErrors}>
                   <Save className="h-4 w-4 mr-2" />
                   Salvar
                 </Button>
@@ -612,6 +644,43 @@ export default function EditarOrcamento() {
                 </div>
               </div>
             </div>
+
+            {/* Payment Terms - Only show when editing */}
+            {isEditing && (
+              <PaymentTermsForm
+                valorTotal={valorOrcamento}
+                dataEvento={weddingDate || null}
+                onChange={setPaymentTerms}
+                onValidationChange={setHasPaymentErrors}
+              />
+            )}
+
+            {/* Payment Terms Summary - Show when not editing */}
+            {!isEditing && paymentTerms.parcelas.length > 0 && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-display font-semibold">Condições de Pagamento</h2>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-2 bg-primary/10 rounded border border-primary/20">
+                    <span className="font-medium text-sm">Sinal ({paymentTerms.percentualSinal}%)</span>
+                    <span className="font-semibold text-primary">{formatCurrency(paymentTerms.valorSinal)}</span>
+                  </div>
+                  
+                  {paymentTerms.parcelas.map((parcela) => (
+                    <div key={parcela.numero} className="flex justify-between items-center p-2 bg-secondary/30 rounded">
+                      <span className="text-sm">Parcela {parcela.numero}</span>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-muted-foreground">{formatDate(parcela.dataVencimento)}</span>
+                        <span className="font-medium">{formatCurrency(parcela.valor)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar - Summary */}
