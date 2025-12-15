@@ -48,6 +48,8 @@ export function PaymentTermsForm({
   const [numeroParcelas, setNumeroParcelas] = useState(1);
   const [diaVencimento, setDiaVencimento] = useState(10);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
+  const [parcelaInputs, setParcelaInputs] = useState<{ valor: string }[]>([]);
+  const [parcelasEditadas, setParcelasEditadas] = useState(false);
   const [maxParcelas, setMaxParcelas] = useState(12);
   const [erroParcelamento, setErroParcelamento] = useState<string | null>(null);
   const [erroSinal, setErroSinal] = useState(false);
@@ -110,10 +112,13 @@ export function PaymentTermsForm({
     }
   }, [dataEvento, diaVencimento]);
 
-  // Calculate installment dates
+  // Calculate installment dates - only recalculate if not manually edited
   useEffect(() => {
+    if (parcelasEditadas) return; // Don't recalculate if user has manually edited
+    
     if (numeroParcelas <= 0 || saldoRestante <= 0) {
       setParcelas([]);
+      setParcelaInputs([]);
       return;
     }
 
@@ -162,7 +167,13 @@ export function PaymentTermsForm({
 
     novasParcelas.sort((a, b) => a.numero - b.numero);
     setParcelas(novasParcelas);
-  }, [numeroParcelas, diaVencimento, saldoRestante, dataEvento, valorParcelaFinal, valorParcelaRegular]);
+    setParcelaInputs(novasParcelas.map(p => ({ valor: p.valor.toFixed(2) })));
+  }, [numeroParcelas, diaVencimento, saldoRestante, dataEvento, valorParcelaFinal, valorParcelaRegular, parcelasEditadas]);
+
+  // Reset manual edits when number of installments changes
+  useEffect(() => {
+    setParcelasEditadas(false);
+  }, [numeroParcelas]);
 
   // Notify parent of changes
   useEffect(() => {
@@ -250,6 +261,47 @@ export function PaymentTermsForm({
       setValorParcelaFinalInput(num.toFixed(2));
     }
   };
+
+  // Handle individual installment value change
+  const handleParcelaValueChange = (index: number, value: string) => {
+    const newInputs = [...parcelaInputs];
+    newInputs[index] = { valor: value };
+    setParcelaInputs(newInputs);
+  };
+
+  const handleParcelaValueBlur = (index: number) => {
+    const input = parcelaInputs[index]?.valor;
+    if (input === undefined) return;
+    
+    const num = parseFloat(input.replace(",", "."));
+    if (isNaN(num) || num < 0) {
+      // Reset to current value
+      const newInputs = [...parcelaInputs];
+      newInputs[index] = { valor: parcelas[index].valor.toFixed(2) };
+      setParcelaInputs(newInputs);
+      return;
+    }
+    
+    const newParcelas = [...parcelas];
+    newParcelas[index] = { ...newParcelas[index], valor: num };
+    setParcelas(newParcelas);
+    setParcelasEditadas(true);
+    
+    const newInputs = [...parcelaInputs];
+    newInputs[index] = { valor: num.toFixed(2) };
+    setParcelaInputs(newInputs);
+  };
+
+  // Handle individual installment date change
+  const handleParcelaDateChange = (index: number, value: string) => {
+    const newParcelas = [...parcelas];
+    newParcelas[index] = { ...newParcelas[index], dataVencimento: value };
+    setParcelas(newParcelas);
+    setParcelasEditadas(true);
+  };
+
+  // Calculate total of installments
+  const totalParcelas = parcelas.reduce((sum, p) => sum + p.valor, 0);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -405,7 +457,7 @@ export function PaymentTermsForm({
           {parcelas.length > 0 && (
             <div className="mt-4">
               <Label className="text-muted-foreground text-sm mb-2 block">
-                Cronograma de Parcelas
+                Cronograma de Parcelas (edite valores e vencimentos)
               </Label>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 bg-primary/10 rounded border border-primary/20">
@@ -418,29 +470,48 @@ export function PaymentTermsForm({
                     {formatCurrency(valorSinal)}
                   </span>
                 </div>
-                {parcelas.map((parcela) => (
+                {parcelas.map((parcela, index) => (
                   <div
                     key={parcela.numero}
-                    className={`flex items-center gap-2 p-2 rounded ${
-                      parcela.numero === numeroParcelas && valorParcelaFinal !== null
-                        ? "bg-accent/20 border border-accent/30"
-                        : "bg-secondary/30"
-                    }`}
+                    className="flex flex-wrap items-center gap-2 p-2 rounded bg-secondary/30"
                   >
                     <span className="font-medium text-sm w-20">
                       Parcela {parcela.numero}
-                      {parcela.numero === numeroParcelas && valorParcelaFinal !== null && (
-                        <span className="text-xs text-muted-foreground"> (final)</span>
-                      )}
                     </span>
-                    <span className="text-sm text-muted-foreground">
-                      Vencimento: {formatDate(parcela.dataVencimento)}
-                    </span>
-                    <span className="font-semibold ml-auto">
-                      {formatCurrency(parcela.valor)}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Vencimento:</span>
+                      <Input
+                        type="date"
+                        value={parcela.dataVencimento}
+                        onChange={(e) => handleParcelaDateChange(index, e.target.value)}
+                        className="w-36 h-8 text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 ml-auto">
+                      <span className="text-xs text-muted-foreground">R$</span>
+                      <Input
+                        type="text"
+                        value={parcelaInputs[index]?.valor ?? parcela.valor.toFixed(2)}
+                        onChange={(e) => handleParcelaValueChange(index, e.target.value)}
+                        onBlur={() => handleParcelaValueBlur(index)}
+                        className="w-24 h-8 text-sm text-right"
+                      />
+                    </div>
                   </div>
                 ))}
+                {parcelas.length > 0 && (
+                  <div className="flex items-center justify-between p-2 bg-muted rounded border border-border mt-2">
+                    <span className="text-sm font-medium">Total Parcelas:</span>
+                    <span className={`font-semibold ${Math.abs(totalParcelas - saldoRestante) > 0.01 ? "text-destructive" : "text-primary"}`}>
+                      {formatCurrency(totalParcelas)}
+                      {Math.abs(totalParcelas - saldoRestante) > 0.01 && (
+                        <span className="text-xs ml-2">
+                          (esperado: {formatCurrency(saldoRestante)})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
