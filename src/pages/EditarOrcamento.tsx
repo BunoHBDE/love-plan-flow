@@ -35,7 +35,7 @@ import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { cn } from "@/lib/utils";
 import { useQuotes, type Quote } from "@/hooks/useQuotes";
 import { PaymentTermsForm, type PaymentTermsData, type Parcela } from "@/components/quotes/PaymentTermsForm";
-import { ExtrasForm, type ExtraItem } from "@/components/quotes/ExtrasForm";
+import { ExtrasForm, type ExtraItem, calcularTotalExtras } from "@/components/quotes/ExtrasForm";
 import { 
   calcularPrecoDetalhado, 
   getDiaSemana, 
@@ -179,6 +179,7 @@ export default function EditarOrcamento() {
             id: e.id || crypto.randomUUID(),
             descricao: e.descricao,
             valor: e.valor,
+            porConvidado: e.porConvidado || false,
           })));
         }
       }
@@ -235,7 +236,7 @@ export default function EditarOrcamento() {
   const handleSave = async () => {
     if (!quoteData) return;
     
-    const totalExtras = extras.reduce((sum, e) => sum + e.valor, 0);
+    const totalExtras = calcularTotalExtras(extras, guestCount);
     const valorFinal = valorOrcamento + totalExtras;
     
     const success = await updateQuote(quoteData.id, {
@@ -295,10 +296,11 @@ export default function EditarOrcamento() {
       ? extrasJson.map((e: any) => ({
           descricao: e.descricao,
           valor: e.valor,
+          porConvidado: e.porConvidado || false,
         }))
       : undefined;
 
-    const totalExtras = extras.reduce((sum, e) => sum + e.valor, 0);
+    const totalExtras = calcularTotalExtras(extras, guestCount);
     const valorFinal = valorOrcamento + totalExtras;
 
     generateQuotePDF({
@@ -631,6 +633,7 @@ export default function EditarOrcamento() {
                 extras={extras} 
                 onChange={setExtras} 
                 disabled={!isEditing}
+                guestCount={guestCount}
               />
             </div>
 
@@ -674,7 +677,7 @@ export default function EditarOrcamento() {
             {/* Payment Terms - Only show when editing */}
             {isEditing && (
               <PaymentTermsForm
-                valorTotal={valorOrcamento + extras.reduce((sum, e) => sum + e.valor, 0)}
+                valorTotal={valorOrcamento + calcularTotalExtras(extras, guestCount)}
                 dataEvento={weddingDate || null}
                 onChange={setPaymentTerms}
                 onValidationChange={setHasPaymentErrors}
@@ -778,12 +781,20 @@ export default function EditarOrcamento() {
                   <div className="pt-4 space-y-2">
                     <h3 className="text-sm font-semibold text-primary">Valores Extras</h3>
                     <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                      {extras.map((extra) => (
-                        <div key={extra.id} className="flex justify-between items-center">
-                          <span className="text-muted-foreground text-xs">{extra.descricao}</span>
-                          <span className="font-medium text-sm">{formatCurrency(extra.valor)}</span>
-                        </div>
-                      ))}
+                      {extras.map((extra) => {
+                        const valorCalculado = extra.porConvidado 
+                          ? extra.valor * guestCount 
+                          : extra.valor;
+                        return (
+                          <div key={extra.id} className="flex justify-between items-center">
+                            <span className="text-muted-foreground text-xs">
+                              {extra.descricao}
+                              {extra.porConvidado && ` (×${guestCount})`}
+                            </span>
+                            <span className="font-medium text-sm">{formatCurrency(valorCalculado)}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -792,7 +803,7 @@ export default function EditarOrcamento() {
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold">Total</span>
                     <span className="text-2xl font-display font-bold text-gold">
-                      {formatCurrency(valorOrcamento + extras.reduce((sum, e) => sum + e.valor, 0))}
+                      {formatCurrency(valorOrcamento + calcularTotalExtras(extras, guestCount))}
                     </span>
                   </div>
                 </div>

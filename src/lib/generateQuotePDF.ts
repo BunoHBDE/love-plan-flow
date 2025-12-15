@@ -30,6 +30,7 @@ interface ComposicaoPreco {
 interface ExtraItem {
   descricao: string;
   valor: number;
+  porConvidado?: boolean;
 }
 
 interface QuoteData {
@@ -216,8 +217,17 @@ export const generateQuotePDF = (quote: QuoteData): void => {
         doc.setFillColor(250, 247, 242);
         doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
       }
-      doc.text(extra.descricao, margin + 5, yPosition);
-      doc.text(formatCurrency(extra.valor), pageWidth - margin - 5, yPosition, { align: "right" });
+      
+      const valorCalculado = extra.porConvidado 
+        ? extra.valor * quote.guestCount 
+        : extra.valor;
+      
+      const descricao = extra.porConvidado 
+        ? `${extra.descricao} (${formatCurrency(extra.valor)} × ${quote.guestCount})`
+        : extra.descricao;
+      
+      doc.text(descricao, margin + 5, yPosition);
+      doc.text(formatCurrency(valorCalculado), pageWidth - margin - 5, yPosition, { align: "right" });
       yPosition += 10;
     });
   }

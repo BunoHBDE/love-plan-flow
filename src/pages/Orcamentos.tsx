@@ -153,6 +153,7 @@ export default function Orcamentos() {
       ? extrasJson.map((e: any) => ({
           descricao: e.descricao,
           valor: e.valor,
+          porConvidado: e.porConvidado || false,
         }))
       : undefined;
 
