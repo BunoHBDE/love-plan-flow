@@ -2,6 +2,16 @@ import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -10,15 +20,34 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CalendarDays, List, Users, Loader2 } from "lucide-react";
-import { format, isSameDay, isSameMonth, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { CalendarDays, List, Users, Loader2, Plus, Ban, Trash2 } from "lucide-react";
+import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuotes } from "@/hooks/useQuotes";
-import { cn } from "@/lib/utils";
+import { useBlockedDates, type BlockedDate } from "@/hooks/useBlockedDates";
 
 export default function Disponibilidade() {
-  const { quotes, loading } = useQuotes();
+  const { quotes, loading: loadingQuotes } = useQuotes();
+  const { blockedDates, loading: loadingBlocked, addBlockedDate, removeBlockedDate } = useBlockedDates();
+  
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newBlockedDate, setNewBlockedDate] = useState("");
+  const [newBlockedReason, setNewBlockedReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<BlockedDate | null>(null);
+
+  const loading = loadingQuotes || loadingBlocked;
 
   // Filter only accepted quotes with event dates
   const eventosAceitos = useMemo(() => {
@@ -31,13 +60,24 @@ export default function Disponibilidade() {
         guestCount: q.n_convidados,
         pacote: q.pacote,
         quoteNumber: q.quote_number,
+        type: "evento" as const,
       }));
   }, [quotes]);
 
-  // Get occupied dates
+  // Get blocked dates as Date objects
+  const datasBloqueadas = useMemo(() => {
+    return blockedDates.map((b) => new Date(b.date + "T12:00:00"));
+  }, [blockedDates]);
+
+  // Get occupied dates (events + blocked)
   const datasOcupadas = useMemo(() => {
     return eventosAceitos.map((e) => new Date(e.date + "T12:00:00"));
   }, [eventosAceitos]);
+
+  // All unavailable dates
+  const allUnavailableDates = useMemo(() => {
+    return [...datasOcupadas, ...datasBloqueadas];
+  }, [datasOcupadas, datasBloqueadas]);
 
   // Get events in selected month
   const eventosNoMes = useMemo(() => {
@@ -49,6 +89,17 @@ export default function Disponibilidade() {
       return eventDate >= start && eventDate <= end;
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [eventosAceitos, selectedMonth]);
+
+  // Get blocked dates in selected month
+  const bloqueadasNoMes = useMemo(() => {
+    const start = startOfMonth(selectedMonth);
+    const end = endOfMonth(selectedMonth);
+    
+    return blockedDates.filter((b) => {
+      const blockedDate = new Date(b.date + "T12:00:00");
+      return blockedDate >= start && blockedDate <= end;
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [blockedDates, selectedMonth]);
 
   // Get available weekend dates in selected month
   const datasDisponiveis = useMemo(() => {
@@ -64,10 +115,10 @@ export default function Disponibilidade() {
       if (!isWeekend(day)) return false;
       // Only future dates
       if (day < today) return false;
-      // Not already occupied
-      return !datasOcupadas.some((occupied) => isSameDay(occupied, day));
+      // Not already occupied or blocked
+      return !allUnavailableDates.some((unavailable) => isSameDay(unavailable, day));
     });
-  }, [selectedMonth, datasOcupadas]);
+  }, [selectedMonth, allUnavailableDates]);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString + "T12:00:00"), "dd 'de' MMMM", { locale: ptBR });
@@ -78,8 +129,24 @@ export default function Disponibilidade() {
     return date.getDay() === 6 ? "Sábado" : "Domingo";
   };
 
-  const isDateOccupied = (date: Date) => {
-    return datasOcupadas.some((occupied) => isSameDay(occupied, date));
+  const handleAddBlockedDate = async () => {
+    if (!newBlockedDate || !newBlockedReason.trim()) return;
+    
+    setIsSubmitting(true);
+    const success = await addBlockedDate(newBlockedDate, newBlockedReason.trim());
+    setIsSubmitting(false);
+    
+    if (success) {
+      setIsAddDialogOpen(false);
+      setNewBlockedDate("");
+      setNewBlockedReason("");
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    await removeBlockedDate(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   if (loading) {
@@ -96,13 +163,20 @@ export default function Disponibilidade() {
     <MainLayout>
       <div className="space-y-8">
         {/* Header */}
-        <div className="animate-fade-in">
-          <h1 className="text-3xl font-display font-bold text-foreground">
-            Disponibilidade
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Consulte datas disponíveis e eventos confirmados
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-foreground">
+              Disponibilidade
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Consulte datas disponíveis e eventos confirmados
+            </p>
+          </div>
+
+          <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
+            <Ban className="h-4 w-4 mr-2" />
+            Bloquear Data
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -124,10 +198,12 @@ export default function Disponibilidade() {
                   className="rounded-md border pointer-events-auto"
                   modifiers={{
                     occupied: datasOcupadas,
+                    blocked: datasBloqueadas,
                     available: datasDisponiveis,
                   }}
                   modifiersClassNames={{
                     occupied: "bg-destructive/20 text-destructive font-semibold",
+                    blocked: "bg-warning/20 text-warning font-semibold",
                     available: "bg-success/20 text-success font-semibold",
                   }}
                   disabled={(date) => {
@@ -138,18 +214,18 @@ export default function Disponibilidade() {
                 />
 
                 {/* Legend */}
-                <div className="flex items-center gap-6 mt-4 text-sm">
+                <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded bg-destructive/20 border border-destructive/30" />
-                    <span className="text-muted-foreground">Ocupado</span>
+                    <span className="text-muted-foreground">Evento</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-warning/20 border border-warning/30" />
+                    <span className="text-muted-foreground">Bloqueado</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded bg-success/20 border border-success/30" />
                     <span className="text-muted-foreground">Disponível</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-muted border border-border" />
-                    <span className="text-muted-foreground">Dia de semana</span>
                   </div>
                 </div>
               </div>
@@ -207,6 +283,53 @@ export default function Disponibilidade() {
                 </Table>
               )}
             </div>
+
+            {/* Blocked Dates List */}
+            {bloqueadasNoMes.length > 0 && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+                <div className="flex items-center gap-2 mb-4">
+                  <Ban className="h-5 w-5 text-warning" />
+                  <h2 className="text-lg font-display font-semibold">
+                    Datas Bloqueadas em {format(selectedMonth, "MMMM", { locale: ptBR })}
+                  </h2>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Motivo</TableHead>
+                      <TableHead className="w-16">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bloqueadasNoMes.map((blocked) => (
+                      <TableRow key={blocked.id}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{formatDate(blocked.date)}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {getDayOfWeek(blocked.date)}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{blocked.reason}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteTarget(blocked)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
 
           {/* Sidebar - Summary */}
@@ -219,14 +342,21 @@ export default function Disponibilidade() {
               
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-                  <span className="text-sm font-medium">Datas Ocupadas</span>
+                  <span className="text-sm font-medium">Eventos</span>
                   <span className="text-2xl font-bold text-destructive">
                     {eventosNoMes.length}
                   </span>
                 </div>
+
+                <div className="flex justify-between items-center p-3 bg-warning/10 rounded-lg border border-warning/20">
+                  <span className="text-sm font-medium">Bloqueados</span>
+                  <span className="text-2xl font-bold text-warning">
+                    {bloqueadasNoMes.length}
+                  </span>
+                </div>
                 
                 <div className="flex justify-between items-center p-3 bg-success/10 rounded-lg border border-success/20">
-                  <span className="text-sm font-medium">Datas Disponíveis</span>
+                  <span className="text-sm font-medium">Disponíveis</span>
                   <span className="text-2xl font-bold text-success">
                     {datasDisponiveis.length}
                   </span>
@@ -265,6 +395,70 @@ export default function Disponibilidade() {
           </div>
         </div>
       </div>
+
+      {/* Add Blocked Date Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bloquear Data</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Data</Label>
+              <Input
+                type="date"
+                value={newBlockedDate}
+                onChange={(e) => setNewBlockedDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Motivo</Label>
+              <Input
+                placeholder="Ex: Feriado, Manutenção, Evento privado..."
+                value={newBlockedReason}
+                onChange={(e) => setNewBlockedReason(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="gold"
+              onClick={handleAddBlockedDate}
+              disabled={!newBlockedDate || !newBlockedReason.trim() || isSubmitting}
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Bloquear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desbloquear Data</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja desbloquear a data{" "}
+              <strong>{deleteTarget && formatDate(deleteTarget.date)}</strong>?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>
+              Desbloquear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
