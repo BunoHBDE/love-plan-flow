@@ -29,9 +29,7 @@ import {
   FileText,
   ArrowLeft,
   Save,
-  Users,
   Plus,
-  Phone,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
@@ -97,12 +95,6 @@ const pacotes = [
 const menusBuffet = [
   { value: "massas", label: "Massas" },
   { value: "brasileirinho", label: "Brasileirinho" },
-];
-
-const estadosBrasil = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
-  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
-  "RS", "RO", "RR", "SC", "SP", "SE", "TO",
 ];
 
 // Shared client list (mock - in future will come from database)
@@ -176,14 +168,6 @@ export default function NovoOrcamento() {
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
   const [nConvidados, setNConvidados] = useState(0);
-  const [dataCasamento, setDataCasamento] = useState("");
-  const [cep, setCep] = useState("");
-  const [rua, setRua] = useState("");
-  const [numero, setNumero] = useState("");
-  const [complemento, setComplemento] = useState("");
-  const [bairro, setBairro] = useState("");
-  const [cidade, setCidade] = useState("");
-  const [estadoUf, setEstadoUf] = useState("");
 
   // Quote data
   const [canalEntrada, setCanalEntrada] = useState("");
@@ -192,6 +176,7 @@ export default function NovoOrcamento() {
   const [dataEvento, setDataEvento] = useState("");
   const [diaSemana, setDiaSemana] = useState<string | null>(null);
   const [anoEvento, setAnoEvento] = useState<string | null>(null);
+  const [validadeOrcamento, setValidadeOrcamento] = useState("");
 
   // Package data
   const [pacote, setPacote] = useState("");
@@ -233,6 +218,13 @@ export default function NovoOrcamento() {
     }
   }, [pacote]);
 
+  // Set default validity (30 days from now)
+  useEffect(() => {
+    const defaultValidity = new Date();
+    defaultValidity.setDate(defaultValidity.getDate() + 30);
+    setValidadeOrcamento(defaultValidity.toISOString().split("T")[0]);
+  }, []);
+
   const handleBuscarCliente = () => {
     if (!termoBuscaCliente.trim()) {
       toast({
@@ -267,14 +259,8 @@ export default function NovoOrcamento() {
     setTelefone(cliente.telefone);
     setCpf(cliente.cpf);
     setNConvidados(cliente.n_convidados);
-    setDataCasamento(cliente.data_casamento);
-    setCep(cliente.cep);
-    setRua(cliente.rua);
-    setNumero(cliente.numero);
-    setComplemento(cliente.complemento);
-    setBairro(cliente.bairro);
-    setCidade(cliente.cidade);
-    setEstadoUf(cliente.estado_uf);
+    setListaResultadosCliente([]);
+    setTermoBuscaCliente("");
 
     toast({
       title: "Cliente selecionado",
@@ -314,20 +300,9 @@ export default function NovoOrcamento() {
     }).format(value);
   };
 
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, "").slice(0, 11);
-    if (numbers.length <= 10) {
-      return numbers.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
-    }
-    return numbers.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3");
-  };
-
-  const formatCPF = (value: string) => {
-    const numbers = value.replace(/\D/g, "").slice(0, 11);
-    return numbers
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "-";
+    return new Date(dateString + "T12:00:00").toLocaleDateString("pt-BR");
   };
 
   const handleSalvarOrcamento = (status: "rascunho" | "final") => {
@@ -440,7 +415,8 @@ export default function NovoOrcamento() {
                 <h2 className="text-lg font-display font-semibold">Dados do Cliente</h2>
               </div>
 
-              <div className="space-y-4">
+              {/* Client Search */}
+              <div className="space-y-4 mb-6">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -496,33 +472,49 @@ export default function NovoOrcamento() {
                 )}
 
                 {clienteId && (
-                  <div className="bg-success/10 border border-success/20 rounded-lg p-4">
+                  <div className="bg-success/10 border border-success/20 rounded-lg p-3">
                     <p className="text-sm text-success font-medium">
                       Cliente selecionado: {nomeCliente}
                     </p>
                   </div>
                 )}
+              </div>
 
-                {clienteId && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <Label className="text-muted-foreground text-sm">Nome</Label>
-                      <p className="font-medium">{nomeCliente}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-sm">Email</Label>
-                      <p className="font-medium">{email || "-"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-sm">Telefone</Label>
-                      <p className="font-medium">{telefone || "-"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-sm">CPF</Label>
-                      <p className="font-medium">{cpf || "-"}</p>
-                    </div>
-                  </div>
-                )}
+              {/* Client Fields - Same layout as EditarOrcamento */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-sm">Nome</Label>
+                  <Input 
+                    value={nomeCliente} 
+                    onChange={(e) => setNomeCliente(e.target.value)}
+                    placeholder="Nome do cliente"
+                  />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-sm">Email</Label>
+                  <Input 
+                    type="email"
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="email@exemplo.com"
+                  />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-sm">Telefone</Label>
+                  <Input 
+                    value={telefone} 
+                    onChange={(e) => setTelefone(e.target.value)}
+                    placeholder="(11) 99999-0000"
+                  />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-sm">CPF</Label>
+                  <Input 
+                    value={cpf} 
+                    onChange={(e) => setCpf(e.target.value)}
+                    placeholder="000.000.000-00"
+                  />
+                </div>
               </div>
 
               <ClientFormDialog
@@ -544,7 +536,7 @@ export default function NovoOrcamento() {
                 <div>
                   <Label className="text-muted-foreground text-sm">Canal de Entrada</Label>
                   <Select value={canalEntrada} onValueChange={setCanalEntrada}>
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -560,7 +552,7 @@ export default function NovoOrcamento() {
                 <div>
                   <Label className="text-muted-foreground text-sm">Tipo de Evento</Label>
                   <Select value={tipoEvento} onValueChange={setTipoEvento}>
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -572,50 +564,49 @@ export default function NovoOrcamento() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="mt-4">
-                <Label className="text-muted-foreground text-sm mb-2 block">Data do Evento</Label>
-                <RadioGroup
-                  value={dataStatus}
-                  onValueChange={(v) => setDataStatus(v as "com_data" | "sem_data")}
-                  className="flex gap-6 mb-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="com_data" id="com_data" />
-                    <Label htmlFor="com_data">Data definida</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="sem_data" id="sem_data" />
-                    <Label htmlFor="sem_data">Sem data definida</Label>
-                  </div>
-                </RadioGroup>
+                {/* Date Status Selection */}
+                <div className="md:col-span-2">
+                  <Label className="text-muted-foreground text-sm mb-2 block">Data do Evento</Label>
+                  <RadioGroup
+                    value={dataStatus}
+                    onValueChange={(v) => setDataStatus(v as "com_data" | "sem_data")}
+                    className="flex gap-6 mb-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="com_data" id="com_data" />
+                      <Label htmlFor="com_data">Data definida</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="sem_data" id="sem_data" />
+                      <Label htmlFor="sem_data">Sem data definida</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
 
                 {dataStatus === "com_data" ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <>
                     <div>
-                      <Label className="text-muted-foreground text-sm">Data</Label>
+                      <Label className="text-muted-foreground text-sm">Data do Casamento</Label>
                       <Input
                         type="date"
                         value={dataEvento}
                         onChange={(e) => setDataEvento(e.target.value)}
-                        className="mt-1"
                       />
                     </div>
-                    {diaSemana && (
-                      <div className="flex items-end">
-                        <p className="text-sm text-muted-foreground pb-2">
-                          Dia da semana: <span className="font-medium text-foreground capitalize">{diaSemana === "sabado" ? "Sábado" : "Domingo"}</span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Dia da Semana</Label>
+                      <p className="font-medium py-2">
+                        {diaSemana === "sabado" ? "Sábado" : diaSemana === "domingo" ? "Domingo" : "-"}
+                      </p>
+                    </div>
+                  </>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <>
                     <div>
                       <Label className="text-muted-foreground text-sm">Dia da Semana *</Label>
                       <Select value={diaSemana || ""} onValueChange={setDiaSemana}>
-                        <SelectTrigger className="mt-1">
+                        <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -627,7 +618,7 @@ export default function NovoOrcamento() {
                     <div>
                       <Label className="text-muted-foreground text-sm">Ano do Evento</Label>
                       <Select value={anoEvento || ""} onValueChange={setAnoEvento}>
-                        <SelectTrigger className="mt-1">
+                        <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -639,11 +630,9 @@ export default function NovoOrcamento() {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
+                  </>
                 )}
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
                   <Label className="text-muted-foreground text-sm">Número de Convidados *</Label>
                   <Input
@@ -651,16 +640,15 @@ export default function NovoOrcamento() {
                     value={nConvidados || ""}
                     onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
                     placeholder="150"
-                    className="mt-1"
                   />
                 </div>
+
                 <div>
-                  <Label className="text-muted-foreground text-sm">Data do Casamento</Label>
+                  <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
                   <Input
                     type="date"
-                    value={dataCasamento}
-                    onChange={(e) => setDataCasamento(e.target.value)}
-                    className="mt-1"
+                    value={validadeOrcamento}
+                    onChange={(e) => setValidadeOrcamento(e.target.value)}
                   />
                 </div>
               </div>
@@ -677,7 +665,7 @@ export default function NovoOrcamento() {
                 <div>
                   <Label className="text-muted-foreground text-sm">Pacote *</Label>
                   <Select value={pacote} onValueChange={setPacote}>
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger>
                       <SelectValue placeholder="Selecione o pacote" />
                     </SelectTrigger>
                     <SelectContent>
@@ -692,9 +680,9 @@ export default function NovoOrcamento() {
 
                 {needsMenu && (
                   <div>
-                    <Label className="text-muted-foreground text-sm">Menu Buffet *</Label>
+                    <Label className="text-muted-foreground text-sm">Menu do Buffet *</Label>
                     <Select value={menuBuffet || ""} onValueChange={setMenuBuffet}>
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecione o menu" />
                       </SelectTrigger>
                       <SelectContent>
@@ -723,7 +711,7 @@ export default function NovoOrcamento() {
                   <Textarea
                     value={observacoesInternas}
                     onChange={(e) => setObservacoesInternas(e.target.value)}
-                    placeholder="Notas internas sobre o cliente ou evento..."
+                    placeholder="Notas internas sobre o orçamento..."
                     rows={3}
                     className="mt-1"
                   />
@@ -734,7 +722,7 @@ export default function NovoOrcamento() {
                   <Textarea
                     value={observacoesCliente}
                     onChange={(e) => setObservacoesCliente(e.target.value)}
-                    placeholder="Informações que aparecerão no orçamento..."
+                    placeholder="Informações adicionais para o cliente..."
                     rows={3}
                     className="mt-1"
                   />
@@ -743,7 +731,7 @@ export default function NovoOrcamento() {
             </div>
           </div>
 
-          {/* Summary Panel */}
+          {/* Sidebar - Summary */}
           <div className="lg:col-span-1">
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border sticky top-6 animate-slide-up">
               <h2 className="text-lg font-display font-semibold mb-4">Resumo</h2>
@@ -754,22 +742,10 @@ export default function NovoOrcamento() {
                   <span className="font-medium">{nomeCliente || "-"}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Telefone</span>
-                  <span className="font-medium">{telefone || "-"}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Tipo de Evento</span>
-                  <span className="font-medium">
-                    {tiposEvento.find((t) => t.value === tipoEvento)?.label || "-"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground">Data</span>
+                  <span className="text-muted-foreground">Data do Evento</span>
                   <span className="font-medium">
                     {dataEvento
-                      ? new Date(dataEvento + "T12:00:00").toLocaleDateString("pt-BR")
-                      : dataCasamento
-                      ? new Date(dataCasamento + "T12:00:00").toLocaleDateString("pt-BR")
+                      ? formatDate(dataEvento)
                       : diaSemana && anoEvento
                       ? `${diaSemana === "sabado" ? "Sábado" : "Domingo"} - ${anoEvento}`
                       : "-"}
@@ -793,6 +769,10 @@ export default function NovoOrcamento() {
                     </span>
                   </div>
                 )}
+                <div className="flex justify-between items-center py-2 border-b border-border">
+                  <span className="text-muted-foreground">Validade</span>
+                  <span className="font-medium">{formatDate(validadeOrcamento)}</span>
+                </div>
 
                 <div className="pt-4 border-t-2 border-primary/20">
                   <div className="flex justify-between items-center">
@@ -802,12 +782,6 @@ export default function NovoOrcamento() {
                     </span>
                   </div>
                 </div>
-
-                {clienteId && (
-                  <div className="text-xs text-muted-foreground pt-2">
-                    ID Cliente: {clienteId}
-                  </div>
-                )}
 
                 <div className="pt-4 space-y-2">
                   <Button
