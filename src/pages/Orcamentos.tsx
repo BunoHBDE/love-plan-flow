@@ -10,6 +10,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   FileText,
   Plus,
   Search,
@@ -18,10 +24,12 @@ import {
   Pencil,
   CalendarIcon,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface Quote {
   id: string;
@@ -123,12 +131,23 @@ const statusSelectedStyles = {
 const allStatuses: Quote["status"][] = ["rascunho", "enviado", "aceito", "recusado", "expirado"];
 
 export default function Orcamentos() {
-  const [quotes] = useState<Quote[]>(initialQuotes);
+  const [quotes, setQuotes] = useState<Quote[]>(initialQuotes);
   const [searchTerm, setSearchTerm] = useState("");
   const [quoteNumberFilter, setQuoteNumberFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [selectedStatuses, setSelectedStatuses] = useState<Quote["status"][]>([]);
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const updateQuoteStatus = (quoteId: string, newStatus: Quote["status"]) => {
+    setQuotes((prev) =>
+      prev.map((q) => (q.id === quoteId ? { ...q, status: newStatus } : q))
+    );
+    toast({
+      title: "Status atualizado",
+      description: `Orçamento atualizado para "${statusLabels[newStatus]}".`,
+    });
+  };
 
   const toggleStatus = (status: Quote["status"]) => {
     setSelectedStatuses((prev) =>
@@ -324,13 +343,41 @@ export default function Orcamentos() {
                       </span>
                     </td>
                     <td className="p-4">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium border ${
-                          statusStyles[quote.status]
-                        }`}
-                      >
-                        {statusLabels[quote.status]}
-                      </span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border cursor-pointer hover:opacity-80 transition-opacity ${
+                              statusStyles[quote.status]
+                            }`}
+                          >
+                            {statusLabels[quote.status]}
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="bg-popover">
+                          {allStatuses.map((status) => (
+                            <DropdownMenuItem
+                              key={status}
+                              onClick={() => updateQuoteStatus(quote.id, status)}
+                              className={cn(
+                                "cursor-pointer",
+                                quote.status === status && "bg-accent"
+                              )}
+                            >
+                              <span
+                                className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                                  status === "rascunho" ? "bg-muted-foreground" :
+                                  status === "enviado" ? "bg-primary" :
+                                  status === "aceito" ? "bg-success" :
+                                  status === "recusado" ? "bg-destructive" :
+                                  "bg-warning"
+                                }`}
+                              />
+                              {statusLabels[status]}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
