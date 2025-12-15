@@ -79,12 +79,13 @@ export function PaymentTermsForm({
     return parseFloat(normalized);
   };
 
-  // Sync percentage input when valorTotal changes
+  // Sync percentage input and recalculate sinal when valorTotal changes
   useEffect(() => {
-    if (valorSinalManual === null) {
-      setValorSinalInput(formatNumberBR(valorSinalCalculado));
-    }
-  }, [valorTotal, percentualSinal, valorSinalManual, valorSinalCalculado]);
+    // Always recalculate sinal based on percentage when valorTotal changes
+    // This ensures extras are properly included in the sinal calculation
+    setValorSinalManual(null);
+    setValorSinalInput(formatNumberBR((valorTotal * percentualSinal) / 100));
+  }, [valorTotal]);
 
   // Calculate max installments based on event date
   useEffect(() => {
@@ -176,17 +177,18 @@ export function PaymentTermsForm({
     setIndicesEditados(new Set());
   };
 
-  // Auto-calculate installments when not manually edited
+  // Auto-calculate installments when relevant values change
   useEffect(() => {
-    if (parcelasEditadas) return;
+    // Always recalculate when valorTotal changes (even if parcelas were manually edited)
+    // This ensures extras are properly distributed in installments
     calcularParcelas();
-  }, [numeroParcelas, diaVencimento, saldoRestante, dataEvento, parcelasEditadas]);
+  }, [numeroParcelas, diaVencimento, saldoRestante, dataEvento, valorTotal]);
 
-  // Reset manual edits when number of installments changes
+  // Reset manual edits when number of installments or valorTotal changes
   useEffect(() => {
     setParcelasEditadas(false);
     setIndicesEditados(new Set());
-  }, [numeroParcelas]);
+  }, [numeroParcelas, valorTotal]);
 
   // Notify parent of changes
   useEffect(() => {
