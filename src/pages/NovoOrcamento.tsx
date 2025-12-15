@@ -37,7 +37,7 @@ import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFor
 import { useClients, type Client, type ClientInsert } from "@/hooks/useClients";
 import { useQuotes } from "@/hooks/useQuotes";
 import { PaymentTermsForm, type PaymentTermsData } from "@/components/quotes/PaymentTermsForm";
-import { ExtrasForm, type ExtraItem } from "@/components/quotes/ExtrasForm";
+import { ExtrasForm, type ExtraItem, calcularTotalExtras } from "@/components/quotes/ExtrasForm";
 import { 
   calcularPrecoDetalhado, 
   getDiaSemana, 
@@ -301,7 +301,7 @@ export default function NovoOrcamento() {
 
     setIsSaving(true);
 
-    const totalExtras = extras.reduce((sum, e) => sum + e.valor, 0);
+    const totalExtras = calcularTotalExtras(extras, nConvidados);
     const valorFinal = valorOrcamento + totalExtras;
 
     const quote = await createQuote({
@@ -662,7 +662,7 @@ export default function NovoOrcamento() {
 
             {/* Block 4 - Condições de Pagamento */}
             <PaymentTermsForm
-              valorTotal={valorOrcamento + extras.reduce((sum, e) => sum + e.valor, 0)}
+              valorTotal={valorOrcamento + calcularTotalExtras(extras, nConvidados)}
               dataEvento={dataStatus === "com_data" ? dataEvento : null}
               onChange={setPaymentTerms}
               onValidationChange={setHasPaymentErrors}
@@ -675,7 +675,7 @@ export default function NovoOrcamento() {
                 <h2 className="text-lg font-display font-semibold">Valores Extras</h2>
               </div>
 
-              <ExtrasForm extras={extras} onChange={setExtras} />
+              <ExtrasForm extras={extras} onChange={setExtras} guestCount={nConvidados} />
             </div>
 
             {/* Block 6 - Observações */}
@@ -784,12 +784,20 @@ export default function NovoOrcamento() {
                   <div className="pt-4 space-y-2">
                     <h3 className="text-sm font-semibold text-primary">Valores Extras</h3>
                     <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                      {extras.map((extra) => (
-                        <div key={extra.id} className="flex justify-between items-center">
-                          <span className="text-muted-foreground text-xs">{extra.descricao}</span>
-                          <span className="font-medium text-sm">{formatCurrency(extra.valor)}</span>
-                        </div>
-                      ))}
+                      {extras.map((extra) => {
+                        const valorCalculado = extra.porConvidado 
+                          ? extra.valor * nConvidados 
+                          : extra.valor;
+                        return (
+                          <div key={extra.id} className="flex justify-between items-center">
+                            <span className="text-muted-foreground text-xs">
+                              {extra.descricao}
+                              {extra.porConvidado && ` (×${nConvidados})`}
+                            </span>
+                            <span className="font-medium text-sm">{formatCurrency(valorCalculado)}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -803,7 +811,7 @@ export default function NovoOrcamento() {
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-medium">Valor Total</span>
                     <span className="text-2xl font-display font-bold text-primary">
-                      {formatCurrency(valorOrcamento + extras.reduce((sum, e) => sum + e.valor, 0))}
+                      {formatCurrency(valorOrcamento + calcularTotalExtras(extras, nConvidados))}
                     </span>
                   </div>
                 </div>
