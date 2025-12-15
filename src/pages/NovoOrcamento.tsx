@@ -30,45 +30,12 @@ import {
   ArrowLeft,
   Save,
   Plus,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
-
-// Mock data for existing clients (will come from database later)
-const mockClients = [
-  {
-    id: "1",
-    nome: "Maria Silva",
-    email: "maria@email.com",
-    telefone: "(11) 99999-0001",
-    cpf: "123.456.789-00",
-    n_convidados: 150,
-    data_casamento: "2025-06-15",
-    cep: "01310-100",
-    rua: "Av. Paulista",
-    numero: "1000",
-    complemento: "Apto 501",
-    bairro: "Bela Vista",
-    cidade: "São Paulo",
-    estado_uf: "SP",
-  },
-  {
-    id: "2",
-    nome: "Ana Costa",
-    email: "ana@email.com",
-    telefone: "(11) 99999-0002",
-    cpf: "987.654.321-00",
-    n_convidados: 100,
-    data_casamento: "2025-08-20",
-    cep: "04543-011",
-    rua: "Av. Faria Lima",
-    numero: "500",
-    complemento: "",
-    bairro: "Itaim Bibi",
-    cidade: "São Paulo",
-    estado_uf: "SP",
-  },
-];
+import { useClients, type Client, type ClientInsert } from "@/hooks/useClients";
+import { useQuotes } from "@/hooks/useQuotes";
 
 const canaisEntrada = [
   { value: "instagram", label: "Instagram" },
@@ -96,9 +63,6 @@ const menusBuffet = [
   { value: "massas", label: "Massas" },
   { value: "brasileirinho", label: "Brasileirinho" },
 ];
-
-// Shared client list (mock - in future will come from database)
-let sharedMockClients = [...mockClients];
 
 function calcularPreco(
   pacote: string,
@@ -155,12 +119,16 @@ function getDiaSemana(dateString: string): string | null {
 export default function NovoOrcamento() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { searchClients, createClient } = useClients();
+  const { createQuote } = useQuotes();
 
   // Client state
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [termoBuscaCliente, setTermoBuscaCliente] = useState("");
-  const [listaResultadosCliente, setListaResultadosCliente] = useState<typeof mockClients>([]);
+  const [listaResultadosCliente, setListaResultadosCliente] = useState<Client[]>([]);
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Client data
   const [nomeCliente, setNomeCliente] = useState("");
@@ -225,7 +193,7 @@ export default function NovoOrcamento() {
     setValidadeOrcamento(defaultValidity.toISOString().split("T")[0]);
   }, []);
 
-  const handleBuscarCliente = () => {
+  const handleBuscarCliente = async () => {
     if (!termoBuscaCliente.trim()) {
       toast({
         title: "Digite algo para buscar",
@@ -234,15 +202,10 @@ export default function NovoOrcamento() {
       return;
     }
 
-    const termo = termoBuscaCliente.toLowerCase();
-    const resultados = mockClients.filter(
-      (c) =>
-        c.nome.toLowerCase().includes(termo) ||
-        c.email.toLowerCase().includes(termo) ||
-        c.telefone.includes(termo)
-    );
-
+    setIsSearching(true);
+    const resultados = await searchClients(termoBuscaCliente);
     setListaResultadosCliente(resultados);
+    setIsSearching(false);
 
     if (resultados.length === 0) {
       toast({
@@ -252,13 +215,12 @@ export default function NovoOrcamento() {
     }
   };
 
-  const handleSelecionarCliente = (cliente: typeof mockClients[0]) => {
+  const handleSelecionarCliente = (cliente: Client) => {
     setClienteId(cliente.id);
     setNomeCliente(cliente.nome);
-    setEmail(cliente.email);
+    setEmail(cliente.email || "");
     setTelefone(cliente.telefone);
-    setCpf(cliente.cpf);
-    setNConvidados(cliente.n_convidados);
+    setCpf(cliente.cpf || "");
     setListaResultadosCliente([]);
     setTermoBuscaCliente("");
 
@@ -268,28 +230,25 @@ export default function NovoOrcamento() {
     });
   };
 
-  const handleClientCreated = (clientData: ClientFormData & { id: string }) => {
-    // Add to shared mock clients
-    const newMockClient = {
-      id: clientData.id,
+  const handleClientCreated = async (clientData: ClientFormData & { id: string }) => {
+    const newClient: ClientInsert = {
       nome: clientData.name,
-      email: clientData.email,
+      email: clientData.email || null,
       telefone: clientData.phone,
-      cpf: clientData.cpf,
-      n_convidados: 0,
-      data_casamento: "",
-      cep: clientData.address.cep,
-      rua: clientData.address.street,
-      numero: clientData.address.number,
-      complemento: clientData.address.complement,
-      bairro: clientData.address.neighborhood,
-      cidade: clientData.address.city,
-      estado_uf: clientData.address.state,
+      cpf: clientData.cpf || null,
+      cep: clientData.address.cep || null,
+      rua: clientData.address.street || null,
+      numero: clientData.address.number || null,
+      complemento: clientData.address.complement || null,
+      bairro: clientData.address.neighborhood || null,
+      cidade: clientData.address.city || null,
+      estado_uf: clientData.address.state || null,
     };
-    sharedMockClients = [newMockClient, ...sharedMockClients];
 
-    // Select the created client
-    handleSelecionarCliente(newMockClient);
+    const created = await createClient(newClient);
+    if (created) {
+      handleSelecionarCliente(created);
+    }
     setIsClientDialogOpen(false);
   };
 
@@ -305,12 +264,12 @@ export default function NovoOrcamento() {
     return new Date(dateString + "T12:00:00").toLocaleDateString("pt-BR");
   };
 
-  const handleSalvarOrcamento = (status: "rascunho" | "final") => {
+  const handleSalvarOrcamento = async (status: "rascunho" | "enviado") => {
     // Validation
-    if (!nomeCliente || !telefone) {
+    if (!clienteId) {
       toast({
-        title: "Campos obrigatórios",
-        description: "Preencha o nome e telefone do cliente.",
+        title: "Selecione um cliente",
+        description: "Busque e selecione um cliente existente ou cadastre um novo.",
         variant: "destructive",
       });
       return;
@@ -343,7 +302,7 @@ export default function NovoOrcamento() {
       return;
     }
 
-    if (status === "final" && valorOrcamento <= 0) {
+    if (status === "enviado" && valorOrcamento <= 0) {
       toast({
         title: "Valor inválido",
         description: "O orçamento precisa ter um valor calculado.",
@@ -352,13 +311,31 @@ export default function NovoOrcamento() {
       return;
     }
 
-    // TODO: Save to database
-    toast({
-      title: status === "rascunho" ? "Rascunho salvo!" : "Orçamento salvo!",
-      description: `Orçamento para ${nomeCliente} ${status === "rascunho" ? "salvo como rascunho" : "finalizado"}.`,
+    setIsSaving(true);
+
+    const quote = await createQuote({
+      client_id: clienteId,
+      canal_entrada: canalEntrada || null,
+      tipo_evento: tipoEvento || null,
+      data_status: dataStatus,
+      data_evento: dataStatus === "com_data" && dataEvento ? dataEvento : null,
+      dia_semana: dia,
+      ano_evento: anoEvento,
+      n_convidados: nConvidados,
+      pacote,
+      menu_buffet: menuBuffet,
+      valor_total: valorOrcamento,
+      validade: validadeOrcamento || null,
+      status,
+      observacoes_internas: observacoesInternas || null,
+      observacoes_cliente: observacoesCliente || null,
     });
 
-    navigate("/orcamentos");
+    setIsSaving(false);
+
+    if (quote) {
+      navigate("/orcamentos");
+    }
   };
 
   const needsMenu = pacote === "essencia" || pacote === "florescer";
@@ -392,14 +369,17 @@ export default function NovoOrcamento() {
             <Button
               variant="outline"
               onClick={() => handleSalvarOrcamento("rascunho")}
+              disabled={isSaving}
             >
-              <Save className="h-4 w-4 mr-2" />
+              {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Salvar Rascunho
             </Button>
             <Button
               variant="gold"
-              onClick={() => handleSalvarOrcamento("final")}
+              onClick={() => handleSalvarOrcamento("enviado")}
+              disabled={isSaving}
             >
+              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Salvar Orçamento
             </Button>
           </div>
@@ -428,7 +408,9 @@ export default function NovoOrcamento() {
                       className="pl-10"
                     />
                   </div>
-                  <Button onClick={handleBuscarCliente}>Buscar</Button>
+                  <Button onClick={handleBuscarCliente} disabled={isSearching}>
+                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
+                  </Button>
                   <Button 
                     variant="outline" 
                     onClick={() => setIsClientDialogOpen(true)}
@@ -454,7 +436,7 @@ export default function NovoOrcamento() {
                           <TableRow key={cliente.id}>
                             <TableCell className="font-medium">{cliente.nome}</TableCell>
                             <TableCell>{cliente.telefone}</TableCell>
-                            <TableCell>{cliente.email}</TableCell>
+                            <TableCell>{cliente.email || "-"}</TableCell>
                             <TableCell>
                               <Button
                                 size="sm"
@@ -480,40 +462,23 @@ export default function NovoOrcamento() {
                 )}
               </div>
 
-              {/* Client Fields - Same layout as EditarOrcamento */}
+              {/* Client Fields - Read only when selected */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground text-sm">Nome</Label>
-                  <Input 
-                    value={nomeCliente} 
-                    onChange={(e) => setNomeCliente(e.target.value)}
-                    placeholder="Nome do cliente"
-                  />
+                  <p className="font-medium py-2">{nomeCliente || "-"}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-sm">Email</Label>
-                  <Input 
-                    type="email"
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@exemplo.com"
-                  />
+                  <p className="font-medium py-2">{email || "-"}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-sm">Telefone</Label>
-                  <Input 
-                    value={telefone} 
-                    onChange={(e) => setTelefone(e.target.value)}
-                    placeholder="(11) 99999-0000"
-                  />
+                  <p className="font-medium py-2">{telefone || "-"}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-sm">CPF</Label>
-                  <Input 
-                    value={cpf} 
-                    onChange={(e) => setCpf(e.target.value)}
-                    placeholder="000.000.000-00"
-                  />
+                  <p className="font-medium py-2">{cpf || "-"}</p>
                 </div>
               </div>
 
@@ -787,14 +752,17 @@ export default function NovoOrcamento() {
                   <Button
                     variant="gold"
                     className="w-full"
-                    onClick={() => handleSalvarOrcamento("final")}
+                    onClick={() => handleSalvarOrcamento("enviado")}
+                    disabled={isSaving}
                   >
+                    {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Salvar Orçamento
                   </Button>
                   <Button
                     variant="outline"
                     className="w-full"
                     onClick={() => handleSalvarOrcamento("rascunho")}
+                    disabled={isSaving}
                   >
                     <Save className="h-4 w-4 mr-2" />
                     Salvar Rascunho

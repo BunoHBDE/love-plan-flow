@@ -14,7 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
+          estado_uf: string | null
+          id: string
+          nome: string
+          numero: string | null
+          rua: string | null
+          telefone: string
+          updated_at: string
+        }
+        Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          estado_uf?: string | null
+          id?: string
+          nome: string
+          numero?: string | null
+          rua?: string | null
+          telefone: string
+          updated_at?: string
+        }
+        Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          estado_uf?: string | null
+          id?: string
+          nome?: string
+          numero?: string | null
+          rua?: string | null
+          telefone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      quotes: {
+        Row: {
+          ano_evento: string | null
+          canal_entrada: string | null
+          client_id: string
+          created_at: string
+          data_evento: string | null
+          data_status: string
+          dia_semana: string | null
+          id: string
+          menu_buffet: string | null
+          n_convidados: number
+          observacoes_cliente: string | null
+          observacoes_internas: string | null
+          pacote: string
+          quote_number: string
+          status: string
+          tipo_evento: string | null
+          updated_at: string
+          validade: string | null
+          valor_total: number
+        }
+        Insert: {
+          ano_evento?: string | null
+          canal_entrada?: string | null
+          client_id: string
+          created_at?: string
+          data_evento?: string | null
+          data_status?: string
+          dia_semana?: string | null
+          id?: string
+          menu_buffet?: string | null
+          n_convidados?: number
+          observacoes_cliente?: string | null
+          observacoes_internas?: string | null
+          pacote: string
+          quote_number: string
+          status?: string
+          tipo_evento?: string | null
+          updated_at?: string
+          validade?: string | null
+          valor_total?: number
+        }
+        Update: {
+          ano_evento?: string | null
+          canal_entrada?: string | null
+          client_id?: string
+          created_at?: string
+          data_evento?: string | null
+          data_status?: string
+          dia_semana?: string | null
+          id?: string
+          menu_buffet?: string | null
+          n_convidados?: number
+          observacoes_cliente?: string | null
+          observacoes_internas?: string | null
+          pacote?: string
+          quote_number?: string
+          status?: string
+          tipo_evento?: string | null
+          updated_at?: string
+          validade?: string | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
