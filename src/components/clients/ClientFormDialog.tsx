@@ -24,8 +24,6 @@ export interface ClientFormData {
   email: string;
   phone: string;
   cpf: string;
-  weddingDate: string;
-  guestCount: string;
   address: {
     street: string;
     number: string;
@@ -42,8 +40,6 @@ const initialFormData: ClientFormData = {
   email: "",
   phone: "",
   cpf: "",
-  weddingDate: "",
-  guestCount: "",
   address: {
     street: "",
     number: "",
@@ -229,41 +225,15 @@ export function ClientFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="cpf">CPF</Label>
-              <Input
-                id="cpf"
-                value={formData.cpf}
-                onChange={(e) =>
-                  setFormData({ ...formData, cpf: formatCPF(e.target.value) })
-                }
-                placeholder="000.000.000-00"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="guestCount">Nº de Convidados</Label>
-              <Input
-                id="guestCount"
-                type="number"
-                value={formData.guestCount}
-                onChange={(e) =>
-                  setFormData({ ...formData, guestCount: e.target.value })
-                }
-                placeholder="150"
-              />
-            </div>
-          </div>
-
           <div className="grid gap-2">
-            <Label htmlFor="weddingDate">Data do Casamento</Label>
+            <Label htmlFor="cpf">CPF</Label>
             <Input
-              id="weddingDate"
-              type="date"
-              value={formData.weddingDate}
+              id="cpf"
+              value={formData.cpf}
               onChange={(e) =>
-                setFormData({ ...formData, weddingDate: e.target.value })
+                setFormData({ ...formData, cpf: formatCPF(e.target.value) })
               }
+              placeholder="000.000.000-00"
             />
           </div>
 
