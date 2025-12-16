@@ -207,7 +207,7 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   doc.setTextColor(...colors.gold);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  const composicaoTitle = quote.pacoteNome ? `✦  ${quote.pacoteNome.toUpperCase()}` : "COMPOSIÇÃO DO VALOR";
+  const composicaoTitle = quote.pacoteNome ? `${quote.pacoteNome.toUpperCase()}` : "COMPOSIÇÃO DO VALOR";
   doc.text(composicaoTitle, margin + 5, yPosition + 7);
 
   yPosition += 18;
