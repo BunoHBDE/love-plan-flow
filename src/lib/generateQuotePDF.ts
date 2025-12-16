@@ -65,352 +65,512 @@ const formatDate = (dateString: string): string => {
 export const generateQuotePDF = (quote: QuoteData): void => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
-  
-  // Colors (using RGB values similar to the design system)
-  const primaryColor: [number, number, number] = [75, 42, 34]; // #4B2A22 - Marrom Escuro
-  const goldColor: [number, number, number] = [201, 168, 106]; // #C9A86A - Dourado
-  const textColor: [number, number, number] = [107, 90, 74]; // #6B5A4A - Marrom Médio
-  const lightBg: [number, number, number] = [247, 238, 220]; // #F7EEDC - Bege Claro
-  
-  let yPosition = 20;
 
-  // Header background
-  doc.setFillColor(...lightBg);
-  doc.rect(0, 0, pageWidth, 60, "F");
-  
-  // Gold accent line
-  doc.setFillColor(...goldColor);
-  doc.rect(0, 60, pageWidth, 3, "F");
+  // Paleta de cores sofisticada
+  const colors = {
+    primary: [75, 42, 34] as [number, number, number], // Marrom Escuro
+    gold: [201, 168, 106] as [number, number, number], // Dourado
+    lightGold: [218, 195, 149] as [number, number, number], // Dourado Claro
+    text: [60, 50, 42] as [number, number, number], // Texto Principal
+    textLight: [107, 90, 74] as [number, number, number], // Texto Secundário
+    bg: [252, 249, 243] as [number, number, number], // Fundo Claro
+    bgAlt: [247, 242, 234] as [number, number, number], // Fundo Alternativo
+    white: [255, 255, 255] as [number, number, number],
+    divider: [230, 220, 205] as [number, number, number], // Divisor
+  };
 
-  // Company name
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(...primaryColor);
-  doc.text("SÍTIO CANTO DA MATA", pageWidth / 2, yPosition + 8, { align: "center" });
-  
-  // Title - ORÇAMENTO
-  doc.setFontSize(22);
-  doc.text("ORÇAMENTO", pageWidth / 2, yPosition + 22, { align: "center" });
-  
-  // Quote number
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...textColor);
-  doc.text(`Nº ${quote.id}`, pageWidth / 2, yPosition + 32, { align: "center" });
-  
-  yPosition = 80;
+  let yPosition = 0;
 
-  // Client Info Section
-  doc.setFillColor(...primaryColor);
-  doc.rect(margin, yPosition, contentWidth, 8, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text("INFORMAÇÕES DO CLIENTE", margin + 5, yPosition + 6);
-  
-  yPosition += 15;
-  
-  doc.setTextColor(...textColor);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  
-  // Client details in two columns
-  const col1X = margin;
-  const col2X = pageWidth / 2 + 10;
-  
-  doc.setFont("helvetica", "bold");
-  doc.text("Cliente:", col1X, yPosition);
-  doc.setFont("helvetica", "normal");
-  doc.text(quote.clientName, col1X + 25, yPosition);
-  
-  doc.setFont("helvetica", "bold");
-  doc.text("Data do Casamento:", col2X, yPosition);
-  doc.setFont("helvetica", "normal");
-  doc.text(formatDate(quote.weddingDate), col2X + 45, yPosition);
-  
-  yPosition += 8;
-  
-  doc.setFont("helvetica", "bold");
-  doc.text("Convidados:", col1X, yPosition);
-  doc.setFont("helvetica", "normal");
-  doc.text(quote.guestCount.toString(), col1X + 30, yPosition);
-  
-  yPosition += 20;
+  // ============================================
+  // CABEÇALHO ELEGANTE COM DEGRADÊ
+  // ============================================
 
-  // Items Section - Composição do Valor
-  doc.setFillColor(...primaryColor);
-  doc.rect(margin, yPosition, contentWidth, 8, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  const composicaoTitle = quote.pacoteNome 
-    ? `COMPOSIÇÃO DO VALOR - ${quote.pacoteNome.toUpperCase()}`
-    : "COMPOSIÇÃO DO VALOR";
-  doc.text(composicaoTitle, margin + 5, yPosition + 6);
-  
-  yPosition += 15;
-  
-  // Table header
-  doc.setFillColor(...lightBg);
-  doc.rect(margin, yPosition, contentWidth, 10, "F");
-  doc.setTextColor(...primaryColor);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Item", margin + 5, yPosition + 7);
-  doc.text("Valor", pageWidth - margin - 30, yPosition + 7, { align: "right" });
-  
-  yPosition += 15;
-  
-  // Composição items
-  doc.setTextColor(...textColor);
-  doc.setFont("helvetica", "normal");
-  
-  if (quote.composicao) {
-    // Espaço
-    doc.setFillColor(250, 247, 242);
-    doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
-    doc.text(`Espaço (${quote.composicao.ano})`, margin + 5, yPosition);
-    doc.text(formatCurrency(quote.composicao.espaco), pageWidth - margin - 5, yPosition, { align: "right" });
-    yPosition += 10;
-    
-    // Decoração
-    doc.text("Decoração", margin + 5, yPosition);
-    doc.text(formatCurrency(quote.composicao.decoracao), pageWidth - margin - 5, yPosition, { align: "right" });
-    yPosition += 10;
-    
-    // Buffet (se houver)
-    if (quote.composicao.buffet !== null) {
-      doc.setFillColor(250, 247, 242);
-      doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
-      doc.text(`Buffet (${quote.composicao.buffetNome || "Menu"})`, margin + 5, yPosition);
-      doc.text(formatCurrency(quote.composicao.buffet), pageWidth - margin - 5, yPosition, { align: "right" });
-      yPosition += 10;
-    }
-  } else {
-    // Fallback: show items
-    quote.items.forEach((item, index) => {
-      if (index % 2 === 0) {
-        doc.setFillColor(250, 247, 242);
-        doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
-      }
-      doc.text(item.description, margin + 5, yPosition);
-      doc.text(formatCurrency(item.value), pageWidth - margin - 5, yPosition, { align: "right" });
-      yPosition += 10;
-    });
+  // Fundo do cabeçalho com efeito visual
+  doc.setFillColor(...colors.primary);
+  doc.rect(0, 0, pageWidth, 70, "F");
+
+  // Bordas decorativas douradas
+  doc.setFillColor(...colors.gold);
+  doc.rect(0, 68, pageWidth, 2, "F");
+  doc.rect(0, 0, pageWidth, 2, "F");
+
+  // Detalhes decorativos laterais
+  doc.setFillColor(...colors.lightGold);
+  for (let i = 0; i < 8; i++) {
+    doc.circle(5, 10 + i * 7, 1, "F");
+    doc.circle(pageWidth - 5, 10 + i * 7, 1, "F");
   }
-  
-  // Extras (if any)
-  if (quote.extras && quote.extras.length > 0) {
-    yPosition += 5;
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...primaryColor);
-    doc.text("Valores Extras:", margin + 5, yPosition);
-    yPosition += 8;
-    
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...textColor);
-    
-    quote.extras.forEach((extra, index) => {
-      if (index % 2 === 0) {
-        doc.setFillColor(250, 247, 242);
-        doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
-      }
-      
-      const valorCalculado = extra.porConvidado 
-        ? extra.valor * quote.guestCount 
-        : extra.valor;
-      
-      const descricao = extra.porConvidado 
-        ? `${extra.descricao} (${formatCurrency(extra.valor)} × ${quote.guestCount})`
-        : extra.descricao;
-      
-      doc.text(descricao, margin + 5, yPosition);
-      doc.text(formatCurrency(valorCalculado), pageWidth - margin - 5, yPosition, { align: "right" });
-      yPosition += 10;
-    });
-  }
-  
-  // Separator line
-  doc.setDrawColor(...goldColor);
+
+  yPosition = 20;
+
+  // Nome da empresa
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(...colors.gold);
+  doc.text("SÍTIO CANTO DA MATA", pageWidth / 2, yPosition, { align: "center" });
+
+  // Linha decorativa sob o nome
+  doc.setDrawColor(...colors.gold);
   doc.setLineWidth(0.5);
-  doc.line(margin, yPosition, pageWidth - margin, yPosition);
-  
+  const lineWidth = 60;
+  doc.line(pageWidth / 2 - lineWidth / 2, yPosition + 3, pageWidth / 2 + lineWidth / 2, yPosition + 3);
+
+  yPosition += 12;
+
+  // Título "ORÇAMENTO" destacado
+  doc.setFontSize(28);
+  doc.setTextColor(...colors.white);
+  doc.text("ORÇAMENTO", pageWidth / 2, yPosition, { align: "center" });
+
   yPosition += 10;
-  
-  // Total
-  doc.setFillColor(...primaryColor);
-  doc.rect(pageWidth - margin - 80, yPosition - 5, 80, 12, "F");
-  doc.setTextColor(255, 255, 255);
+
+  // Número do orçamento em caixa destacada
+  doc.setFillColor(...colors.gold);
+  const idText = `Nº ${quote.id}`;
+  const idWidth = doc.getTextWidth(idText) + 10;
+  doc.roundedRect(pageWidth / 2 - idWidth / 2, yPosition - 4, idWidth, 8, 2, 2, "F");
+  doc.setTextColor(...colors.primary);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text(idText, pageWidth / 2, yPosition + 2, { align: "center" });
+
+  yPosition = 85;
+
+  // ============================================
+  // INFORMAÇÕES DO CLIENTE - Card Moderno
+  // ============================================
+
+  // Card com sombra simulada
+  doc.setFillColor(240, 240, 240);
+  doc.roundedRect(margin - 1, yPosition + 1, contentWidth + 2, 38, 3, 3, "F");
+
+  doc.setFillColor(...colors.white);
+  doc.roundedRect(margin, yPosition, contentWidth, 38, 3, 3, "F");
+
+  // Barra lateral decorativa
+  doc.setFillColor(...colors.gold);
+  doc.rect(margin, yPosition, 4, 38, "F");
+
+  // Título da seção
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("TOTAL:", pageWidth - margin - 75, yPosition + 3);
-  doc.text(formatCurrency(quote.totalValue), pageWidth - margin - 5, yPosition + 3, { align: "right" });
-  
-  yPosition += 15;
-  
-  // Custo por convidado adicional
+  doc.setTextColor(...colors.primary);
+  doc.text("INFORMAÇÕES DO CLIENTE", margin + 10, yPosition + 8);
+
+  yPosition += 18;
+
+  // Informações em grid organizado
+  doc.setFontSize(10);
+  doc.setTextColor(...colors.text);
+
+  const infoStartX = margin + 10;
+  const col2Start = pageWidth / 2 + 5;
+
+  // Linha 1
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...colors.textLight);
+  doc.text("Cliente:", infoStartX, yPosition);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...colors.text);
+  doc.text(quote.clientName, infoStartX + 20, yPosition);
+
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...colors.textLight);
+  doc.text("Data do Evento:", col2Start, yPosition);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...colors.text);
+  doc.text(formatDate(quote.weddingDate), col2Start + 35, yPosition);
+
+  yPosition += 8;
+
+  // Linha 2
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...colors.textLight);
+  doc.text("Nº Convidados:", infoStartX, yPosition);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...colors.text);
+  doc.text(quote.guestCount.toString() + " pessoas", infoStartX + 33, yPosition);
+
+  yPosition += 25;
+
+  // ============================================
+  // COMPOSIÇÃO DO VALOR - Tabela Moderna
+  // ============================================
+
+  // Header da seção com ícone decorativo
+  doc.setFillColor(...colors.primary);
+  doc.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, "F");
+
+  doc.setTextColor(...colors.gold);
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  const composicaoTitle = quote.pacoteNome ? `✦  ${quote.pacoteNome.toUpperCase()}` : "✦  COMPOSIÇÃO DO VALOR";
+  doc.text(composicaoTitle, margin + 5, yPosition + 7);
+
+  yPosition += 18;
+
+  // Cabeçalho da tabela
+  doc.setFillColor(...colors.bgAlt);
+  doc.rect(margin, yPosition, contentWidth, 8, "F");
+
+  doc.setTextColor(...colors.primary);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("DESCRIÇÃO", margin + 5, yPosition + 6);
+  doc.text("VALOR", pageWidth - margin - 5, yPosition + 6, { align: "right" });
+
+  yPosition += 13;
+
+  // Items da composição
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...colors.text);
+  doc.setFontSize(10);
+
+  let itemIndex = 0;
+
   if (quote.composicao) {
-    doc.setTextColor(...primaryColor);
-    doc.setFontSize(10);
+    // Espaço
+    if (itemIndex % 2 === 0) {
+      doc.setFillColor(...colors.bg);
+      doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
+    }
+    doc.text(`Espaço — ${quote.composicao.ano}`, margin + 5, yPosition);
     doc.setFont("helvetica", "bold");
-    doc.text("Valor por convidado adicional: ", margin, yPosition);
+    doc.text(formatCurrency(quote.composicao.espaco), pageWidth - margin - 5, yPosition, { align: "right" });
     doc.setFont("helvetica", "normal");
-    doc.text(formatCurrency(quote.composicao.custoConvidadoAdicional), margin + 60, yPosition);
-    yPosition += 10;
+    yPosition += 9;
+    itemIndex++;
+
+    // Decoração
+    if (itemIndex % 2 === 0) {
+      doc.setFillColor(...colors.bg);
+      doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
+    }
+    doc.text("Decoração", margin + 5, yPosition);
+    doc.setFont("helvetica", "bold");
+    doc.text(formatCurrency(quote.composicao.decoracao), pageWidth - margin - 5, yPosition, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    yPosition += 9;
+    itemIndex++;
+
+    // Buffet
+    if (quote.composicao.buffet !== null) {
+      if (itemIndex % 2 === 0) {
+        doc.setFillColor(...colors.bg);
+        doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
+      }
+      doc.text(`Buffet — ${quote.composicao.buffetNome || "Menu"}`, margin + 5, yPosition);
+      doc.setFont("helvetica", "bold");
+      doc.text(formatCurrency(quote.composicao.buffet), pageWidth - margin - 5, yPosition, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      yPosition += 9;
+      itemIndex++;
+    }
+  } else {
+    quote.items.forEach((item) => {
+      if (itemIndex % 2 === 0) {
+        doc.setFillColor(...colors.bg);
+        doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
+      }
+      doc.text(item.description, margin + 5, yPosition);
+      doc.setFont("helvetica", "bold");
+      doc.text(formatCurrency(item.value), pageWidth - margin - 5, yPosition, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      yPosition += 9;
+      itemIndex++;
+    });
   }
-  
+
+  // Extras
+  if (quote.extras && quote.extras.length > 0) {
+    yPosition += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...colors.primary);
+    doc.setFontSize(10);
+    doc.text("VALORES EXTRAS", margin + 5, yPosition);
+
+    yPosition += 10;
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...colors.text);
+    doc.setFontSize(10);
+
+    quote.extras.forEach((extra) => {
+      if (itemIndex % 2 === 0) {
+        doc.setFillColor(...colors.bg);
+        doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
+      }
+
+      const valorCalculado = extra.porConvidado ? extra.valor * quote.guestCount : extra.valor;
+
+      const descricao = extra.porConvidado
+        ? `${extra.descricao} (${formatCurrency(extra.valor)} × ${quote.guestCount})`
+        : extra.descricao;
+
+      doc.text(descricao, margin + 5, yPosition);
+      doc.setFont("helvetica", "bold");
+      doc.text(formatCurrency(valorCalculado), pageWidth - margin - 5, yPosition, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      yPosition += 9;
+      itemIndex++;
+    });
+  }
+
+  yPosition += 5;
+
+  // Linha divisória elegante
+  doc.setDrawColor(...colors.gold);
+  doc.setLineWidth(1);
+  doc.line(margin, yPosition, pageWidth - margin, yPosition);
+
+  yPosition += 12;
+
+  // Total destacado em card
+  const totalBoxWidth = 95;
+  const totalBoxHeight = 18;
+  const totalBoxX = pageWidth - margin - totalBoxWidth;
+
+  // Sombra do card de total
+  doc.setFillColor(200, 200, 200);
+  doc.roundedRect(totalBoxX + 1, yPosition - totalBoxHeight / 2 + 1, totalBoxWidth, totalBoxHeight, 3, 3, "F");
+
+  // Card de total com gradiente simulado
+  doc.setFillColor(...colors.primary);
+  doc.roundedRect(totalBoxX, yPosition - totalBoxHeight / 2, totalBoxWidth, totalBoxHeight, 3, 3, "F");
+
+  // Borda dourada
+  doc.setDrawColor(...colors.gold);
+  doc.setLineWidth(1.5);
+  doc.roundedRect(totalBoxX, yPosition - totalBoxHeight / 2, totalBoxWidth, totalBoxHeight, 3, 3, "S");
+
+  doc.setTextColor(...colors.white);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("VALOR TOTAL", totalBoxX + 7, yPosition + 1);
+
+  doc.setFontSize(14);
+  doc.setTextColor(...colors.gold);
+  doc.text(formatCurrency(quote.totalValue), pageWidth - margin - 7, yPosition + 1, { align: "right" });
+
+  yPosition += 20;
+
+  // Info adicional em box destacado
+  if (quote.composicao) {
+    doc.setFillColor(...colors.bgAlt);
+    doc.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, "F");
+
+    doc.setTextColor(...colors.textLight);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `ⓘ  Convidado adicional: ${formatCurrency(quote.composicao.custoConvidadoAdicional)}`,
+      margin + 5,
+      yPosition + 7,
+    );
+    yPosition += 15;
+  }
+
   yPosition += 10;
 
-  // Payment Terms Section (if available)
+  // ============================================
+  // CONDIÇÕES DE PAGAMENTO
+  // ============================================
+
   if (quote.paymentTerms && quote.paymentTerms.parcelas.length > 0) {
-    // Check if we need a new page
-    const estimatedPaymentHeight = 50 + (quote.paymentTerms.parcelas.length * 10);
-    if (yPosition + estimatedPaymentHeight > doc.internal.pageSize.getHeight() - 60) {
+    const estimatedPaymentHeight = 65 + quote.paymentTerms.parcelas.length * 9;
+    if (yPosition + estimatedPaymentHeight > pageHeight - 60) {
       doc.addPage();
       yPosition = 20;
     }
 
-    doc.setFillColor(...primaryColor);
-    doc.rect(margin, yPosition, contentWidth, 8, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
+    // Header da seção
+    doc.setFillColor(...colors.primary);
+    doc.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, "F");
+
+    doc.setTextColor(...colors.gold);
+    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("CONDIÇÕES DE PAGAMENTO", margin + 5, yPosition + 6);
-    
-    yPosition += 15;
-    
-    // Signal info
-    doc.setTextColor(...textColor);
+    doc.text("✦  CONDIÇÕES DE PAGAMENTO", margin + 5, yPosition + 7);
+
+    yPosition += 18;
+
+    // Box do sinal
+    doc.setFillColor(...colors.bg);
+    doc.roundedRect(margin, yPosition, contentWidth, 12, 2, 2, "F");
+
+    doc.setFillColor(...colors.gold);
+    doc.circle(margin + 7, yPosition + 6, 2, "F");
+
+    doc.setTextColor(...colors.text);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("Sinal (Entrada):", margin, yPosition);
+    doc.text("Sinal (Entrada):", margin + 12, yPosition + 7);
+
     doc.setFont("helvetica", "normal");
-    doc.text(
-      `${formatCurrency(quote.paymentTerms.valorSinal)} (${quote.paymentTerms.percentualSinal}%) - na assinatura do contrato`,
-      margin + 40,
-      yPosition
-    );
-    
-    yPosition += 12;
-    
-    // Installments table header
-    doc.setFillColor(...lightBg);
-    doc.rect(margin, yPosition, contentWidth, 10, "F");
-    doc.setTextColor(...primaryColor);
+    const sinalText = `${formatCurrency(quote.paymentTerms.valorSinal)} (${quote.paymentTerms.percentualSinal}%) — na assinatura do contrato`;
+    doc.text(sinalText, margin + 42, yPosition + 7);
+
+    yPosition += 20;
+
+    // Cabeçalho da tabela de parcelas
+    doc.setFillColor(...colors.bgAlt);
+    doc.rect(margin, yPosition, contentWidth, 8, "F");
+
+    doc.setTextColor(...colors.primary);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.text("Parcela", margin + 5, yPosition + 7);
-    doc.text("Vencimento", margin + 50, yPosition + 7);
-    doc.text("Valor", pageWidth - margin - 30, yPosition + 7, { align: "right" });
-    
-    yPosition += 15;
-    
-    // Installments rows
-    doc.setTextColor(...textColor);
+    doc.text("PARCELA", margin + 5, yPosition + 6);
+    doc.text("VENCIMENTO", margin + 45, yPosition + 6);
+    doc.text("VALOR", pageWidth - margin - 5, yPosition + 6, { align: "right" });
+
+    yPosition += 13;
+
+    // Linhas das parcelas
     doc.setFont("helvetica", "normal");
-    
+    doc.setTextColor(...colors.text);
+    doc.setFontSize(9);
+
     quote.paymentTerms.parcelas.forEach((parcela, index) => {
-      // Alternate row background
       if (index % 2 === 0) {
-        doc.setFillColor(250, 247, 242);
-        doc.rect(margin, yPosition - 5, contentWidth, 10, "F");
+        doc.setFillColor(...colors.bg);
+        doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
       }
-      
-      doc.text(`${parcela.numero}ª parcela`, margin + 5, yPosition);
-      doc.text(formatDate(parcela.dataVencimento), margin + 50, yPosition);
+
+      doc.text(`${parcela.numero}ª`, margin + 5, yPosition);
+      doc.text(formatDate(parcela.dataVencimento), margin + 45, yPosition);
+      doc.setFont("helvetica", "bold");
       doc.text(formatCurrency(parcela.valor), pageWidth - margin - 5, yPosition, { align: "right" });
-      yPosition += 10;
+      doc.setFont("helvetica", "normal");
+      yPosition += 9;
     });
-    
-    // Installments total
+
+    yPosition += 3;
+
+    // Total das parcelas
     const totalParcelas = quote.paymentTerms.parcelas.reduce((sum, p) => sum + p.valor, 0);
-    doc.setDrawColor(...goldColor);
+
+    doc.setDrawColor(...colors.divider);
     doc.setLineWidth(0.5);
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    
+    doc.line(margin + 40, yPosition, pageWidth - margin, yPosition);
+
     yPosition += 8;
-    
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("Total Parcelado:", margin + 50, yPosition);
+    doc.setTextColor(...colors.primary);
+    doc.text("Total Parcelado:", margin + 45, yPosition);
     doc.text(formatCurrency(totalParcelas), pageWidth - margin - 5, yPosition, { align: "right" });
-    
-    yPosition += 20;
+
+    yPosition += 18;
   }
 
-  // Validity Section
-  // Check if we need a new page
-  if (yPosition > doc.internal.pageSize.getHeight() - 80) {
+  // ============================================
+  // VALIDADE E CONDIÇÕES
+  // ============================================
+
+  if (yPosition > pageHeight - 100) {
     doc.addPage();
     yPosition = 20;
   }
 
-  doc.setFillColor(...primaryColor);
-  doc.rect(margin, yPosition, contentWidth, 8, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(11);
+  // Header da seção
+  doc.setFillColor(...colors.primary);
+  doc.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, "F");
+
+  doc.setTextColor(...colors.gold);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("VALIDADE E CONDIÇÕES", margin + 5, yPosition + 6);
-  
-  yPosition += 15;
-  
-  doc.setTextColor(...textColor);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  
-  doc.setFont("helvetica", "bold");
-  doc.text("Data de Emissão:", margin, yPosition);
-  doc.setFont("helvetica", "normal");
-  doc.text(formatDate(quote.createdAt), margin + 40, yPosition);
-  
-  doc.setFont("helvetica", "bold");
-  doc.text("Válido até:", col2X, yPosition);
-  doc.setFont("helvetica", "normal");
-  doc.text(formatDate(quote.validUntil), col2X + 28, yPosition);
-  
-  yPosition += 15;
-  
-  // Terms
+  doc.text("✦  VALIDADE E CONDIÇÕES", margin + 5, yPosition + 7);
+
+  yPosition += 18;
+
+  // Datas em boxes
+  const dateBoxWidth = (contentWidth - 10) / 2;
+
+  // Box data de emissão
+  doc.setFillColor(...colors.bg);
+  doc.roundedRect(margin, yPosition, dateBoxWidth, 10, 2, 2, "F");
+  doc.setTextColor(...colors.textLight);
   doc.setFontSize(9);
-  doc.setTextColor(...textColor);
+  doc.setFont("helvetica", "bold");
+  doc.text("Data de Emissão", margin + 5, yPosition + 4);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...colors.text);
+  doc.text(formatDate(quote.createdAt), margin + 5, yPosition + 8);
+
+  // Box válido até
+  doc.setFillColor(...colors.bg);
+  doc.roundedRect(margin + dateBoxWidth + 10, yPosition, dateBoxWidth, 10, 2, 2, "F");
+  doc.setTextColor(...colors.textLight);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("Válido até", margin + dateBoxWidth + 15, yPosition + 4);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...colors.text);
+  doc.text(formatDate(quote.validUntil), margin + dateBoxWidth + 15, yPosition + 8);
+
+  yPosition += 18;
+
+  // Termos e condições
+  doc.setFontSize(9);
+  doc.setTextColor(...colors.textLight);
+  doc.setFont("helvetica", "normal");
+
   const terms = [
     "• Este orçamento é válido pelo período indicado acima.",
     "• Os valores podem sofrer alterações após o vencimento.",
     "• Reserva confirmada mediante assinatura do contrato e pagamento do sinal.",
+    "• Dúvidas ou alterações podem ser solicitadas através dos nossos canais de atendimento.",
   ];
-  
+
   terms.forEach((term) => {
-    doc.text(term, margin, yPosition);
+    doc.text(term, margin + 2, yPosition);
     yPosition += 6;
   });
 
-  // Footer
-  const footerY = doc.internal.pageSize.getHeight() - 25;
-  
-  doc.setFillColor(...goldColor);
-  doc.rect(0, footerY - 5, pageWidth, 3, "F");
-  
-  doc.setFontSize(9);
-  doc.setTextColor(...primaryColor);
-  doc.setFont("helvetica", "normal");
+  // ============================================
+  // RODAPÉ ELEGANTE
+  // ============================================
+
+  const footerY = pageHeight - 25;
+
+  // Linha decorativa
+  doc.setDrawColor(...colors.gold);
+  doc.setLineWidth(1.5);
+  doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+
+  // Detalhes decorativos
+  doc.setFillColor(...colors.gold);
+  doc.circle(margin, footerY - 5, 2, "F");
+  doc.circle(pageWidth - margin, footerY - 5, 2, "F");
+  doc.circle(pageWidth / 2, footerY - 5, 2, "F");
+
+  // Mensagem de agradecimento
+  doc.setFontSize(10);
+  doc.setTextColor(...colors.primary);
+  doc.setFont("helvetica", "italic");
   doc.text(
-    "Obrigado pela preferência! Estamos à disposição para esclarecer qualquer dúvida.",
+    "Obrigado pela preferência! Estamos à disposição para realizar seu evento dos sonhos.",
     pageWidth / 2,
-    footerY + 5,
-    { align: "center" }
-  );
-  
-  doc.setFontSize(8);
-  doc.setTextColor(...textColor);
-  doc.text(
-    `Documento gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`,
-    pageWidth / 2,
-    footerY + 12,
-    { align: "center" }
+    footerY + 3,
+    { align: "center" },
   );
 
-  // Save the PDF
-  doc.save(`orcamento-${quote.id}.pdf`);
+  // Info de geração
+  doc.setFontSize(8);
+  doc.setTextColor(...colors.textLight);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    `Documento gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+    pageWidth / 2,
+    footerY + 10,
+    { align: "center" },
+  );
+
+  // Salvar PDF
+  doc.save(`orcamento-${quote.id}-sitio-canto-da-mata.pdf`);
 };
