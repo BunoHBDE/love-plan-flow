@@ -46,6 +46,7 @@ export type Database = {
           complemento: string | null
           cpf: string | null
           created_at: string
+          created_by: string | null
           email: string | null
           estado_uf: string | null
           id: string
@@ -62,6 +63,7 @@ export type Database = {
           complemento?: string | null
           cpf?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
           estado_uf?: string | null
           id?: string
@@ -78,6 +80,7 @@ export type Database = {
           complemento?: string | null
           cpf?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
           estado_uf?: string | null
           id?: string
@@ -119,6 +122,7 @@ export type Database = {
           canal_entrada: string | null
           client_id: string
           created_at: string
+          created_by: string | null
           data_evento: string | null
           data_status: string
           dia_semana: string | null
@@ -146,6 +150,7 @@ export type Database = {
           canal_entrada?: string | null
           client_id: string
           created_at?: string
+          created_by?: string | null
           data_evento?: string | null
           data_status?: string
           dia_semana?: string | null
@@ -173,6 +178,7 @@ export type Database = {
           canal_entrada?: string | null
           client_id?: string
           created_at?: string
+          created_by?: string | null
           data_evento?: string | null
           data_status?: string
           dia_semana?: string | null
@@ -230,6 +236,7 @@ export type Database = {
         Row: {
           client_id: string | null
           created_at: string
+          created_by: string | null
           guest_count: number | null
           id: string
           notes: string | null
@@ -245,6 +252,7 @@ export type Database = {
         Insert: {
           client_id?: string | null
           created_at?: string
+          created_by?: string | null
           guest_count?: number | null
           id?: string
           notes?: string | null
@@ -260,6 +268,7 @@ export type Database = {
         Update: {
           client_id?: string | null
           created_at?: string
+          created_by?: string | null
           guest_count?: number | null
           id?: string
           notes?: string | null

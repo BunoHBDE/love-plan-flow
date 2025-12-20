@@ -129,10 +129,13 @@ export function useClients() {
       return null;
     }
 
+    // Get current user ID for created_by
+    const { data: userData } = await supabase.auth.getUser();
+
     const validatedData = validationResult.data as ClientInsert;
     const { data, error } = await supabase
       .from("clients")
-      .insert(validatedData)
+      .insert({ ...validatedData, created_by: userData.user?.id })
       .select()
       .single();
 
