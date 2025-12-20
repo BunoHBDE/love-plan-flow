@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+import { getSafeErrorMessage } from "@/lib/errorHandler";
 
 export interface Visit {
   id: string;
@@ -37,6 +39,25 @@ export interface VisitInsert {
   wedding_year?: string | null;
 }
 
+// Zod validation schema for visit data
+const visitSchema = z.object({
+  client_id: z.string().uuid("Cliente inválido").optional().nullable(),
+  visit_date: z.string().min(1, "Data da visita é obrigatória"),
+  visit_time: z.string().min(1, "Horário da visita é obrigatório"),
+  status: z.string().max(50).optional(),
+  notes: z.string().max(1000, "Notas muito longas").optional().nullable(),
+  guest_count: z.number()
+    .int()
+    .min(1, "Mínimo 1 convidado")
+    .max(2000, "Número de convidados muito alto")
+    .optional()
+    .nullable(),
+  wedding_date_status: z.string().max(50).optional(),
+  wedding_date: z.string().optional().nullable(),
+  wedding_month: z.string().max(20).optional().nullable(),
+  wedding_year: z.string().max(10).optional().nullable(),
+});
+
 export function useVisits() {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +76,7 @@ export function useVisits() {
     if (error) {
       toast({
         title: "Erro ao carregar visitas",
-        description: error.message,
+        description: getSafeErrorMessage(error, "fetchVisits"),
         variant: "destructive",
       });
     } else {
@@ -65,9 +86,22 @@ export function useVisits() {
   };
 
   const createVisit = async (visit: VisitInsert): Promise<Visit | null> => {
+    // Validate visit data
+    const validationResult = visitSchema.safeParse(visit);
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      toast({
+        title: "Dados inválidos",
+        description: firstError.message,
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    const validatedData = validationResult.data as VisitInsert;
     const { data, error } = await supabase
       .from("visits")
-      .insert(visit)
+      .insert(validatedData)
       .select(`
         *,
         client:clients(nome, email, telefone)
@@ -77,7 +111,7 @@ export function useVisits() {
     if (error) {
       toast({
         title: "Erro ao criar visita",
-        description: error.message,
+        description: getSafeErrorMessage(error, "createVisit"),
         variant: "destructive",
       });
       return null;
@@ -94,15 +128,29 @@ export function useVisits() {
   };
 
   const updateVisit = async (id: string, updates: Partial<VisitInsert>): Promise<boolean> => {
+    // Validate update data (partial validation)
+    const partialSchema = visitSchema.partial();
+    const validationResult = partialSchema.safeParse(updates);
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      toast({
+        title: "Dados inválidos",
+        description: firstError.message,
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    const validatedData = validationResult.data as Partial<VisitInsert>;
     const { error } = await supabase
       .from("visits")
-      .update(updates)
+      .update(validatedData)
       .eq("id", id);
 
     if (error) {
       toast({
         title: "Erro ao atualizar visita",
-        description: error.message,
+        description: getSafeErrorMessage(error, "updateVisit"),
         variant: "destructive",
       });
       return false;
@@ -116,6 +164,18 @@ export function useVisits() {
   };
 
   const updateVisitStatus = async (id: string, status: string): Promise<boolean> => {
+    // Validate status
+    const statusSchema = z.string().max(50);
+    const validationResult = statusSchema.safeParse(status);
+    if (!validationResult.success) {
+      toast({
+        title: "Dados inválidos",
+        description: "Status inválido",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     const { error } = await supabase
       .from("visits")
       .update({ status })
@@ -124,7 +184,7 @@ export function useVisits() {
     if (error) {
       toast({
         title: "Erro ao atualizar status",
-        description: error.message,
+        description: getSafeErrorMessage(error, "updateVisitStatus"),
         variant: "destructive",
       });
       return false;
@@ -148,7 +208,7 @@ export function useVisits() {
     if (error) {
       toast({
         title: "Erro ao excluir visita",
-        description: error.message,
+        description: getSafeErrorMessage(error, "deleteVisit"),
         variant: "destructive",
       });
       return false;

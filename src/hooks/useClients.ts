@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { getSafeErrorMessage } from "@/lib/errorHandler";
 
 export interface Client {
   id: string;
@@ -106,7 +107,7 @@ export function useClients() {
     if (error) {
       toast({
         title: "Erro ao carregar clientes",
-        description: error.message,
+        description: getSafeErrorMessage(error, "fetchClients"),
         variant: "destructive",
       });
     } else {
@@ -138,7 +139,7 @@ export function useClients() {
     if (error) {
       toast({
         title: "Erro ao criar cliente",
-        description: error.message,
+        description: getSafeErrorMessage(error, "createClient"),
         variant: "destructive",
       });
       return null;
@@ -175,7 +176,7 @@ export function useClients() {
     if (error) {
       toast({
         title: "Erro ao atualizar cliente",
-        description: error.message,
+        description: getSafeErrorMessage(error, "updateClient"),
         variant: "destructive",
       });
       return false;
@@ -197,7 +198,7 @@ export function useClients() {
     if (error) {
       toast({
         title: "Erro ao excluir cliente",
-        description: error.message,
+        description: getSafeErrorMessage(error, "deleteClient"),
         variant: "destructive",
       });
       return false;
@@ -227,7 +228,7 @@ export function useClients() {
     if (error) {
       toast({
         title: "Erro na busca",
-        description: error.message,
+        description: getSafeErrorMessage(error, "searchClients"),
         variant: "destructive",
       });
       return [];
