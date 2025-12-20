@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+import { getSafeErrorMessage } from "@/lib/errorHandler";
 
 export interface BlockedDate {
   id: string;
@@ -8,6 +10,14 @@ export interface BlockedDate {
   reason: string;
   created_at: string;
 }
+
+// Validation schema for blocked date
+const blockedDateSchema = z.object({
+  date: z.string().min(1, "Data é obrigatória"),
+  reason: z.string()
+    .min(1, "Motivo é obrigatório")
+    .max(200, "Motivo muito longo"),
+});
 
 export function useBlockedDates() {
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
@@ -25,7 +35,7 @@ export function useBlockedDates() {
       console.error("Error fetching blocked dates:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível carregar as datas bloqueadas.",
+        description: getSafeErrorMessage(error, "fetchBlockedDates"),
         variant: "destructive",
       });
     } else {
@@ -39,11 +49,23 @@ export function useBlockedDates() {
   }, []);
 
   const addBlockedDate = async (date: string, reason: string): Promise<boolean> => {
+    // Validate input
+    const validationResult = blockedDateSchema.safeParse({ date, reason });
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      toast({
+        title: "Dados inválidos",
+        description: firstError.message,
+        variant: "destructive",
+      });
+      return false;
+    }
+
     const { data: userData } = await supabase.auth.getUser();
     
     const { error } = await supabase.from("blocked_dates").insert({
-      date,
-      reason,
+      date: validationResult.data.date,
+      reason: validationResult.data.reason,
       created_by: userData.user?.id,
     });
 
@@ -58,7 +80,7 @@ export function useBlockedDates() {
       } else {
         toast({
           title: "Erro",
-          description: "Não foi possível bloquear a data.",
+          description: getSafeErrorMessage(error, "addBlockedDate"),
           variant: "destructive",
         });
       }
@@ -81,7 +103,7 @@ export function useBlockedDates() {
       console.error("Error removing blocked date:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível desbloquear a data.",
+        description: getSafeErrorMessage(error, "removeBlockedDate"),
         variant: "destructive",
       });
       return false;
