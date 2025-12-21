@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -12,10 +11,12 @@ import {
   Heart,
   LogOut,
   CalendarCheck,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useSidebarContext } from "@/contexts/SidebarContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/", disabled: false },
@@ -28,7 +29,7 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed, mobileOpen, setMobileOpen, isMobile } = useSidebarContext();
   const { signOut, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -46,6 +47,109 @@ export function Sidebar() {
     }
   };
 
+  const handleNavClick = () => {
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  };
+
+  // Mobile overlay
+  if (isMobile) {
+    return (
+      <>
+        {/* Overlay */}
+        {mobileOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+        
+        {/* Mobile Sidebar */}
+        <aside
+          className={cn(
+            "fixed left-0 top-0 z-50 h-screen bg-sidebar border-r border-sidebar-border transition-transform duration-300 flex flex-col w-64",
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          {/* Header with close button */}
+          <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-gold shadow-gold">
+                <Heart className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="font-display text-lg font-semibold text-sidebar-foreground">
+                  Espaço Noiva
+                </h1>
+                <p className="text-xs text-muted-foreground">Gestão de Eventos</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileOpen(false)}
+              className="text-muted-foreground"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+            {navItems.map((item) => (
+              item.disabled ? (
+                <div
+                  key={item.path}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium cursor-not-allowed opacity-40 text-muted-foreground"
+                >
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  <span>{item.label}</span>
+                </div>
+              ) : (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={handleNavClick}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-primary shadow-soft"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                    )
+                  }
+                >
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  <span>{item.label}</span>
+                </NavLink>
+              )
+            ))}
+          </nav>
+
+          {/* User & Logout */}
+          <div className="p-3 border-t border-sidebar-border space-y-2">
+            {profile && (
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                {profile.full_name || profile.email}
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="ml-2">Sair</span>
+            </Button>
+          </div>
+        </aside>
+      </>
+    );
+  }
+
+  // Desktop Sidebar
   return (
     <aside
       className={cn(
