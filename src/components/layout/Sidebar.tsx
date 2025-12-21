@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   ChevronLeft,
   ChevronRight,
-  Heart,
   LogOut,
   CalendarCheck,
   X,
@@ -74,17 +73,9 @@ export function Sidebar() {
         >
           {/* Header with close button */}
           <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-gold shadow-gold">
-                <Heart className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="font-display text-lg font-semibold text-sidebar-foreground">
-                  Espaço Noiva
-                </h1>
-                <p className="text-xs text-muted-foreground">Gestão de Eventos</p>
-              </div>
-            </div>
+            <h1 className="font-display text-xl font-bold text-sidebar-foreground">
+              Ayllah
+            </h1>
             <Button
               variant="ghost"
               size="icon"
@@ -164,23 +155,13 @@ export function Sidebar() {
       >
         {collapsed ? (
           <div className="w-full flex justify-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-gold shadow-gold">
-              <Heart className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-gold shadow-gold">
-                <Heart className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="font-display text-xl font-bold text-sidebar-foreground">
-                  Ayllah
-                </h1>
-                <p className="text-xs text-muted-foreground">Gestão de Eventos</p>
-              </div>
-            </div>
+            <h1 className="font-display text-xl font-bold text-sidebar-foreground">
+              Ayllah
+            </h1>
             <ChevronLeft className="h-5 w-5 text-muted-foreground" />
           </>
         )}
