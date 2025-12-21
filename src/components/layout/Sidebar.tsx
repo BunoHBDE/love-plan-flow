@@ -72,10 +72,13 @@ export function Sidebar() {
           )}
         >
           {/* Header with close button */}
-          <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
-            <h1 className="font-display text-xl font-bold text-sidebar-foreground">
-              Ayllah
-            </h1>
+          <div className="flex items-center justify-between px-4 py-5 border-b border-sidebar-border">
+            <div>
+              <h1 className="font-display text-2xl font-bold text-gold tracking-wide">
+                Ayllah
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Gestão de Eventos</p>
+            </div>
             <Button
               variant="ghost"
               size="icon"
@@ -150,18 +153,21 @@ export function Sidebar() {
     >
       {/* Header with toggle */}
       <div 
-        className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border cursor-pointer hover:bg-sidebar-accent/30 transition-colors"
+        className="flex items-center justify-between px-4 py-5 border-b border-sidebar-border cursor-pointer hover:bg-sidebar-accent/30 transition-colors"
         onClick={() => setCollapsed(!collapsed)}
       >
         {collapsed ? (
           <div className="w-full flex justify-center">
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            <ChevronRight className="h-5 w-5 text-gold" />
           </div>
         ) : (
           <>
-            <h1 className="font-display text-xl font-bold text-sidebar-foreground">
-              Ayllah
-            </h1>
+            <div>
+              <h1 className="font-display text-2xl font-bold text-gold tracking-wide">
+                Ayllah
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Gestão de Eventos</p>
+            </div>
             <ChevronLeft className="h-5 w-5 text-muted-foreground" />
           </>
         )}
