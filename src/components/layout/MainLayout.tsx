@@ -20,12 +20,14 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Swipe Indicator */}
       {showSwipeIndicator && (
         <div 
-          className="fixed left-0 top-1/2 -translate-y-1/2 z-30 flex items-center cursor-pointer group"
+          className={`fixed top-1/2 -translate-y-1/2 z-50 flex items-center cursor-pointer group ${
+            isMobile ? 'left-0' : 'left-20'
+          }`}
           onClick={() => isMobile ? setMobileOpen(true) : setCollapsed(false)}
         >
-          <div className="w-1 h-24 bg-gradient-to-b from-transparent via-primary/30 to-transparent rounded-r-full transition-all duration-300 group-hover:via-primary/60 group-hover:w-1.5" />
-          <div className="absolute left-0 flex items-center justify-center w-6 h-12 bg-primary/10 rounded-r-lg opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm border border-l-0 border-primary/20">
-            <ChevronRight className="h-4 w-4 text-primary animate-pulse" />
+          <div className="w-1.5 h-24 bg-gradient-to-b from-transparent via-primary/40 to-transparent rounded-r-full transition-all duration-300 group-hover:via-primary/70 group-hover:w-2" />
+          <div className="absolute left-0 flex items-center justify-center w-8 h-14 bg-primary/20 rounded-r-xl opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm border border-l-0 border-primary/30 shadow-lg">
+            <ChevronRight className="h-5 w-5 text-primary animate-pulse" />
           </div>
         </div>
       )}
