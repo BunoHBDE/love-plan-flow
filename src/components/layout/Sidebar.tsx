@@ -151,111 +151,98 @@ export function Sidebar() {
 
   // Desktop Sidebar
   return (
-    <div className="group/sidebar">
-      <aside
-        className={cn(
-          "fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col",
-          collapsed ? "w-20" : "w-64"
-        )}
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col",
+        collapsed ? "w-20" : "w-64"
+      )}
+    >
+      {/* Header with toggle */}
+      <div 
+        className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border cursor-pointer hover:bg-sidebar-accent/30 transition-colors"
+        onClick={() => setCollapsed(!collapsed)}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-gold shadow-gold">
-            <Heart className="h-5 w-5 text-primary-foreground" />
+        {collapsed ? (
+          <div className="w-full flex justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-gold shadow-gold">
+              <Heart className="h-5 w-5 text-primary-foreground" />
+            </div>
           </div>
-          {!collapsed && (
-            <div className="animate-fade-in">
-              <h1 className="font-display text-lg font-semibold text-sidebar-foreground">
-                Espaço Noiva
-              </h1>
-              <p className="text-xs text-muted-foreground">Gestão de Eventos</p>
-            </div>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-6 space-y-1">
-          {navItems.map((item) => (
-            item.disabled ? (
-              <div
-                key={item.path}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium cursor-not-allowed opacity-40",
-                  "text-muted-foreground",
-                  collapsed && "justify-center px-3"
-                )}
-              >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && (
-                  <span className="animate-fade-in">{item.label}</span>
-                )}
+        ) : (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-gold shadow-gold">
+                <Heart className="h-5 w-5 text-primary-foreground" />
               </div>
-            ) : (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-primary shadow-soft"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/50",
-                    collapsed && "justify-center px-3"
-                  )
-                }
-              >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && (
-                  <span className="animate-fade-in">{item.label}</span>
-                )}
-              </NavLink>
-            )
-          ))}
-        </nav>
-
-        {/* User & Logout */}
-        <div className="p-3 border-t border-sidebar-border space-y-2">
-          {!collapsed && profile && (
-            <div className="px-3 py-2 text-sm text-muted-foreground animate-fade-in">
-              {profile.full_name || profile.email}
+              <div>
+                <h1 className="font-display text-xl font-bold text-sidebar-foreground">
+                  Ayllah
+                </h1>
+                <p className="text-xs text-muted-foreground">Gestão de Eventos</p>
+              </div>
             </div>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSignOut}
-            className={cn("w-full text-destructive hover:text-destructive hover:bg-destructive/10", collapsed && "justify-center")}
-          >
-            <LogOut className="h-4 w-4" />
-            {!collapsed && <span className="ml-2">Sair</span>}
-          </Button>
-          {!collapsed && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setCollapsed(true)}
-              className="w-full"
+            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+          </>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-6 space-y-1">
+        {navItems.map((item) => (
+          item.disabled ? (
+            <div
+              key={item.path}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium cursor-not-allowed opacity-40",
+                "text-muted-foreground",
+                collapsed && "justify-center px-3"
+              )}
             >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Recolher</span>
-            </Button>
-          )}
-        </div>
-
-        {/* Expand edge - curved clickable area on the right side when collapsed */}
-        {collapsed && (
-          <div
-            onClick={() => setCollapsed(false)}
-            className="absolute right-0 top-0 h-full w-3 cursor-pointer opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 flex items-center justify-center"
-          >
-            <div className="h-full w-full bg-gradient-to-r from-transparent to-primary/10 group-hover/sidebar:to-primary/20 transition-all duration-300" />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-32 bg-primary/50 rounded-l-full transition-all duration-300 group-hover/sidebar:h-48 group-hover/sidebar:bg-primary/70" />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
-              <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300" />
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && (
+                <span className="animate-fade-in">{item.label}</span>
+              )}
             </div>
+          ) : (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-primary shadow-soft"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50",
+                  collapsed && "justify-center px-3"
+                )
+              }
+            >
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && (
+                <span className="animate-fade-in">{item.label}</span>
+              )}
+            </NavLink>
+          )
+        ))}
+      </nav>
+
+      {/* User & Logout */}
+      <div className="p-3 border-t border-sidebar-border space-y-2">
+        {!collapsed && profile && (
+          <div className="px-3 py-2 text-sm text-muted-foreground animate-fade-in">
+            {profile.full_name || profile.email}
           </div>
         )}
-      </aside>
-    </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSignOut}
+          className={cn("w-full text-destructive hover:text-destructive hover:bg-destructive/10", collapsed && "justify-center")}
+        >
+          <LogOut className="h-4 w-4" />
+          {!collapsed && <span className="ml-2">Sair</span>}
+        </Button>
+      </div>
+    </aside>
   );
 }
