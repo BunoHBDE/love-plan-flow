@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface StatCardProps {
   title: string;
@@ -11,6 +12,8 @@ interface StatCardProps {
     isPositive: boolean;
   };
   className?: string;
+  isLoading?: boolean;
+  disabled?: boolean;
 }
 
 export function StatCard({
@@ -20,11 +23,34 @@ export function StatCard({
   icon,
   trend,
   className,
+  isLoading,
+  disabled,
 }: StatCardProps) {
+  if (isLoading) {
+    return (
+      <div
+        className={cn(
+          "bg-card rounded-xl p-6 shadow-soft border border-border",
+          className
+        )}
+      >
+        <div className="flex items-start justify-between">
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <Skeleton className="h-12 w-12 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
         "bg-card rounded-xl p-6 shadow-soft border border-border transition-all duration-300 hover:shadow-medium animate-slide-up",
+        disabled && "opacity-50",
         className
       )}
     >
@@ -32,12 +58,14 @@ export function StatCard({
         <div className="space-y-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p className="text-3xl font-display font-semibold text-foreground">
-            {value}
+            {disabled ? "-" : value}
           </p>
           {subtitle && (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
+            <p className="text-sm text-muted-foreground">
+              {disabled ? "Sem dados" : subtitle}
+            </p>
           )}
-          {trend && (
+          {trend && !disabled && (
             <p
               className={cn(
                 "text-sm font-medium",
@@ -48,7 +76,10 @@ export function StatCard({
             </p>
           )}
         </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-gold shadow-gold">
+        <div className={cn(
+          "flex h-12 w-12 items-center justify-center rounded-xl shadow-gold",
+          disabled ? "bg-muted" : "bg-gradient-gold"
+        )}>
           {icon}
         </div>
       </div>
