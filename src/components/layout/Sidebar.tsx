@@ -18,13 +18,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: Calendar, label: "Visitas", path: "/visitas" },
-  { icon: Users, label: "Clientes", path: "/clientes" },
-  { icon: FileText, label: "Orçamentos", path: "/orcamentos" },
-  { icon: CalendarCheck, label: "Disponibilidade", path: "/disponibilidade" },
-  { icon: FileText, label: "Contratos", path: "/contratos" },
-  { icon: CreditCard, label: "Pagamentos", path: "/pagamentos" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/", disabled: false },
+  { icon: CalendarCheck, label: "Disponibilidade", path: "/disponibilidade", disabled: false },
+  { icon: Calendar, label: "Visitas", path: "/visitas", disabled: false },
+  { icon: FileText, label: "Orçamentos", path: "/orcamentos", disabled: false },
+  { icon: Users, label: "Clientes", path: "/clientes", disabled: false },
+  { icon: FileText, label: "Contratos", path: "/contratos", disabled: true },
+  { icon: CreditCard, label: "Pagamentos", path: "/pagamentos", disabled: true },
 ];
 
 export function Sidebar() {
@@ -71,24 +71,40 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-6 space-y-1">
         {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-primary shadow-soft"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/50",
+          item.disabled ? (
+            <div
+              key={item.path}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium cursor-not-allowed opacity-40",
+                "text-muted-foreground",
                 collapsed && "justify-center px-3"
-              )
-            }
-          >
-            <item.icon className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && (
-              <span className="animate-fade-in">{item.label}</span>
-            )}
-          </NavLink>
+              )}
+            >
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && (
+                <span className="animate-fade-in">{item.label}</span>
+              )}
+            </div>
+          ) : (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-primary shadow-soft"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50",
+                  collapsed && "justify-center px-3"
+                )
+              }
+            >
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && (
+                <span className="animate-fade-in">{item.label}</span>
+              )}
+            </NavLink>
+          )
         ))}
       </nav>
 
