@@ -7,10 +7,36 @@ import {
   Calendar,
   FileText,
   Users,
-  CreditCard,
 } from "lucide-react";
+import { useVisits } from "@/hooks/useVisits";
+import { useClients } from "@/hooks/useClients";
+import { useQuotes } from "@/hooks/useQuotes";
 
 const Index = () => {
+  const { visits, loading: visitsLoading } = useVisits();
+  const { clients, loading: clientsLoading } = useClients();
+  const { quotes, loading: quotesLoading } = useQuotes();
+
+  const isLoading = visitsLoading || clientsLoading || quotesLoading;
+
+  // Count visits scheduled for this month
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  
+  const visitsThisMonth = visits?.filter(visit => {
+    const visitDate = new Date(visit.visit_date);
+    return visitDate.getMonth() === currentMonth && visitDate.getFullYear() === currentYear;
+  }).length || 0;
+
+  // Count quotes in open status
+  const openQuotes = quotes?.filter(quote => 
+    quote.status === 'rascunho' || quote.status === 'enviado'
+  ).length || 0;
+
+  // Total clients
+  const totalClients = clients?.length || 0;
+
   return (
     <MainLayout>
       <div className="space-y-8">
@@ -25,34 +51,30 @@ const Index = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatCard
             title="Visitas Agendadas"
-            value={12}
+            value={visitsThisMonth}
             subtitle="Este mês"
             icon={<Calendar className="h-6 w-6 text-primary-foreground" />}
-            trend={{ value: 15, isPositive: true }}
+            isLoading={isLoading}
+            disabled={!visits || visits.length === 0}
           />
           <StatCard
             title="Orçamentos"
-            value={8}
+            value={openQuotes}
             subtitle="Em aberto"
             icon={<FileText className="h-6 w-6 text-primary-foreground" />}
-            trend={{ value: 5, isPositive: true }}
+            isLoading={isLoading}
+            disabled={!quotes || quotes.length === 0}
           />
           <StatCard
-            title="Clientes Ativos"
-            value={24}
-            subtitle="Casamentos confirmados"
+            title="Clientes"
+            value={totalClients}
+            subtitle="Cadastrados"
             icon={<Users className="h-6 w-6 text-primary-foreground" />}
-            trend={{ value: 12, isPositive: true }}
-          />
-          <StatCard
-            title="Receita do Mês"
-            value="€ 45.000"
-            subtitle="Meta: € 60.000"
-            icon={<CreditCard className="h-6 w-6 text-primary-foreground" />}
-            trend={{ value: 8, isPositive: true }}
+            isLoading={isLoading}
+            disabled={!clients || clients.length === 0}
           />
         </div>
 
