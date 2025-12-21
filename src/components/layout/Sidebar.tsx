@@ -151,7 +151,7 @@ export function Sidebar() {
 
   // Desktop Sidebar
   return (
-    <>
+    <div className="group/sidebar">
       <aside
         className={cn(
           "fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col",
@@ -241,19 +241,21 @@ export function Sidebar() {
             </Button>
           )}
         </div>
-      </aside>
 
-      {/* Floating expand button - visible when collapsed */}
-      {collapsed && (
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setCollapsed(false)}
-          className="fixed left-[84px] top-1/2 -translate-y-1/2 z-50 h-10 w-10 rounded-full bg-sidebar border-sidebar-border shadow-lg hover:bg-sidebar-accent transition-all duration-300 animate-fade-in"
-        >
-          <ChevronRight className="h-5 w-5 text-sidebar-foreground" />
-        </Button>
-      )}
-    </>
+        {/* Expand edge - curved clickable area on the right side when collapsed */}
+        {collapsed && (
+          <div
+            onClick={() => setCollapsed(false)}
+            className="absolute right-0 top-0 h-full w-3 cursor-pointer opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 flex items-center justify-center"
+          >
+            <div className="h-full w-full bg-gradient-to-r from-transparent to-primary/10 group-hover/sidebar:to-primary/20 transition-all duration-300" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-32 bg-primary/50 rounded-l-full transition-all duration-300 group-hover/sidebar:h-48 group-hover/sidebar:bg-primary/70" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
+              <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300" />
+            </div>
+          </div>
+        )}
+      </aside>
+    </div>
   );
 }
