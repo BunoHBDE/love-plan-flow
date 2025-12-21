@@ -2,18 +2,33 @@ import { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { useSidebarContext } from "@/contexts/SidebarContext";
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+import { Menu, ChevronRight } from "lucide-react";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
-  const { collapsed, isMobile, setMobileOpen } = useSidebarContext();
+  const { collapsed, setCollapsed, isMobile, mobileOpen, setMobileOpen } = useSidebarContext();
+
+  const showSwipeIndicator = (isMobile && !mobileOpen) || (!isMobile && collapsed);
 
   return (
     <div className="min-h-screen bg-gradient-hero">
       <Sidebar />
+      
+      {/* Swipe Indicator */}
+      {showSwipeIndicator && (
+        <div 
+          className="fixed left-0 top-1/2 -translate-y-1/2 z-30 flex items-center cursor-pointer group"
+          onClick={() => isMobile ? setMobileOpen(true) : setCollapsed(false)}
+        >
+          <div className="w-1 h-24 bg-gradient-to-b from-transparent via-primary/30 to-transparent rounded-r-full transition-all duration-300 group-hover:via-primary/60 group-hover:w-1.5" />
+          <div className="absolute left-0 flex items-center justify-center w-6 h-12 bg-primary/10 rounded-r-lg opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm border border-l-0 border-primary/20">
+            <ChevronRight className="h-4 w-4 text-primary animate-pulse" />
+          </div>
+        </div>
+      )}
       
       {/* Mobile Header */}
       {isMobile && (
