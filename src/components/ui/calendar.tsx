@@ -7,9 +7,19 @@ import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   renderDayContent?: (props: DayContentProps) => React.ReactElement;
+  showNavigation?: boolean; // Mostrar botões de navegação
+  showCaption?: boolean; // Mostrar mês e ano
 };
 
-function Calendar({ className, classNames, showOutsideDays = true, renderDayContent, ...props }: CalendarProps) {
+function Calendar({ 
+  className, 
+  classNames, 
+  showOutsideDays = true, 
+  renderDayContent,
+  showNavigation = true,
+  showCaption = true,
+  ...props 
+}: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -17,9 +27,15 @@ function Calendar({ className, classNames, showOutsideDays = true, renderDayCont
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
+        caption: cn(
+          "flex justify-center pt-1 relative items-center",
+          !showCaption && "hidden"
+        ),
         caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
+        nav: cn(
+          "space-x-1 flex items-center",
+          !showNavigation && "hidden"
+        ),
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
           "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",

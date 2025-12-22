@@ -609,6 +609,8 @@ export default function Disponibilidade() {
                   )}
                   <div className="flex justify-center">
                     <CalendarComponent
+                      showNavigation={false}
+                      showCaption={false}
                       mode="single"
                       month={month}
                       locale={ptBR}
