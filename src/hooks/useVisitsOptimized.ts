@@ -128,6 +128,27 @@ const updateVisit = async ({
   return data;
 };
 
+const updateVisitStatus = async ({ 
+  id, 
+  status 
+}: { 
+  id: string; 
+  status: string 
+}): Promise<Visit> => {
+  const { data, error } = await supabase
+    .from("visits")
+    .update({ status })
+    .eq("id", id)
+    .select(`
+      *,
+      client:clients(nome, email, telefone)
+    `)
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 const deleteVisit = async (id: string): Promise<void> => {
   const { error } = await supabase
     .from("visits")
@@ -192,6 +213,24 @@ export function useVisitsOptimized() {
     },
   });
 
+  // MUTATION: Update visit status
+  const updateStatusMutation = useMutation({
+    mutationFn: updateVisitStatus,
+    onSuccess: () => {
+      invalidateQueries.visits();
+      toast({
+        title: "Status atualizado!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao atualizar status",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // MUTATION: Delete visit
   const deleteVisitMutation = useMutation({
     mutationFn: deleteVisit,
@@ -217,18 +256,27 @@ export function useVisitsOptimized() {
     error,
     fetchVisits,
     
-    createVisit: async (data: VisitInsert) => {
+    createVisit: async (data: VisitInsert): Promise<Visit | null> => {
       try {
-        await createVisitMutation.mutateAsync(data);
-        return true;
+        const result = await createVisitMutation.mutateAsync(data);
+        return result; // ✅ Retorna a visita criada!
       } catch {
-        return false;
+        return null;
       }
     },
     
     updateVisit: async (id: string, updates: Partial<VisitInsert>) => {
       try {
         await updateVisitMutation.mutateAsync({ id, updates });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    
+    updateVisitStatus: async (id: string, status: string) => {
+      try {
+        await updateStatusMutation.mutateAsync({ id, status });
         return true;
       } catch {
         return false;

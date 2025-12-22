@@ -43,8 +43,8 @@ import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X, Use
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useVisits, VisitInsert, Visit } from "@/hooks/useVisits";
-import { useClients } from "@/hooks/useClients";
+import { useVisitsOptimized as useVisits, VisitInsert, Visit } from "@/hooks/useVisitsOptimized";
+import { useClientsOptimized as useClients } from "@/hooks/useClientsOptimized";
 import { DeleteVisitDialog } from "@/components/visits/DeleteVisitDialog";
 
 const statusStyles = {

@@ -17,7 +17,31 @@ export interface Quote extends QuoteRow {
   client?: any;
 }
 
-export type QuoteInsert = Omit<QuoteInsertDB, 'id' | 'created_at' | 'updated_at' | 'created_by'>;
+// Interface customizada para facilitar o uso
+export interface QuoteInsert {
+  quote_number?: string;
+  client_id: string;
+  canal_entrada?: string | null;
+  tipo_evento?: string | null;
+  data_status?: string;
+  data_evento?: string | null;
+  dia_semana?: string | null;
+  ano_evento?: string | null;
+  n_convidados: number;
+  pacote: string;
+  menu_buffet?: string | null;
+  valor_total: number;
+  validade?: string | null;
+  status?: string;
+  observacoes_internas?: string | null;
+  observacoes_cliente?: string | null;
+  percentual_sinal?: number;
+  valor_sinal?: number;
+  numero_parcelas?: number;
+  dia_vencimento?: number;
+  parcelas_json?: any; // ✅ Aceita qualquer tipo
+  extras_json?: any;   // ✅ Aceita qualquer tipo
+}
 
 // ==========================================
 // SUPABASE FUNCTIONS
@@ -37,9 +61,16 @@ const fetchQuotesFromDB = async (): Promise<Quote[]> => {
 };
 
 const createQuote = async (quoteData: QuoteInsert): Promise<Quote> => {
+  // Converte para o tipo do Supabase, fazendo cast de parcelas_json e extras_json
+  const dataToInsert: any = {
+    ...quoteData,
+    parcelas_json: quoteData.parcelas_json ? JSON.parse(JSON.stringify(quoteData.parcelas_json)) : null,
+    extras_json: quoteData.extras_json ? JSON.parse(JSON.stringify(quoteData.extras_json)) : null,
+  };
+
   const { data, error } = await supabase
     .from("quotes")
-    .insert(quoteData as QuoteInsertDB)
+    .insert(dataToInsert)
     .select(`
       *,
       client:clients(*)
@@ -57,9 +88,16 @@ const updateQuote = async ({
   id: string; 
   updates: Partial<QuoteInsert> 
 }): Promise<Quote> => {
+  // Converte para o tipo do Supabase
+  const dataToUpdate: any = {
+    ...updates,
+    parcelas_json: updates.parcelas_json ? JSON.parse(JSON.stringify(updates.parcelas_json)) : undefined,
+    extras_json: updates.extras_json ? JSON.parse(JSON.stringify(updates.extras_json)) : undefined,
+  };
+
   const { data, error } = await supabase
     .from("quotes")
-    .update(updates as QuoteUpdateDB)
+    .update(dataToUpdate)
     .eq("id", id)
     .select(`
       *,
@@ -227,12 +265,12 @@ export function useQuotesOptimized() {
     error,
     fetchQuotes,
     
-    createQuote: async (data: QuoteInsert) => {
+    createQuote: async (data: QuoteInsert): Promise<Quote | null> => {
       try {
-        await createQuoteMutation.mutateAsync(data);
-        return true;
+        const result = await createQuoteMutation.mutateAsync(data);
+        return result; // ✅ Retorna o orçamento criado!
       } catch {
-        return false;
+        return null;
       }
     },
     

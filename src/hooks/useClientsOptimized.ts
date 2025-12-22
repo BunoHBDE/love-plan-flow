@@ -226,12 +226,12 @@ export function useClientsOptimized() {
     error,
     fetchClients,
     
-    createClient: async (data: ClientInsert) => {
+    createClient: async (data: ClientInsert): Promise<Client | null> => {
       try {
-        await createClientMutation.mutateAsync(data);
-        return true;
+        const result = await createClientMutation.mutateAsync(data);
+        return result; // ✅ Retorna o cliente criado!
       } catch {
-        return false;
+        return null;
       }
     },
     

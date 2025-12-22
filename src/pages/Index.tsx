@@ -8,9 +8,9 @@ import {
   FileText,
   Users,
 } from "lucide-react";
-import { useVisits } from "@/hooks/useVisits";
-import { useClients } from "@/hooks/useClients";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useVisitsOptimized as useVisits } from "@/hooks/useVisitsOptimized";
+import { useClientsOptimized as useClients } from "@/hooks/useClientsOptimized";
+import { useQuotesOptimized as useQuotes } from "@/hooks/useQuotesOptimized";
 
 const Index = () => {
   const { visits, loading: visitsLoading } = useVisits();

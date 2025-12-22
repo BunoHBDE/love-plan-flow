@@ -34,8 +34,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
-import { useClients, type Client, type ClientInsert } from "@/hooks/useClients";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useClientsOptimized as useClients, type Client, type ClientInsert } from "@/hooks/useClientsOptimized";
+import { useQuotesOptimized as useQuotes } from "@/hooks/useQuotesOptimized";
 import { PaymentTermsForm, type PaymentTermsData } from "@/components/quotes/PaymentTermsForm";
 import { ExtrasForm, type ExtraItem, calcularTotalExtras } from "@/components/quotes/ExtrasForm";
 import { 
@@ -220,25 +220,27 @@ export default function NovoOrcamento() {
 
   const handleClientCreated = async (clientData: ClientFormData & { id: string }) => {
     const newClient: ClientInsert = {
-      nome: clientData.name,
-      email: clientData.email || null,
-      telefone: clientData.phone,
-      cpf: clientData.cpf || null,
-      cep: clientData.address.cep || null,
-      rua: clientData.address.street || null,
-      numero: clientData.address.number || null,
-      complemento: clientData.address.complement || null,
-      bairro: clientData.address.neighborhood || null,
-      cidade: clientData.address.city || null,
-      estado_uf: clientData.address.state || null,
-    };
-
-    const created = await createClient(newClient);
-    if (created) {
-      handleSelecionarCliente(created);
-    }
-    setIsClientDialogOpen(false);
+    nome: clientData.name,
+    email: clientData.email || null,
+    telefone: clientData.phone,
+    cpf: clientData.cpf || null,
+    cep: clientData.address.cep || null,
+    rua: clientData.address.street || null,
+    numero: clientData.address.number || null,
+    complemento: clientData.address.complement || null,
+    bairro: clientData.address.neighborhood || null,
+    cidade: clientData.address.city || null,
+    estado_uf: clientData.address.state || null,
   };
+
+  const createdClient = await createClient(newClient); // ✅ Retorna Client | null
+  
+  if (createdClient) {
+    handleSelecionarCliente(createdClient); // ✅ Funciona direto!
+  }
+  
+  setIsClientDialogOpen(false);
+};
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {

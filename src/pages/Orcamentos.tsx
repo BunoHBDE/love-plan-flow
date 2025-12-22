@@ -31,7 +31,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
-import { useQuotes, type Quote } from "@/hooks/useQuotes";
+import { useQuotesOptimized as useQuotes, type Quote } from "@/hooks/useQuotesOptimized";
 import { calcularPrecoDetalhado, getAnoFromDate } from "@/lib/pricing";
 
 type QuoteStatus = "rascunho" | "enviado" | "aceito" | "recusado" | "expirado";
