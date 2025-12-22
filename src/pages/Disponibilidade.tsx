@@ -46,6 +46,7 @@ import { ptBR } from "date-fns/locale";
 import { useQuotesOptimized as useQuotes } from "@/hooks/useQuotesOptimized";
 import { useBlockedDates } from "@/hooks/useBlockedDates";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 type ViewMode = "mensal" | "estacao" | "anual";
 
@@ -270,6 +271,9 @@ export default function Disponibilidade() {
     await removeBlockedDate(dateToUnblock.id);
     setIsSubmitting(false);
     setIsUnblockDialogOpen(false);
+    toast.success("Data desbloqueada", {
+      description: format(dateToUnblock.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+    });
     setDateToUnblock(null);
   };
 
@@ -286,6 +290,9 @@ export default function Disponibilidade() {
     
     if (success) {
       setIsBlockDialogOpen(false);
+      toast.success("Data bloqueada", {
+        description: format(dateToBlock, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+      });
       setDateToBlock(null);
       setBlockReason("");
     }
