@@ -87,10 +87,38 @@ export function useBlockedDates() {
       return false;
     }
 
-    toast({
-      title: "Data bloqueada",
-      description: "A data foi bloqueada com sucesso.",
-    });
+    await fetchBlockedDates();
+    return true;
+  };
+
+  const updateBlockedDate = async (id: string, reason: string): Promise<boolean> => {
+    // Validate reason
+    const reasonSchema = z.string().min(1, "Motivo é obrigatório").max(200, "Motivo muito longo");
+    const validationResult = reasonSchema.safeParse(reason);
+    
+    if (!validationResult.success) {
+      toast({
+        title: "Dados inválidos",
+        description: validationResult.error.errors[0].message,
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    const { error } = await supabase
+      .from("blocked_dates")
+      .update({ reason: validationResult.data })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error updating blocked date:", error);
+      toast({
+        title: "Erro",
+        description: getSafeErrorMessage(error, "updateBlockedDate"),
+        variant: "destructive",
+      });
+      return false;
+    }
 
     await fetchBlockedDates();
     return true;
@@ -109,11 +137,6 @@ export function useBlockedDates() {
       return false;
     }
 
-    toast({
-      title: "Data desbloqueada",
-      description: "A data foi desbloqueada com sucesso.",
-    });
-
     await fetchBlockedDates();
     return true;
   };
@@ -122,6 +145,7 @@ export function useBlockedDates() {
     blockedDates,
     loading,
     addBlockedDate,
+    updateBlockedDate,
     removeBlockedDate,
     refetch: fetchBlockedDates,
   };
