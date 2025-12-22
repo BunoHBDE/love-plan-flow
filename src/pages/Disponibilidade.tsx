@@ -566,7 +566,11 @@ export default function Disponibilidade() {
               {monthlyStats.map(({ month, eventos, bloqueados, disponiveis }) => (
                 <div 
                   key={month.toISOString()}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 rounded-lg bg-muted/30 hover:bg-muted/50 hover:shadow-md transition-all duration-200 cursor-default"
+                  onClick={() => {
+                    setCurrentDate(month);
+                    setViewMode("mensal");
+                  }}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 rounded-lg bg-muted/30 hover:bg-muted/50 hover:shadow-md transition-all duration-200 cursor-pointer"
                 >
                   <span className="font-semibold capitalize text-base sm:text-lg sm:w-32">
                     {format(month, "MMMM", { locale: ptBR })}
