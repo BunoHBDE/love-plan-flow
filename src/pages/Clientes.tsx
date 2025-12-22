@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Heart, Phone, Mail, Plus, Search, MapPin, Loader2, Pencil, Trash2 } from "lucide-react";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
 import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
-import { useClients, Client, ClientInsert } from "@/hooks/useClients";
+import { useClientsOptimized as useClients, Client, ClientInsert } from "@/hooks/useClientsOptimized";
+
 
 const statusLabels = {
   lead: "Novo Lead",
