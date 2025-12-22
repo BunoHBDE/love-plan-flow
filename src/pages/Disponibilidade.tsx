@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Badge } from "@/components/ui/badge";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,31 +20,42 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Calendar as CalendarIcon,
+  Calendar,
   Ban,
   CheckCircle2,
-  XCircle,
-  Users,
   Loader2,
-  Plus,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
-import { format, isSameDay, isWeekend, eachDayOfInterval, startOfMonth, endOfMonth, addMonths, subMonths, setMonth, setYear, getMonth, getYear } from "date-fns";
+import { 
+  format, 
+  isSameDay, 
+  isWeekend, 
+  eachDayOfInterval, 
+  startOfMonth, 
+  endOfMonth, 
+  addMonths, 
+  subMonths, 
+  setMonth, 
+  setYear, 
+  getMonth, 
+  getYear,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuotesOptimized as useQuotes } from "@/hooks/useQuotesOptimized";
 import { useBlockedDates } from "@/hooks/useBlockedDates";
 import { useNavigate } from "react-router-dom";
 
-type ViewPeriod = "mensal" | "estacao" | "anual";
+type ViewMode = "mensal" | "estacao" | "anual";
 
 export default function Disponibilidade() {
   const navigate = useNavigate();
   const { quotes, loading: loadingQuotes } = useQuotes();
   const { blockedDates, loading: loadingBlocked, addBlockedDate, removeBlockedDate } = useBlockedDates();
   
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [viewPeriod, setViewPeriod] = useState<ViewPeriod>("mensal");
+  const [viewMode, setViewMode] = useState<ViewMode>("mensal");
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
   const [dateToBlock, setDateToBlock] = useState<Date | null>(null);
   const [blockReason, setBlockReason] = useState("");
@@ -53,53 +63,33 @@ export default function Disponibilidade() {
 
   const loading = loadingQuotes || loadingBlocked;
 
-  // Calcular meses a exibir baseado no período
+  // Calcular meses a exibir
   const monthsToDisplay = useMemo(() => {
-    if (viewPeriod === "mensal") {
-      return [currentMonth];
+    if (viewMode === "mensal") {
+      return [currentDate];
     }
     
-    if (viewPeriod === "estacao") {
-      const currentMonthNum = getMonth(currentMonth);
-      const year = getYear(currentMonth);
+    if (viewMode === "estacao") {
+      const monthNum = getMonth(currentDate);
+      const year = getYear(currentDate);
       let seasonStart: number;
       
-      // Estações do Brasil (Hemisfério Sul)
-      if (currentMonthNum >= 11 || currentMonthNum <= 1) {
-        seasonStart = 11; // Verão (Dez, Jan, Fev)
-      } else if (currentMonthNum >= 2 && currentMonthNum <= 4) {
-        seasonStart = 2; // Outono (Mar, Abr, Mai)
-      } else if (currentMonthNum >= 5 && currentMonthNum <= 7) {
-        seasonStart = 5; // Inverno (Jun, Jul, Ago)
-      } else {
-        seasonStart = 8; // Primavera (Set, Out, Nov)
-      }
+      if (monthNum >= 11 || monthNum <= 1) seasonStart = 11;
+      else if (monthNum >= 2 && monthNum <= 4) seasonStart = 2;
+      else if (monthNum >= 5 && monthNum <= 7) seasonStart = 5;
+      else seasonStart = 8;
       
-      const adjustedYear = seasonStart === 11 && currentMonthNum <= 1 ? year - 1 : year;
-      const firstMonth = setMonth(setYear(new Date(), adjustedYear), seasonStart);
+      const adjustedYear = seasonStart === 11 && monthNum <= 1 ? year - 1 : year;
+      const first = setMonth(setYear(new Date(), adjustedYear), seasonStart);
       
-      return [
-        firstMonth,
-        addMonths(firstMonth, 1),
-        addMonths(firstMonth, 2),
-      ];
+      return [first, addMonths(first, 1), addMonths(first, 2)];
     }
     
-    // Anual - 12 meses
-    const year = getYear(currentMonth);
+    const year = getYear(currentDate);
     return Array.from({ length: 12 }, (_, i) => setMonth(setYear(new Date(), year), i));
-  }, [viewPeriod, currentMonth]);
+  }, [viewMode, currentDate]);
 
-  // Nome da estação
-  const getSeasonName = () => {
-    const currentMonthNum = getMonth(currentMonth);
-    if (currentMonthNum >= 11 || currentMonthNum <= 1) return "Verão";
-    if (currentMonthNum >= 2 && currentMonthNum <= 4) return "Outono";
-    if (currentMonthNum >= 5 && currentMonthNum <= 7) return "Inverno";
-    return "Primavera";
-  };
-
-  // Processar eventos aceitos
+  // Eventos aceitos
   const eventosAceitos = useMemo(() => {
     return quotes
       .filter((q) => q.status === "aceito" && q.data_evento)
@@ -112,7 +102,7 @@ export default function Disponibilidade() {
       }));
   }, [quotes]);
 
-  // Processar datas bloqueadas
+  // Datas bloqueadas
   const datasBloqueadas = useMemo(() => {
     return blockedDates.map((b) => ({
       id: b.id,
@@ -121,25 +111,32 @@ export default function Disponibilidade() {
     }));
   }, [blockedDates]);
 
-  // Calcular intervalo do período atual
+  // Período atual
   const periodRange = useMemo(() => {
-    const firstMonth = monthsToDisplay[0];
-    const lastMonth = monthsToDisplay[monthsToDisplay.length - 1];
+    const first = monthsToDisplay[0];
+    const last = monthsToDisplay[monthsToDisplay.length - 1];
     return {
-      start: startOfMonth(firstMonth),
-      end: endOfMonth(lastMonth),
+      start: startOfMonth(first),
+      end: endOfMonth(last),
     };
   }, [monthsToDisplay]);
 
-  // Calcular todos os dias do período
-  const diasDoPeriodo = useMemo(() => {
-    return eachDayOfInterval({ 
-      start: periodRange.start, 
-      end: periodRange.end 
-    });
+  // Todos os dias do período
+  const allDays = useMemo(() => {
+    return eachDayOfInterval({ start: periodRange.start, end: periodRange.end });
   }, [periodRange]);
 
-  // Estatísticas do período
+  // Informações de uma data
+  const getDateInfo = (date: Date) => {
+    const evento = eventosAceitos.find(e => isSameDay(e.date, date));
+    const bloqueio = datasBloqueadas.find(b => isSameDay(b.date, date));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isAvailable = isWeekend(date) && date >= today && !evento && !bloqueio;
+    return { evento, bloqueio, isAvailable };
+  };
+
+  // Estatísticas
   const stats = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -152,73 +149,107 @@ export default function Disponibilidade() {
       b.date >= periodRange.start && b.date <= periodRange.end
     ).length;
 
-    const disponiveis = diasDoPeriodo.filter(day => {
+    const disponiveis = allDays.filter(day => {
       if (!isWeekend(day) || day < today) return false;
-      
-      const isOccupied = eventosAceitos.some(e => isSameDay(e.date, day));
-      const isBlocked = datasBloqueadas.some(b => isSameDay(b.date, day));
-      
-      return !isOccupied && !isBlocked;
+      const info = getDateInfo(day);
+      return info.isAvailable;
     }).length;
 
     return { eventos, bloqueados, disponiveis };
-  }, [periodRange, diasDoPeriodo, eventosAceitos, datasBloqueadas]);
+  }, [periodRange, allDays, eventosAceitos, datasBloqueadas]);
 
-  // Obter informações de uma data
-  const getDateInfo = (date: Date) => {
-    const evento = eventosAceitos.find(e => isSameDay(e.date, date));
-    const bloqueio = datasBloqueadas.find(b => isSameDay(b.date, date));
+  // Estatísticas por mês (para anual)
+  const monthlyStats = useMemo(() => {
+    if (viewMode !== "anual") return [];
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const isAvailable = isWeekend(date) && 
-      date >= today && 
-      !evento && 
-      !bloqueio;
+    return monthsToDisplay.map(month => {
+      const start = startOfMonth(month);
+      const end = endOfMonth(month);
+      const days = eachDayOfInterval({ start, end });
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    return { evento, bloqueio, isAvailable };
+      const eventos = eventosAceitos.filter(e => 
+        e.date >= start && e.date <= end
+      ).length;
+
+      const bloqueados = datasBloqueadas.filter(b => 
+        b.date >= start && b.date <= end
+      ).length;
+
+      const disponiveis = days.filter(day => {
+        if (!isWeekend(day) || day < today) return false;
+        const info = getDateInfo(day);
+        return info.isAvailable;
+      }).length;
+
+      return { month, eventos, bloqueados, disponiveis };
+    });
+  }, [viewMode, monthsToDisplay, eventosAceitos, datasBloqueadas]);
+
+  // Nome do período
+  const periodName = useMemo(() => {
+    if (viewMode === "mensal") {
+      return format(currentDate, "MMMM yyyy", { locale: ptBR });
+    }
+    if (viewMode === "estacao") {
+      const m = getMonth(currentDate);
+      let season = "";
+      if (m >= 11 || m <= 1) season = "Verão";
+      else if (m >= 2 && m <= 4) season = "Outono";
+      else if (m >= 5 && m <= 7) season = "Inverno";
+      else season = "Primavera";
+      return `${season} ${getYear(currentDate)}`;
+    }
+    return String(getYear(currentDate));
+  }, [viewMode, currentDate]);
+
+  // Navegação
+  const handlePrevious = () => {
+    if (viewMode === "mensal") setCurrentDate(subMonths(currentDate, 1));
+    else if (viewMode === "estacao") setCurrentDate(subMonths(currentDate, 3));
+    else setCurrentDate(setYear(currentDate, getYear(currentDate) - 1));
   };
 
-  // Handler para clique em data
+  const handleNext = () => {
+    if (viewMode === "mensal") setCurrentDate(addMonths(currentDate, 1));
+    else if (viewMode === "estacao") setCurrentDate(addMonths(currentDate, 3));
+    else setCurrentDate(setYear(currentDate, getYear(currentDate) + 1));
+  };
+
+  // Clique em data
   const handleDateClick = (date: Date) => {
     const info = getDateInfo(date);
     
-    // Se tem evento, navega para orçamentos
     if (info.evento) {
       navigate(`/orcamentos`);
       return;
     }
     
-    // Se está bloqueado, confirma desbloqueio
     if (info.bloqueio) {
-      if (confirm(`Desbloquear ${format(date, "dd/MM/yyyy")}?\nMotivo: ${info.bloqueio.reason}`)) {
+      if (confirm(`Desbloquear ${format(date, "dd/MM/yyyy")}?\n${info.bloqueio.reason}`)) {
         removeBlockedDate(info.bloqueio.id);
       }
       return;
     }
     
-    // Se está disponível, mostra opções
     if (info.isAvailable) {
       const action = confirm(
-        `${format(date, "dd/MM/yyyy")} - Data disponível\n\n` +
-        `OK = Criar Orçamento\n` +
-        `Cancelar = Bloquear Data`
+        `${format(date, "dd/MM/yyyy")}\n\n` +
+        `OK = Criar Orçamento\nCancelar = Bloquear Data`
       );
       
       if (action) {
-        // Criar orçamento
         navigate(`/orcamentos/novo?data_evento=${format(date, "yyyy-MM-dd")}`);
       } else {
-        // Bloquear
         setDateToBlock(date);
         setIsBlockDialogOpen(true);
       }
     }
   };
 
-  // Bloquear data
-  const handleBlockDate = async () => {
+  // Bloquear
+  const handleBlock = async () => {
     if (!dateToBlock || !blockReason.trim()) return;
     
     setIsSubmitting(true);
@@ -235,38 +266,6 @@ export default function Disponibilidade() {
     }
   };
 
-  // Navegação de período
-  const handlePreviousPeriod = () => {
-    if (viewPeriod === "mensal") {
-      setCurrentMonth(subMonths(currentMonth, 1));
-    } else if (viewPeriod === "estacao") {
-      setCurrentMonth(subMonths(currentMonth, 3));
-    } else {
-      setCurrentMonth(setYear(currentMonth, getYear(currentMonth) - 1));
-    }
-  };
-
-  const handleNextPeriod = () => {
-    if (viewPeriod === "mensal") {
-      setCurrentMonth(addMonths(currentMonth, 1));
-    } else if (viewPeriod === "estacao") {
-      setCurrentMonth(addMonths(currentMonth, 3));
-    } else {
-      setCurrentMonth(setYear(currentMonth, getYear(currentMonth) + 1));
-    }
-  };
-
-  // Texto do período atual
-  const periodText = useMemo(() => {
-    if (viewPeriod === "mensal") {
-      return format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR });
-    }
-    if (viewPeriod === "estacao") {
-      return `${getSeasonName()} ${getYear(currentMonth)}`;
-    }
-    return `${getYear(currentMonth)}`;
-  }, [viewPeriod, currentMonth]);
-
   if (loading) {
     return (
       <MainLayout>
@@ -279,237 +278,199 @@ export default function Disponibilidade() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
+        
         {/* Header */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-display font-bold">Disponibilidade</h1>
-              <p className="text-muted-foreground mt-1">
-                Gerencie datas disponíveis e eventos confirmados
-              </p>
-            </div>
-          </div>
-
-          {/* Controles */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Período */}
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">Visualizar:</Label>
-              <Select value={viewPeriod} onValueChange={(v) => setViewPeriod(v as ViewPeriod)}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mensal">Por Mês</SelectItem>
-                  <SelectItem value="estacao">Por Estação</SelectItem>
-                  <SelectItem value="anual">Por Ano</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Navegação */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePreviousPeriod}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium min-w-[180px] text-center capitalize">
-                {periodText}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleNextPeriod}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+        <div className="animate-fade-in">
+          <h1 className="text-3xl font-display font-bold text-foreground">
+            Disponibilidade do Espaço
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Consulte datas disponíveis e gerencie sua agenda
+          </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+        {/* Cards de Resumo - Versão Compacta */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-slide-up max-w-4xl mx-auto">
+          <div className="group relative overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950 dark:to-emerald-900/50 border-2 border-emerald-200 dark:border-emerald-800 rounded-lg p-4 shadow-soft hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Disponíveis</p>
-                <p className="text-3xl font-bold text-green-600">{stats.disponiveis}</p>
+                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">Disponíveis</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">{stats.disponiveis}</p>
               </div>
-              <CheckCircle2 className="h-10 w-10 text-green-600 opacity-50" />
+              <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+              </div>
             </div>
           </div>
 
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+          <div className="group relative overflow-hidden bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950 dark:to-rose-900/50 border-2 border-rose-200 dark:border-rose-800 rounded-lg p-4 shadow-soft hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Eventos Confirmados</p>
-                <p className="text-3xl font-bold text-red-600">{stats.eventos}</p>
+                <p className="text-xs font-medium text-rose-700 dark:text-rose-400 mb-0.5">Eventos</p>
+                <p className="text-2xl font-bold text-rose-600 dark:text-rose-500">{stats.eventos}</p>
               </div>
-              <CalendarIcon className="h-10 w-10 text-red-600 opacity-50" />
+              <div className="p-2 bg-rose-500/10 rounded-lg">
+                <Calendar className="h-5 w-5 text-rose-600 dark:text-rose-500" />
+              </div>
             </div>
           </div>
 
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+          <div className="group relative overflow-hidden bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950 dark:to-amber-900/50 border-2 border-amber-200 dark:border-amber-800 rounded-lg p-4 shadow-soft hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Datas Bloqueadas</p>
-                <p className="text-3xl font-bold text-yellow-600">{stats.bloqueados}</p>
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-0.5">Bloqueadas</p>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-500">{stats.bloqueados}</p>
               </div>
-              <Ban className="h-10 w-10 text-yellow-600 opacity-50" />
+              <div className="p-2 bg-amber-500/10 rounded-lg">
+                <Ban className="h-5 w-5 text-amber-600 dark:text-amber-500" />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Legenda */}
-        <div className="flex flex-wrap gap-4 p-4 bg-muted/50 rounded-lg">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-green-500/20 border border-green-500"></div>
-            <span className="text-sm">Disponível (clique para agendar ou bloquear)</span>
+        {/* Controles Centralizados */}
+        <div className="flex flex-col items-center gap-4">
+          {/* Segmented Control para Visualização */}
+          <div className="inline-flex items-center bg-muted/50 p-1 rounded-xl border shadow-sm">
+            <button
+              onClick={() => setViewMode("mensal")}
+              className={`
+                px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200
+                ${viewMode === "mensal" 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                }
+              `}
+            >
+              📅 Mensal
+            </button>
+            <button
+              onClick={() => setViewMode("estacao")}
+              className={`
+                px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200
+                ${viewMode === "estacao" 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                }
+              `}
+            >
+              🍂 Estação
+            </button>
+            <button
+              onClick={() => setViewMode("anual")}
+              className={`
+                px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200
+                ${viewMode === "anual" 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                }
+              `}
+            >
+              📊 Anual
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-red-500/20 border border-red-500"></div>
-            <span className="text-sm">Evento Confirmado (clique para ver)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500"></div>
-            <span className="text-sm">Bloqueado (clique para desbloquear)</span>
+
+          {/* Navegação de Período */}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handlePrevious} 
+              className="hover:scale-110 transition-transform hover:border-primary/50"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <h2 className="text-xl font-semibold capitalize min-w-[200px] text-center">
+              {periodName}
+            </h2>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleNext} 
+              className="hover:scale-110 transition-transform hover:border-primary/50"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
           </div>
         </div>
 
-        {/* Calendários */}
-        <div className={`grid gap-6 ${
-          viewPeriod === "mensal" 
-            ? "grid-cols-1" 
-            : viewPeriod === "estacao" 
-            ? "grid-cols-1 md:grid-cols-3" 
-            : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        }`}>
-          {monthsToDisplay.map((month, index) => (
-            <div key={index} className="bg-card rounded-lg border p-4">
-              {(viewPeriod === "estacao" || viewPeriod === "anual") && (
-                <h3 className="text-sm font-medium mb-2 text-center capitalize">
-                  {format(month, "MMMM yyyy", { locale: ptBR })}
-                </h3>
-              )}
-              <Calendar
-                mode="single"
-                selected={undefined}
-                onSelect={(date) => date && handleDateClick(date)}
-                month={month}
-                locale={ptBR}
-                className="w-full"
-                modifiers={{
-                  evento: eventosAceitos.map(e => e.date),
-                  bloqueado: datasBloqueadas.map(b => b.date),
-                  disponivel: diasDoPeriodo.filter(day => getDateInfo(day).isAvailable),
-                }}
-                modifiersClassNames={{
-                  evento: "bg-red-500/20 text-red-700 font-bold hover:bg-red-500/30 cursor-pointer",
-                  bloqueado: "bg-yellow-500/20 text-yellow-700 font-bold hover:bg-yellow-500/30 cursor-pointer",
-                  disponivel: "bg-green-500/20 text-green-700 font-bold hover:bg-green-500/30 cursor-pointer",
-                }}
-                disabled={(date) => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  return date < today;
-                }}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Listas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Eventos */}
-          <div className="bg-card rounded-lg border p-6">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-red-600" />
-              Eventos Confirmados no Período
-            </h3>
-            {eventosAceitos.filter(e => e.date >= periodRange.start && e.date <= periodRange.end).length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-8">
-                Nenhum evento confirmado neste período
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {eventosAceitos
-                  .filter(e => e.date >= periodRange.start && e.date <= periodRange.end)
-                  .sort((a, b) => a.date.getTime() - b.date.getTime())
-                  .map((evento) => (
-                    <div
-                      key={evento.id}
-                      className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
-                      onClick={() => navigate('/orcamentos')}
-                    >
-                      <div>
-                        <p className="font-medium">{evento.clientName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(evento.date, "dd 'de' MMMM", { locale: ptBR })}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1 text-sm">
-                          <Users className="h-4 w-4" />
-                          {evento.guestCount}
-                        </div>
-                        <Badge variant="secondary" className="capitalize">{evento.pacote}</Badge>
-                      </div>
+        {/* Conteúdo */}
+        {viewMode === "anual" ? (
+          <div className="bg-card rounded-xl border shadow-soft p-4 sm:p-6 animate-slide-up">
+            <div className="space-y-2">
+              {monthlyStats.map(({ month, eventos, bloqueados, disponiveis }) => (
+                <div 
+                  key={month.toISOString()}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 rounded-lg bg-muted/30 hover:bg-muted/50 hover:shadow-md transition-all duration-200 cursor-default"
+                >
+                  <span className="font-semibold capitalize text-base sm:text-lg sm:w-32">
+                    {format(month, "MMMM", { locale: ptBR })}
+                  </span>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></div>
+                      <span className="font-medium">{disponiveis} Disponíveis</span>
                     </div>
-                  ))}
-              </div>
-            )}
-          </div>
-
-          {/* Bloqueados */}
-          <div className="bg-card rounded-lg border p-6">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Ban className="h-5 w-5 text-yellow-600" />
-              Datas Bloqueadas no Período
-            </h3>
-            {datasBloqueadas.filter(b => b.date >= periodRange.start && b.date <= periodRange.end).length === 0 ? (
-              <p className="text-muted-foreground text-sm text-center py-8">
-                Nenhuma data bloqueada neste período
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {datasBloqueadas
-                  .filter(b => b.date >= periodRange.start && b.date <= periodRange.end)
-                  .sort((a, b) => a.date.getTime() - b.date.getTime())
-                  .map((bloqueio) => (
-                    <div
-                      key={bloqueio.id}
-                      className="flex items-center justify-between p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg hover:bg-yellow-500/10 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium">
-                          {format(bloqueio.date, "dd 'de' MMMM", { locale: ptBR })}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{bloqueio.reason}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Desbloquear esta data?')) {
-                            removeBlockedDate(bloqueio.id);
-                          }
-                        }}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0"></div>
+                      <span className="font-medium">{eventos} Eventos</span>
                     </div>
-                  ))}
-              </div>
-            )}
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></div>
+                      <span className="font-medium">{bloqueados} Bloqueados</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className={`grid gap-6 ${
+              viewMode === "mensal" 
+                ? "grid-cols-1 max-w-fit mx-auto" 
+                : "grid-cols-1 md:grid-cols-3"
+            }`}>
+              {monthsToDisplay.map((month, idx) => (
+                <div key={idx} className="bg-card rounded-xl border shadow-soft p-6 hover:shadow-lg transition-shadow duration-300 animate-slide-up" style={{ animationDelay: `${idx * 100}ms` }}>
+                  {viewMode === "estacao" && (
+                    <div className="text-center mb-4 font-semibold text-lg capitalize text-primary">
+                      {format(month, "MMMM", { locale: ptBR })}
+                    </div>
+                  )}
+                  <div className="flex justify-center">
+                    <CalendarComponent
+                      mode="single"
+                      month={month}
+                      locale={ptBR}
+                      onDayClick={handleDateClick}
+                      modifiers={{
+                        evento: eventosAceitos.map(e => e.date),
+                        bloqueado: datasBloqueadas.map(b => b.date),
+                        disponivel: allDays.filter(d => getDateInfo(d).isAvailable),
+                      }}
+                      modifiersClassNames={{
+                        evento: "bg-rose-500 text-white hover:bg-rose-600 font-bold cursor-pointer transition-colors",
+                        bloqueado: "bg-amber-500 text-white hover:bg-amber-600 font-bold cursor-pointer transition-colors",
+                        disponivel: "bg-emerald-500 text-white hover:bg-emerald-600 font-bold cursor-pointer transition-colors",
+                      }}
+                      disabled={(date) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date < today;
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+
+          </>
+        )}
       </div>
 
-      {/* Dialog de Bloqueio */}
       <Dialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -526,25 +487,14 @@ export default function Disponibilidade() {
               value={blockReason}
               onChange={(e) => setBlockReason(e.target.value)}
               className="mt-2"
-              autoFocus
             />
           </div>
 
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setIsBlockDialogOpen(false);
-                setDateToBlock(null);
-                setBlockReason("");
-              }}
-            >
+            <Button variant="outline" onClick={() => setIsBlockDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button
-              onClick={handleBlockDate}
-              disabled={!blockReason.trim() || isSubmitting}
-            >
+            <Button onClick={handleBlock} disabled={!blockReason.trim() || isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Bloquear Data
             </Button>
