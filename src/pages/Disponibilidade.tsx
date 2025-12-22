@@ -57,9 +57,11 @@ export default function Disponibilidade() {
   const [viewMode, setViewMode] = useState<ViewMode>("mensal");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
+  const [isUnblockDialogOpen, setIsUnblockDialogOpen] = useState(false);
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dateToBlock, setDateToBlock] = useState<Date | null>(null);
+  const [dateToUnblock, setDateToUnblock] = useState<{ id: string; date: Date; reason: string } | null>(null);
   const [blockReason, setBlockReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -229,9 +231,12 @@ export default function Disponibilidade() {
     }
     
     if (info.bloqueio) {
-      if (confirm(`Desbloquear ${format(date, "dd/MM/yyyy")}?\n${info.bloqueio.reason}`)) {
-        removeBlockedDate(info.bloqueio.id);
-      }
+      setDateToUnblock({
+        id: info.bloqueio.id,
+        date: date,
+        reason: info.bloqueio.reason,
+      });
+      setIsUnblockDialogOpen(true);
       return;
     }
     
@@ -255,6 +260,17 @@ export default function Disponibilidade() {
       setDateToBlock(selectedDate);
       setIsBlockDialogOpen(true);
     }
+  };
+
+  // Desbloquear data
+  const handleUnblock = async () => {
+    if (!dateToUnblock) return;
+    
+    setIsSubmitting(true);
+    await removeBlockedDate(dateToUnblock.id);
+    setIsSubmitting(false);
+    setIsUnblockDialogOpen(false);
+    setDateToUnblock(null);
   };
 
   // Bloquear
@@ -543,6 +559,42 @@ export default function Disponibilidade() {
             <Button onClick={handleBlock} disabled={!blockReason.trim() || isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Bloquear Data
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Desbloqueio */}
+      <Dialog open={isUnblockDialogOpen} onOpenChange={setIsUnblockDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">Desbloquear Data</DialogTitle>
+            <DialogDescription className="text-center">
+              {dateToUnblock && format(dateToUnblock.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 text-center">
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
+              <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">Motivo do bloqueio:</p>
+              <p className="text-amber-800 dark:text-amber-300 mt-1">{dateToUnblock?.reason}</p>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              Deseja liberar esta data para novos eventos?
+            </p>
+          </div>
+
+          <DialogFooter className="sm:justify-center gap-3">
+            <Button variant="outline" onClick={() => setIsUnblockDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleUnblock} 
+              disabled={isSubmitting}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Desbloquear
             </Button>
           </DialogFooter>
         </DialogContent>
