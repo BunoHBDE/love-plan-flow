@@ -57,6 +57,8 @@ export default function Disponibilidade() {
   const [viewMode, setViewMode] = useState<ViewMode>("mensal");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
+  const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dateToBlock, setDateToBlock] = useState<Date | null>(null);
   const [blockReason, setBlockReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -234,17 +236,24 @@ export default function Disponibilidade() {
     }
     
     if (info.isAvailable) {
-      const action = confirm(
-        `${format(date, "dd/MM/yyyy")}\n\n` +
-        `OK = Criar Orçamento\nCancelar = Bloquear Data`
-      );
-      
-      if (action) {
-        navigate(`/orcamentos/novo?data_evento=${format(date, "yyyy-MM-dd")}`);
-      } else {
-        setDateToBlock(date);
-        setIsBlockDialogOpen(true);
-      }
+      setSelectedDate(date);
+      setIsActionDialogOpen(true);
+    }
+  };
+
+  // Ações do popup
+  const handleNewQuote = () => {
+    if (selectedDate) {
+      setIsActionDialogOpen(false);
+      navigate(`/orcamentos/novo?data_evento=${format(selectedDate, "yyyy-MM-dd")}`);
+    }
+  };
+
+  const handleBlockDate = () => {
+    if (selectedDate) {
+      setIsActionDialogOpen(false);
+      setDateToBlock(selectedDate);
+      setIsBlockDialogOpen(true);
     }
   };
 
@@ -471,6 +480,43 @@ export default function Disponibilidade() {
         )}
       </div>
 
+      {/* Dialog de Ações para Data */}
+      <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">
+              {selectedDate && format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              O que você deseja fazer com esta data?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-2 gap-4 py-6">
+            <Button
+              variant="default"
+              size="lg"
+              onClick={handleNewQuote}
+              className="h-24 flex-col gap-2 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <Sparkles className="h-6 w-6" />
+              <span className="font-semibold">Novo Orçamento</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleBlockDate}
+              className="h-24 flex-col gap-2 border-amber-500/50 text-amber-600 hover:bg-amber-50 hover:border-amber-500 dark:hover:bg-amber-950/30 transition-all duration-300"
+            >
+              <Ban className="h-6 w-6" />
+              <span className="font-semibold">Bloquear Data</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Bloqueio */}
       <Dialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
         <DialogContent>
           <DialogHeader>
