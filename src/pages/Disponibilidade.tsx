@@ -495,7 +495,7 @@ export default function Disponibilidade() {
             <div className={`grid gap-6 ${
               viewMode === "mensal" 
                 ? "grid-cols-1 max-w-fit mx-auto" 
-                : "grid-cols-1 md:grid-cols-3"
+                : "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
             }`}>
               {monthsToDisplay.map((month, idx) => (
                 <div key={idx} className="bg-card rounded-xl border shadow-soft p-6 hover:shadow-lg transition-shadow duration-300 animate-slide-up" style={{ animationDelay: `${idx * 100}ms` }}>
