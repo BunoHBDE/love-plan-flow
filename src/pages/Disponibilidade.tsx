@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import { 
   format, 
@@ -53,12 +54,14 @@ type ViewMode = "mensal" | "estacao" | "anual";
 export default function Disponibilidade() {
   const navigate = useNavigate();
   const { quotes, loading: loadingQuotes } = useQuotes();
-  const { blockedDates, loading: loadingBlocked, addBlockedDate, removeBlockedDate } = useBlockedDates();
+  const { blockedDates, loading: loadingBlocked, addBlockedDate, updateBlockedDate, removeBlockedDate } = useBlockedDates();
   
   const [viewMode, setViewMode] = useState<ViewMode>("mensal");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
   const [isUnblockDialogOpen, setIsUnblockDialogOpen] = useState(false);
+  const [isEditingReason, setIsEditingReason] = useState(false);
+  const [editedReason, setEditedReason] = useState("");
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dateToBlock, setDateToBlock] = useState<Date | null>(null);
@@ -271,10 +274,38 @@ export default function Disponibilidade() {
     await removeBlockedDate(dateToUnblock.id);
     setIsSubmitting(false);
     setIsUnblockDialogOpen(false);
+    setIsEditingReason(false);
     toast.success("Data desbloqueada", {
       description: format(dateToUnblock.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
     });
     setDateToUnblock(null);
+  };
+
+  // Editar motivo
+  const handleEditReason = async () => {
+    if (!dateToUnblock || !editedReason.trim()) return;
+    
+    setIsSubmitting(true);
+    const success = await updateBlockedDate(dateToUnblock.id, editedReason.trim());
+    setIsSubmitting(false);
+    
+    if (success) {
+      setIsUnblockDialogOpen(false);
+      setIsEditingReason(false);
+      toast.success("Motivo atualizado", {
+        description: format(dateToUnblock.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+      });
+      setDateToUnblock(null);
+      setEditedReason("");
+    }
+  };
+
+  // Iniciar edição
+  const startEditingReason = () => {
+    if (dateToUnblock) {
+      setEditedReason(dateToUnblock.reason);
+      setIsEditingReason(true);
+    }
   };
 
   // Bloquear
@@ -571,38 +602,91 @@ export default function Disponibilidade() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Desbloqueio */}
-      <Dialog open={isUnblockDialogOpen} onOpenChange={setIsUnblockDialogOpen}>
+      {/* Dialog de Desbloqueio/Edição */}
+      <Dialog 
+        open={isUnblockDialogOpen} 
+        onOpenChange={(open) => {
+          setIsUnblockDialogOpen(open);
+          if (!open) {
+            setIsEditingReason(false);
+            setEditedReason("");
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center text-xl">Desbloquear Data</DialogTitle>
+            <DialogTitle className="text-center text-xl">
+              {isEditingReason ? "Editar Motivo" : "Data Bloqueada"}
+            </DialogTitle>
             <DialogDescription className="text-center">
               {dateToUnblock && format(dateToUnblock.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-4 text-center">
-            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
-              <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">Motivo do bloqueio:</p>
-              <p className="text-amber-800 dark:text-amber-300 mt-1">{dateToUnblock?.reason}</p>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              Deseja liberar esta data para novos eventos?
-            </p>
+          <div className="py-4">
+            {isEditingReason ? (
+              <div className="space-y-2">
+                <Label>Novo motivo do bloqueio</Label>
+                <Input
+                  placeholder="Ex: Feriado, Manutenção, Evento privado..."
+                  value={editedReason}
+                  onChange={(e) => setEditedReason(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">Motivo do bloqueio:</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={startEditingReason}
+                      className="h-7 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Editar
+                    </Button>
+                  </div>
+                  <p className="text-amber-800 dark:text-amber-300">{dateToUnblock?.reason}</p>
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  Deseja liberar esta data para novos eventos?
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter className="sm:justify-center gap-3">
-            <Button variant="outline" onClick={() => setIsUnblockDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleUnblock} 
-              disabled={isSubmitting}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Desbloquear
-            </Button>
+            {isEditingReason ? (
+              <>
+                <Button variant="outline" onClick={() => setIsEditingReason(false)}>
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleEditReason} 
+                  disabled={!editedReason.trim() || isSubmitting}
+                >
+                  {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setIsUnblockDialogOpen(false)}>
+                  Fechar
+                </Button>
+                <Button 
+                  onClick={handleUnblock} 
+                  disabled={isSubmitting}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Desbloquear
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
