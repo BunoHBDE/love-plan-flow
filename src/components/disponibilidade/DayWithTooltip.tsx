@@ -6,7 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Calendar, Ban, CheckCircle2 } from "lucide-react";
+import { Calendar, Ban, CheckCircle2, CalendarPlus } from "lucide-react";
 
 interface EventoAceito {
   id: string;
@@ -22,10 +22,17 @@ interface DataBloqueada {
   reason: string;
 }
 
+interface DataDisponivel {
+  id: string;
+  date: Date;
+  reason: string | null;
+}
+
 interface DayWithTooltipProps {
   day: Date;
   eventosAceitos: EventoAceito[];
   datasBloqueadas: DataBloqueada[];
+  datasDisponiveis?: DataDisponivel[];
   children: React.ReactNode;
 }
 
@@ -33,17 +40,24 @@ export function DayWithTooltip({
   day,
   eventosAceitos,
   datasBloqueadas,
+  datasDisponiveis = [],
   children,
 }: DayWithTooltipProps) {
   const evento = eventosAceitos.find((e) => isSameDay(e.date, day));
   const bloqueio = datasBloqueadas.find((b) => isSameDay(b.date, day));
+  const extraDisponivel = datasDisponiveis.find((d) => isSameDay(d.date, day));
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const isAvailable = isWeekend(day) && day >= today && !evento && !bloqueio;
+  
+  const isNaturallyAvailable = isWeekend(day);
+  const isManuallyAvailable = !!extraDisponivel;
+  const isAvailable = (isNaturallyAvailable || isManuallyAvailable) && day >= today && !evento && !bloqueio;
 
-  // Só mostrar tooltip para dias com evento, bloqueio ou disponíveis
-  if (!evento && !bloqueio && !isAvailable) {
+  // Mostrar tooltip para dias com evento, bloqueio, disponíveis ou clicáveis (dias de semana futuros)
+  const isClickableWeekday = !isNaturallyAvailable && day >= today && !evento && !bloqueio && !isManuallyAvailable;
+  
+  if (!evento && !bloqueio && !isAvailable && !isClickableWeekday) {
     return <>{children}</>;
   }
 
@@ -79,11 +93,39 @@ export function DayWithTooltip({
       );
     }
 
+    if (isManuallyAvailable) {
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 font-semibold text-blue-600 dark:text-blue-400">
+            <CalendarPlus className="h-3.5 w-3.5" />
+            Disponível (dia extra)
+          </div>
+          {extraDisponivel?.reason && (
+            <div className="text-sm">
+              <span className="font-medium">Motivo:</span> {extraDisponivel.reason}
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground">
+            Clique para remover disponibilidade
+          </div>
+        </div>
+      );
+    }
+
     if (isAvailable) {
       return (
         <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="h-3.5 w-3.5" />
           <span className="font-medium">Disponível para eventos</span>
+        </div>
+      );
+    }
+
+    if (isClickableWeekday) {
+      return (
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <CalendarPlus className="h-3.5 w-3.5" />
+          <span className="font-medium">Clique para tornar disponível</span>
         </div>
       );
     }

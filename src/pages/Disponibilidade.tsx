@@ -28,6 +28,8 @@ import {
   ChevronRight,
   Sparkles,
   Pencil,
+  CalendarPlus,
+  CalendarMinus,
 } from "lucide-react";
 import { 
   format, 
@@ -46,6 +48,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { useQuotesOptimized as useQuotes } from "@/hooks/useQuotesOptimized";
 import { useBlockedDates } from "@/hooks/useBlockedDates";
+import { useAvailableDates } from "@/hooks/useAvailableDates";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { DayWithTooltip } from "@/components/disponibilidade/DayWithTooltip";
@@ -57,6 +60,7 @@ export default function Disponibilidade() {
   const navigate = useNavigate();
   const { quotes, loading: loadingQuotes } = useQuotes();
   const { blockedDates, loading: loadingBlocked, addBlockedDate, updateBlockedDate, removeBlockedDate } = useBlockedDates();
+  const { availableDates, loading: loadingAvailable, addAvailableDate, removeAvailableDate } = useAvailableDates();
   
   const [viewMode, setViewMode] = useState<ViewMode>("mensal");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -68,10 +72,16 @@ export default function Disponibilidade() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dateToBlock, setDateToBlock] = useState<Date | null>(null);
   const [dateToUnblock, setDateToUnblock] = useState<{ id: string; date: Date; reason: string } | null>(null);
+  const [dateToMakeAvailable, setDateToMakeAvailable] = useState<Date | null>(null);
+  const [dateToMakeUnavailable, setDateToMakeUnavailable] = useState<{ id: string; date: Date } | null>(null);
+  const [isMakeAvailableDialogOpen, setIsMakeAvailableDialogOpen] = useState(false);
+  const [isMakeUnavailableDialogOpen, setIsMakeUnavailableDialogOpen] = useState(false);
+  const [isWeekdayActionDialogOpen, setIsWeekdayActionDialogOpen] = useState(false);
+  const [availableReason, setAvailableReason] = useState("");
   const [blockReason, setBlockReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loading = loadingQuotes || loadingBlocked;
+  const loading = loadingQuotes || loadingBlocked || loadingAvailable;
 
   // Calcular meses a exibir
   const monthsToDisplay = useMemo(() => {
@@ -121,6 +131,15 @@ export default function Disponibilidade() {
     }));
   }, [blockedDates]);
 
+  // Datas manualmente disponíveis (dias de semana que foram habilitados)
+  const datasDisponiveis = useMemo(() => {
+    return availableDates.map((a) => ({
+      id: a.id,
+      date: new Date(a.date + "T12:00:00"),
+      reason: a.reason,
+    }));
+  }, [availableDates]);
+
   // Período atual
   const periodRange = useMemo(() => {
     const first = monthsToDisplay[0];
@@ -140,10 +159,20 @@ export default function Disponibilidade() {
   const getDateInfo = (date: Date) => {
     const evento = eventosAceitos.find(e => isSameDay(e.date, date));
     const bloqueio = datasBloqueadas.find(b => isSameDay(b.date, date));
+    const extraDisponivel = datasDisponiveis.find(d => isSameDay(d.date, date));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const isAvailable = isWeekend(date) && date >= today && !evento && !bloqueio;
-    return { evento, bloqueio, isAvailable };
+    
+    // Uma data é disponível se:
+    // 1. É fim de semana OU foi marcada manualmente como disponível
+    // 2. Não está no passado
+    // 3. Não tem evento
+    // 4. Não está bloqueada
+    const isNaturallyAvailable = isWeekend(date);
+    const isManuallyAvailable = !!extraDisponivel;
+    const isAvailable = (isNaturallyAvailable || isManuallyAvailable) && date >= today && !evento && !bloqueio;
+    
+    return { evento, bloqueio, extraDisponivel, isAvailable, isNaturallyAvailable, isManuallyAvailable };
   };
 
   // Estatísticas
@@ -160,13 +189,13 @@ export default function Disponibilidade() {
     ).length;
 
     const disponiveis = allDays.filter(day => {
-      if (!isWeekend(day) || day < today) return false;
+      if (day < today) return false;
       const info = getDateInfo(day);
       return info.isAvailable;
     }).length;
 
     return { eventos, bloqueados, disponiveis };
-  }, [periodRange, allDays, eventosAceitos, datasBloqueadas]);
+  }, [periodRange, allDays, eventosAceitos, datasBloqueadas, datasDisponiveis]);
 
   // Estatísticas por mês (para anual)
   const monthlyStats = useMemo(() => {
@@ -188,14 +217,14 @@ export default function Disponibilidade() {
       ).length;
 
       const disponiveis = days.filter(day => {
-        if (!isWeekend(day) || day < today) return false;
+        if (day < today) return false;
         const info = getDateInfo(day);
         return info.isAvailable;
       }).length;
 
       return { month, eventos, bloqueados, disponiveis };
     });
-  }, [viewMode, monthsToDisplay, eventosAceitos, datasBloqueadas]);
+  }, [viewMode, monthsToDisplay, eventosAceitos, datasBloqueadas, datasDisponiveis]);
 
   // Nome do período
   const periodName = useMemo(() => {
@@ -230,12 +259,19 @@ export default function Disponibilidade() {
   // Clique em data
   const handleDateClick = (date: Date) => {
     const info = getDateInfo(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
+    // Data no passado - ignorar
+    if (date < today) return;
+    
+    // Data com evento - ir para orçamentos
     if (info.evento) {
       navigate(`/orcamentos`);
       return;
     }
     
+    // Data bloqueada - mostrar dialog de desbloqueio
     if (info.bloqueio) {
       setDateToUnblock({
         id: info.bloqueio.id,
@@ -246,9 +282,27 @@ export default function Disponibilidade() {
       return;
     }
     
+    // Data manualmente disponível (dia de semana) - opção de remover disponibilidade
+    if (info.isManuallyAvailable && info.extraDisponivel) {
+      setDateToMakeUnavailable({
+        id: info.extraDisponivel.id,
+        date: date,
+      });
+      setIsMakeUnavailableDialogOpen(true);
+      return;
+    }
+    
+    // Data naturalmente disponível (fim de semana) - mostrar opções padrão
     if (info.isAvailable) {
       setSelectedDate(date);
       setIsActionDialogOpen(true);
+      return;
+    }
+    
+    // Dia de semana não disponível - opção de tornar disponível
+    if (!info.isNaturallyAvailable && !info.isAvailable) {
+      setDateToMakeAvailable(date);
+      setIsWeekdayActionDialogOpen(true);
     }
   };
 
@@ -329,6 +383,51 @@ export default function Disponibilidade() {
       setDateToBlock(null);
       setBlockReason("");
     }
+  };
+
+  // Tornar data disponível
+  const handleMakeAvailable = async () => {
+    if (!dateToMakeAvailable) return;
+    
+    setIsSubmitting(true);
+    const success = await addAvailableDate(
+      format(dateToMakeAvailable, "yyyy-MM-dd"),
+      availableReason.trim() || undefined
+    );
+    setIsSubmitting(false);
+    
+    if (success) {
+      setIsMakeAvailableDialogOpen(false);
+      setIsWeekdayActionDialogOpen(false);
+      toast.success("Data disponibilizada", {
+        description: format(dateToMakeAvailable, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+      });
+      setDateToMakeAvailable(null);
+      setAvailableReason("");
+    }
+  };
+
+  // Tornar data indisponível (remover disponibilidade manual)
+  const handleMakeUnavailable = async () => {
+    if (!dateToMakeUnavailable) return;
+    
+    setIsSubmitting(true);
+    const success = await removeAvailableDate(dateToMakeUnavailable.id);
+    setIsSubmitting(false);
+    
+    if (success) {
+      setIsMakeUnavailableDialogOpen(false);
+      toast.success("Data tornada indisponível", {
+        description: format(dateToMakeUnavailable.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
+      });
+      setDateToMakeUnavailable(null);
+    }
+  };
+
+  // Abrir dialog de tornar disponível
+  const openMakeAvailableDialog = () => {
+    setIsWeekdayActionDialogOpen(false);
+    setIsMakeAvailableDialogOpen(true);
   };
 
   if (loading) {
@@ -513,12 +612,17 @@ export default function Disponibilidade() {
                       modifiers={{
                         evento: eventosAceitos.map(e => e.date),
                         bloqueado: datasBloqueadas.map(b => b.date),
-                        disponivel: allDays.filter(d => getDateInfo(d).isAvailable),
+                        disponivel: allDays.filter(d => {
+                          const info = getDateInfo(d);
+                          return info.isAvailable && info.isNaturallyAvailable && !info.isManuallyAvailable;
+                        }),
+                        disponivelExtra: datasDisponiveis.map(d => d.date),
                       }}
                       modifiersClassNames={{
                         evento: "bg-rose-500 text-white hover:bg-rose-600 font-bold cursor-pointer transition-colors",
                         bloqueado: "bg-amber-500 text-white hover:bg-amber-600 font-bold cursor-pointer transition-colors",
                         disponivel: "bg-emerald-500 text-white hover:bg-emerald-600 font-bold cursor-pointer transition-colors",
+                        disponivelExtra: "bg-blue-500 text-white hover:bg-blue-600 font-bold cursor-pointer transition-colors ring-2 ring-blue-300 dark:ring-blue-700",
                       }}
                       disabled={(date) => {
                         const today = new Date();
@@ -530,6 +634,7 @@ export default function Disponibilidade() {
                           day={dayContentProps.date}
                           eventosAceitos={eventosAceitos}
                           datasBloqueadas={datasBloqueadas}
+                          datasDisponiveis={datasDisponiveis}
                         >
                           <span>{dayContentProps.date.getDate()}</span>
                         </DayWithTooltip>
@@ -698,6 +803,114 @@ export default function Disponibilidade() {
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Ações para Dia de Semana (não disponível) */}
+      <Dialog open={isWeekdayActionDialogOpen} onOpenChange={setIsWeekdayActionDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">
+              {dateToMakeAvailable && format(dateToMakeAvailable, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Este dia de semana não está disponível por padrão. Deseja torná-lo disponível?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-center py-6">
+            <Button
+              variant="default"
+              size="lg"
+              onClick={openMakeAvailableDialog}
+              className="h-24 w-full max-w-xs flex-col gap-2 bg-gradient-to-br from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <CalendarPlus className="h-6 w-6" />
+              <span className="font-semibold">Tornar Disponível</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Tornar Disponível */}
+      <Dialog 
+        open={isMakeAvailableDialogOpen} 
+        onOpenChange={(open) => {
+          setIsMakeAvailableDialogOpen(open);
+          if (!open) setAvailableReason("");
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tornar Data Disponível</DialogTitle>
+            <DialogDescription>
+              {dateToMakeAvailable && format(dateToMakeAvailable, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <Label>Motivo (opcional)</Label>
+            <Input
+              placeholder="Ex: Evento especial, Dia extra para casamentos..."
+              value={availableReason}
+              onChange={(e) => setAvailableReason(e.target.value)}
+              className="mt-2"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMakeAvailableDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleMakeAvailable} 
+              disabled={isSubmitting}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Tornar Disponível
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Remover Disponibilidade */}
+      <Dialog open={isMakeUnavailableDialogOpen} onOpenChange={setIsMakeUnavailableDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">
+              Remover Disponibilidade
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {dateToMakeUnavailable && format(dateToMakeUnavailable.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 text-center">
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+              <p className="text-blue-800 dark:text-blue-300">
+                Esta data foi marcada manualmente como disponível.
+              </p>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              Deseja remover a disponibilidade desta data?
+            </p>
+          </div>
+
+          <DialogFooter className="sm:justify-center gap-3">
+            <Button variant="outline" onClick={() => setIsMakeUnavailableDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleMakeUnavailable} 
+              disabled={isSubmitting}
+              variant="destructive"
+            >
+              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <CalendarMinus className="h-4 w-4 mr-2" />
+              Tornar Indisponível
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

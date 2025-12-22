@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      available_dates: {
+        Row: {
+          created_at: string
+          created_by: string
+          date: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       blocked_dates: {
         Row: {
           created_at: string
