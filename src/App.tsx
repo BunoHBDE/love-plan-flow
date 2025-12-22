@@ -1,47 +1,57 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { SidebarProvider } from "@/contexts/SidebarContext";
+import { queryClient } from "./lib/queryClient";
+
+// Pages
 import Index from "./pages/Index";
-import Visitas from "./pages/Visitas";
+import Auth from "./pages/Auth";
 import Clientes from "./pages/Clientes";
+import Visitas from "./pages/Visitas";
 import Orcamentos from "./pages/Orcamentos";
 import NovoOrcamento from "./pages/NovoOrcamento";
 import EditarOrcamento from "./pages/EditarOrcamento";
+import Disponibilidade from "./pages/Disponibilidade";
 import Contratos from "./pages/Contratos";
 import Pagamentos from "./pages/Pagamentos";
-import Disponibilidade from "./pages/Disponibilidade";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-import { SidebarProvider } from "./contexts/SidebarContext";
-
-const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+    <BrowserRouter>
       <SidebarProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
           <Routes>
+            {/* Rotas públicas */}
             <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/visitas" element={<ProtectedRoute><Visitas /></ProtectedRoute>} />
-            <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
-            <Route path="/orcamentos" element={<ProtectedRoute><Orcamentos /></ProtectedRoute>} />
-            <Route path="/orcamentos/novo" element={<ProtectedRoute><NovoOrcamento /></ProtectedRoute>} />
-            <Route path="/orcamentos/:id" element={<ProtectedRoute><EditarOrcamento /></ProtectedRoute>} />
-            <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
-            <Route path="/pagamentos" element={<ProtectedRoute><Pagamentos /></ProtectedRoute>} />
-            <Route path="/disponibilidade" element={<ProtectedRoute><Disponibilidade /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="/login" element={<Auth />} />
+            
+            {/* Rotas principais */}
+            <Route path="/" element={<Index />} />
+            <Route path="/clientes" element={<Clientes />} />
+            <Route path="/visitas" element={<Visitas />} />
+            <Route path="/orcamentos" element={<Orcamentos />} />
+            <Route path="/orcamentos/novo" element={<NovoOrcamento />} />
+            <Route path="/orcamentos/:id/editar" element={<EditarOrcamento />} />
+            <Route path="/disponibilidade" element={<Disponibilidade />} />
+            <Route path="/contratos" element={<Contratos />} />
+            <Route path="/pagamentos" element={<Pagamentos />} />
+
+            {/* Catch-all - redireciona para home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BrowserRouter>
+        </TooltipProvider>
       </SidebarProvider>
-    </TooltipProvider>
+    </BrowserRouter>
+    
+    {/* DevTools - Apenas em desenvolvimento */}
+    {/* Remove automaticamente em produção */}
+    <ReactQueryDevtools initialIsOpen={false} />
   </QueryClientProvider>
 );
 
