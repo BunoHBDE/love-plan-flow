@@ -875,43 +875,50 @@ export default function Disponibilidade() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para Remover Disponibilidade */}
+      {/* Dialog para Remover Disponibilidade - Estilo similar ao de data disponível */}
       <Dialog open={isMakeUnavailableDialogOpen} onOpenChange={setIsMakeUnavailableDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center text-xl">
-              Remover Disponibilidade
+              {dateToMakeUnavailable && format(dateToMakeUnavailable.date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </DialogTitle>
             <DialogDescription className="text-center">
-              {dateToMakeUnavailable && format(dateToMakeUnavailable.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              O que você deseja fazer com esta data?
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-4 text-center">
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-              <p className="text-blue-800 dark:text-blue-300">
-                Esta data foi marcada manualmente como disponível.
-              </p>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              Deseja remover a disponibilidade desta data?
-            </p>
-          </div>
-
-          <DialogFooter className="sm:justify-center gap-3">
-            <Button variant="outline" onClick={() => setIsMakeUnavailableDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleMakeUnavailable} 
-              disabled={isSubmitting}
-              variant="destructive"
+          <div className="grid grid-cols-2 gap-4 py-6">
+            <Button
+              variant="default"
+              size="lg"
+              onClick={() => {
+                if (dateToMakeUnavailable) {
+                  setIsMakeUnavailableDialogOpen(false);
+                  setSelectedDate(dateToMakeUnavailable.date);
+                  navigate(`/orcamentos/novo?data_evento=${format(dateToMakeUnavailable.date, "yyyy-MM-dd")}`);
+                }
+              }}
+              className="h-24 flex-col gap-2 bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              <CalendarMinus className="h-4 w-4 mr-2" />
-              Tornar Indisponível
+              <Sparkles className="h-6 w-6" />
+              <span className="font-semibold">Novo Orçamento</span>
             </Button>
-          </DialogFooter>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleMakeUnavailable}
+              disabled={isSubmitting}
+              className="h-24 flex-col gap-2 border-slate-500/50 text-slate-600 hover:bg-slate-50 hover:border-slate-500 dark:text-slate-400 dark:hover:bg-slate-950/30 transition-all duration-300"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : (
+                <CalendarMinus className="h-6 w-6" />
+              )}
+              <span className="font-semibold">Tornar Indisponível</span>
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </MainLayout>
