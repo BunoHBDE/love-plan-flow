@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -48,6 +48,8 @@ import { useQuotesOptimized as useQuotes } from "@/hooks/useQuotesOptimized";
 import { useBlockedDates } from "@/hooks/useBlockedDates";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { DayWithTooltip } from "@/components/disponibilidade/DayWithTooltip";
+import { DayContentProps } from "react-day-picker";
 
 type ViewMode = "mensal" | "estacao" | "anual";
 
@@ -523,6 +525,15 @@ export default function Disponibilidade() {
                         today.setHours(0, 0, 0, 0);
                         return date < today;
                       }}
+                      renderDayContent={(dayContentProps: DayContentProps) => (
+                        <DayWithTooltip
+                          day={dayContentProps.date}
+                          eventosAceitos={eventosAceitos}
+                          datasBloqueadas={datasBloqueadas}
+                        >
+                          <span>{dayContentProps.date.getDate()}</span>
+                        </DayWithTooltip>
+                      )}
                     />
                   </div>
                 </div>
