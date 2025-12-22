@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider } from "@/contexts/SidebarContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { queryClient } from "./lib/queryClient";
 
 // Pages
@@ -27,30 +28,91 @@ const App = () => (
           <Toaster />
           <Sonner />
           <Routes>
-            {/* Rotas públicas */}
+            {/* Rotas públicas - SEM proteção */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Auth />} />
             
-            {/* Rotas principais */}
-            <Route path="/" element={<Index />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/visitas" element={<Visitas />} />
-            <Route path="/orcamentos" element={<Orcamentos />} />
-            <Route path="/orcamentos/novo" element={<NovoOrcamento />} />
-            <Route path="/orcamentos/:id/editar" element={<EditarOrcamento />} />
-            <Route path="/disponibilidade" element={<Disponibilidade />} />
-            <Route path="/contratos" element={<Contratos />} />
-            <Route path="/pagamentos" element={<Pagamentos />} />
+            {/* Rotas protegidas - COM ProtectedRoute */}
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/clientes" 
+              element={
+                <ProtectedRoute>
+                  <Clientes />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/visitas" 
+              element={
+                <ProtectedRoute>
+                  <Visitas />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/orcamentos" 
+              element={
+                <ProtectedRoute>
+                  <Orcamentos />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/orcamentos/novo" 
+              element={
+                <ProtectedRoute>
+                  <NovoOrcamento />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/orcamentos/:id/editar" 
+              element={
+                <ProtectedRoute>
+                  <EditarOrcamento />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/disponibilidade" 
+              element={
+                <ProtectedRoute>
+                  <Disponibilidade />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/contratos" 
+              element={
+                <ProtectedRoute>
+                  <Contratos />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/pagamentos" 
+              element={
+                <ProtectedRoute>
+                  <Pagamentos />
+                </ProtectedRoute>
+              } 
+            />
 
-            {/* Catch-all - redireciona para home */}
+            {/* Catch-all - redireciona para home (que exigirá login) */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </TooltipProvider>
       </SidebarProvider>
     </BrowserRouter>
     
-    {/* DevTools - Apenas em desenvolvimento */}
-    {/* Remove automaticamente em produção */}
     <ReactQueryDevtools initialIsOpen={false} />
   </QueryClientProvider>
 );
