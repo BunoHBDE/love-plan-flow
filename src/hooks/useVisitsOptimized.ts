@@ -85,9 +85,23 @@ const createVisit = async (visitData: VisitInsert): Promise<Visit> => {
   }
 
   const validatedData = validationResult.data as VisitInsert;
+  
+  // 🔥 IMPORTANTE: Pega o usuário logado
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('Você precisa estar logado para criar visitas');
+  }
+  
+  // Adiciona created_by automaticamente
+  const dataWithUser = {
+    ...validatedData,
+    created_by: user.id,
+  };
+  
   const { data, error } = await supabase
     .from("visits")
-    .insert(validatedData)
+    .insert(dataWithUser)
     .select(`
       *,
       client:clients(nome, email, telefone)

@@ -84,9 +84,23 @@ const createClient = async (clientData: ClientInsert): Promise<Client> => {
   }
 
   const validatedData = validationResult.data as ClientInsert;
+  
+  // 🔥 IMPORTANTE: Pega o usuário logado
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('Você precisa estar logado para criar clientes');
+  }
+  
+  // Adiciona created_by automaticamente
+  const dataWithUser = {
+    ...validatedData,
+    created_by: user.id,
+  };
+  
   const { data, error } = await supabase
     .from("clients")
-    .insert(validatedData)
+    .insert(dataWithUser)
     .select()
     .single();
 
@@ -110,6 +124,8 @@ const updateClient = async ({
   }
 
   const validatedData = validationResult.data as Partial<ClientInsert>;
+  
+  // 🔥 Não precisa de created_by no update
   const { data, error } = await supabase
     .from("clients")
     .update(validatedData)

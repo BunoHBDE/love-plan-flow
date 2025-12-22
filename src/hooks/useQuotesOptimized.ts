@@ -61,9 +61,17 @@ const fetchQuotesFromDB = async (): Promise<Quote[]> => {
 };
 
 const createQuote = async (quoteData: QuoteInsert): Promise<Quote> => {
+  // 🔥 IMPORTANTE: Pega o usuário logado
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('Você precisa estar logado para criar orçamentos');
+  }
+  
   // Converte para o tipo do Supabase, fazendo cast de parcelas_json e extras_json
   const dataToInsert: any = {
     ...quoteData,
+    created_by: user.id, // 🔥 Adiciona created_by
     parcelas_json: quoteData.parcelas_json ? JSON.parse(JSON.stringify(quoteData.parcelas_json)) : null,
     extras_json: quoteData.extras_json ? JSON.parse(JSON.stringify(quoteData.extras_json)) : null,
   };
