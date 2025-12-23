@@ -385,7 +385,7 @@ export default function Orcamentos() {
                             variant="ghost" 
                             size="icon" 
                             title="Editar"
-                            onClick={() => navigate(`/orcamentos/${quote.id}`)}
+                            onClick={() => navigate(`/orcamentos/${quote.id}/editar`)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
