@@ -19,6 +19,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft,
   Save,
   Download,
@@ -29,6 +40,7 @@ import {
   ChevronDown,
   Loader2,
   DollarSign,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
@@ -93,10 +105,11 @@ export default function EditarOrcamento() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { getQuoteById, updateQuote } = useQuotes();
+  const { getQuoteById, updateQuote, deleteQuote } = useQuotes();
   
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [quoteData, setQuoteData] = useState<Quote | null>(null);
   
   // Editable fields
@@ -272,6 +285,18 @@ export default function EditarOrcamento() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!quoteData) return;
+    
+    setIsDeleting(true);
+    const success = await deleteQuote(quoteData.id);
+    setIsDeleting(false);
+    
+    if (success) {
+      navigate("/orcamentos");
+    }
+  };
+
   const handleDownloadPDF = () => {
     if (!quoteData) return;
 
@@ -407,6 +432,40 @@ export default function EditarOrcamento() {
           </div>
 
           <div className="flex items-center gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir o orçamento <strong>{quoteData.quote_number}</strong>? 
+                    Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Excluindo...
+                      </>
+                    ) : (
+                      "Excluir"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button variant="outline" onClick={handleDownloadPDF}>
               <Download className="h-4 w-4 mr-2" />
               Baixar PDF
