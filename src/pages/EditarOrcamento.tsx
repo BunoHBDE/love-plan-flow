@@ -45,7 +45,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { cn } from "@/lib/utils";
-import { useQuotes, type Quote } from "@/hooks/useQuotes";
+import { useQuotesOptimized as useQuotes, type Quote } from "@/hooks/useQuotesOptimized";
 import { PaymentTermsForm, type PaymentTermsData, type Parcela } from "@/components/quotes/PaymentTermsForm";
 import { ExtrasForm, type ExtraItem, calcularTotalExtras } from "@/components/quotes/ExtrasForm";
 import { 
