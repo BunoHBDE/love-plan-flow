@@ -39,8 +39,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, Clock, Phone, User, Plus, Search, ArrowUpDown, Filter, X, Users, Heart, Mail, Loader2, Trash2, Check } from "lucide-react";
-import { format, addDays } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { 
+  Calendar, 
+  Clock, 
+  Phone, 
+  User, 
+  Plus, 
+  Search, 
+  ArrowUpDown, 
+  Filter, 
+  X, 
+  Users, 
+  Heart, 
+  Mail, 
+  Loader2, 
+  Trash2,
+  LayoutList,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Settings
+} from "lucide-react";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useVisitsOptimized as useVisits, VisitInsert, Visit } from "@/hooks/useVisitsOptimized";
@@ -64,30 +93,27 @@ const statusLabels: Record<string, string> = {
 };
 
 type SortOption = "date" | "time" | "status" | "name";
+type ViewMode = "table" | "calendar";
 
 export default function Visitas() {
   const { visits, loading, createVisit, updateVisit, updateVisitStatus, deleteVisit } = useVisits();
   const { clients, searchClients } = useClients();
   
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>(["confirmada", "agendado"]);
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [sortBy, setSortBy] = useState<SortOption>("date");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
+  // Calendar view state
+  const [currentWeek, setCurrentWeek] = useState(new Date());
   
   // Client search for new visit
   const [clientSearch, setClientSearch] = useState("");
   const [clientSearchResults, setClientSearchResults] = useState<any[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  
-  // State para o agendamento em grade
-  const [selectedSlot, setSelectedSlot] = useState<{ day: Date; horario: string } | null>(null);
-  const [visitNotes, setVisitNotes] = useState("");
-  const [guestCount, setGuestCount] = useState("");
-  const [weddingDateStatus, setWeddingDateStatus] = useState<"defined" | "undefined">("undefined");
-  const [weddingDate, setWeddingDate] = useState("");
-  const [weddingMonth, setWeddingMonth] = useState("");
-  const [weddingYear, setWeddingYear] = useState("");
   
   const [newVisit, setNewVisit] = useState({
     clientName: "",
@@ -150,48 +176,27 @@ export default function Visitas() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
 
-  // Funções para grade de agendamento
-  const getDays = () => {
-    const days = [];
-    const today = new Date();
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      days.push(date);
-    }
-    return days;
+  // Get week days for calendar view
+  const getWeekDays = () => {
+    const start = startOfWeek(currentWeek, { weekStartsOn: 0 });
+    const end = endOfWeek(currentWeek, { weekStartsOn: 0 });
+    return eachDayOfInterval({ start, end });
   };
 
-  const days = getDays();
+  const weekDays = getWeekDays();
   const horarios = [
-    '09:00', '10:00', '11:00', '12:00',
-    '14:00', '15:00', '16:00', '17:00', '18:00'
+    '08:00', '09:00', '10:00', '11:00', '12:00',
+    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
   ];
 
-  const isAvailable = (day: Date, horario: string) => {
-    // Verificar se já existe agendamento nesse horário
+  // Get visits for a specific day and time
+  const getVisitsForSlot = (day: Date, time: string) => {
     const dateStr = format(day, 'yyyy-MM-dd');
-    const hasVisit = visits.some(visit => 
+    return visits.filter(visit => 
       visit.visit_date === dateStr && 
-      visit.visit_time === horario &&
-      visit.status !== 'cancelada'
+      visit.visit_time === time &&
+      (statusFilter.length === 0 || statusFilter.includes(visit.status))
     );
-    return !hasVisit;
-  };
-
-  const formatDateGrid = (date: Date) => {
-    const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    return {
-      diaSemana: dias[date.getDay()],
-      dia: date.getDate(),
-      mes: format(date, 'MMM', { locale: ptBR })
-    };
-  };
-
-  const handleSlotClick = (day: Date, horario: string) => {
-    if (isAvailable(day, horario)) {
-      setSelectedSlot({ day, horario });
-    }
   };
 
   const filteredVisits = visits
@@ -243,33 +248,38 @@ export default function Visitas() {
   };
 
   const handleCreateVisit = async () => {
-    if (!selectedSlot || !selectedClientId) {
+    if (!newVisit.date || !newVisit.time) {
       return;
     }
 
     const visitData: VisitInsert = {
       client_id: selectedClientId,
-      visit_date: format(selectedSlot.day, 'yyyy-MM-dd'),
-      visit_time: selectedSlot.horario,
-      notes: visitNotes || null,
-      guest_count: guestCount ? parseInt(guestCount) : null,
-      wedding_date_status: weddingDateStatus === "defined" ? "com_data" : "sem_data",
-      wedding_date: weddingDate || null,
-      wedding_month: weddingMonth || null,
-      wedding_year: weddingYear || null,
+      visit_date: newVisit.date,
+      visit_time: newVisit.time,
+      notes: newVisit.notes || null,
+      guest_count: newVisit.guestCount ? parseInt(newVisit.guestCount) : null,
+      wedding_date_status: newVisit.weddingDateStatus === "defined" ? "com_data" : "sem_data",
+      wedding_date: newVisit.weddingDate || null,
+      wedding_month: newVisit.weddingMonthEstimate || null,
+      wedding_year: newVisit.weddingYearEstimate || null,
       status: "agendado",
     };
 
     const result = await createVisit(visitData);
     if (result) {
-      // Reset form
-      setSelectedSlot(null);
-      setVisitNotes("");
-      setGuestCount("");
-      setWeddingDateStatus("undefined");
-      setWeddingDate("");
-      setWeddingMonth("");
-      setWeddingYear("");
+      setNewVisit({
+        clientName: "",
+        email: "",
+        phone: "",
+        date: "",
+        time: "",
+        notes: "",
+        guestCount: "",
+        weddingDateStatus: "undefined",
+        weddingDate: "",
+        weddingMonthEstimate: "",
+        weddingYearEstimate: "",
+      });
       setSelectedClientId(null);
       setClientSearch("");
       setIsDialogOpen(false);
@@ -385,278 +395,349 @@ export default function Visitas() {
     <MainLayout>
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">
-              Visitas
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Gerencie as visitas agendadas ao seu espaço
-            </p>
+        <div className="flex flex-col gap-4 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-display font-bold text-foreground">
+                Visitas
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Gerencie as visitas agendadas ao seu espaço
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              {/* View Mode Toggle */}
+              <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                <Button
+                  variant={viewMode === "table" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("table")}
+                  className="gap-2"
+                >
+                  <LayoutList className="h-4 w-4" />
+                  <span className="hidden sm:inline">Tabela</span>
+                </Button>
+                <Button
+                  variant={viewMode === "calendar" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("calendar")}
+                  className="gap-2"
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  <span className="hidden sm:inline">Calendário</span>
+                </Button>
+              </div>
+
+              {/* Settings Button */}
+              <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="lg">
+                    <Settings className="h-5 w-5" />
+                    <span className="hidden sm:inline ml-2">Configurações</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle className="font-display text-xl">
+                      Configurações de Visitas
+                    </DialogTitle>
+                    <DialogDescription>
+                      Configure as preferências para agendamento de visitas.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Horários de Atendimento</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Configure os horários disponíveis para agendamento
+                      </p>
+                      <div className="grid grid-cols-2 gap-4 mt-3">
+                        <div>
+                          <Label className="text-sm">Horário Inicial</Label>
+                          <Select defaultValue="08:00">
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {['08:00', '09:00', '10:00'].map(h => (
+                                <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-sm">Horário Final</Label>
+                          <Select defaultValue="19:00">
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {['17:00', '18:00', '19:00', '20:00'].map(h => (
+                                <SelectItem key={h} value={h}>{h}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Duração Padrão</Label>
+                      <Select defaultValue="60">
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30">30 minutos</SelectItem>
+                          <SelectItem value="60">1 hora</SelectItem>
+                          <SelectItem value="90">1h 30min</SelectItem>
+                          <SelectItem value="120">2 horas</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Notificações</Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-normal">Lembrete 24h antes</Label>
+                          <input type="checkbox" defaultChecked className="h-4 w-4" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-normal">Lembrete 1h antes</Label>
+                          <input type="checkbox" defaultChecked className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button variant="gold" onClick={() => setIsSettingsOpen(false)}>
+                      Salvar Configurações
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="gold" size="lg">
-                <Plus className="h-5 w-5" />
-                Agendar Visita
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="font-display text-xl">
-                  Agendar Nova Visita
-                </DialogTitle>
-                <DialogDescription>
-                  Selecione o cliente, dia e horário desejado.
-                </DialogDescription>
-              </DialogHeader>
+          {/* Action Bar - Agendar Visita moved here */}
+          <div className="flex gap-2">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="gold" size="lg" className="gap-2">
+                  <Plus className="h-5 w-5" />
+                  Agendar Visita
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-xl">
+                    Agendar Nova Visita
+                  </DialogTitle>
+                  <DialogDescription>
+                    Preencha os dados para agendar uma visita ao espaço.
+                  </DialogDescription>
+                </DialogHeader>
 
-              <div className="space-y-6 py-4">
-                {/* Seleção de Cliente */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">Cliente *</Label>
+                <div className="grid gap-4 py-4">
+                  {/* Client Search */}
+                  <div className="grid gap-2">
+                    <Label>Cliente *</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar cliente existente..."
+                        value={clientSearch}
+                        onChange={(e) => handleClientSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    {clientSearchResults.length > 0 && (
+                      <div className="border rounded-lg divide-y max-h-32 overflow-y-auto">
+                        {clientSearchResults.map((client: any) => (
+                          <button
+                            key={client.id}
+                            onClick={() => selectClient(client)}
+                            className="w-full text-left px-3 py-2 hover:bg-secondary text-sm"
+                          >
+                            {client.nome}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {selectedClientId && (
+                      <p className="text-sm text-muted-foreground">
+                        Cliente: <span className="font-medium text-foreground">{newVisit.clientName}</span>
+                      </p>
+                    )}
                   </div>
-                  
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="date">Data *</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={newVisit.date}
+                        onChange={(e) =>
+                          setNewVisit({ ...newVisit, date: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="time">Horário *</Label>
+                      <Input
+                        id="time"
+                        type="time"
+                        value={newVisit.time}
+                        onChange={(e) =>
+                          setNewVisit({ ...newVisit, time: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="guestCount">Número de Convidados</Label>
                     <Input
-                      placeholder="Buscar cliente..."
-                      value={clientSearch}
-                      onChange={(e) => handleClientSearch(e.target.value)}
-                      className="pl-10"
+                      id="guestCount"
+                      type="number"
+                      min="1"
+                      value={newVisit.guestCount}
+                      onChange={(e) =>
+                        setNewVisit({ ...newVisit, guestCount: e.target.value })
+                      }
+                      placeholder="Ex: 150"
                     />
                   </div>
 
-                  {clientSearchResults.length > 0 && (
-                    <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
-                      {clientSearchResults.map((client: any) => (
-                        <button
-                          key={client.id}
-                          onClick={() => selectClient(client)}
-                          className="w-full text-left px-4 py-2 hover:bg-secondary transition-colors"
+                  <div className="grid gap-2">
+                    <Label>Data do Casamento</Label>
+                    <Select
+                      value={newVisit.weddingDateStatus}
+                      onValueChange={(value: "defined" | "undefined") =>
+                        setNewVisit({ ...newVisit, weddingDateStatus: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="undefined">Ainda não definida</SelectItem>
+                        <SelectItem value="defined">Já tenho a data</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {newVisit.weddingDateStatus === "defined" ? (
+                    <div className="grid gap-2">
+                      <Label htmlFor="weddingDate">Data do Casamento</Label>
+                      <Popover open={weddingDatePickerOpen} onOpenChange={setWeddingDatePickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "justify-start text-left font-normal",
+                              !newVisit.weddingDate && "text-muted-foreground"
+                            )}
+                          >
+                            <Calendar className="mr-2 h-4 w-4" />
+                            {newVisit.weddingDate ? format(new Date(newVisit.weddingDate), "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={newVisit.weddingDate ? new Date(newVisit.weddingDate) : undefined}
+                            onSelect={(date) => {
+                              setNewVisit({ ...newVisit, weddingDate: date ? format(date, "yyyy-MM-dd") : "" });
+                              setWeddingDatePickerOpen(false);
+                            }}
+                            initialFocus
+                            locale={ptBR}
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label>Mês Previsto (opcional)</Label>
+                        <Select
+                          value={newVisit.weddingMonthEstimate}
+                          onValueChange={(value) =>
+                            setNewVisit({ ...newVisit, weddingMonthEstimate: value })
+                          }
                         >
-                          <div className="font-medium">{client.nome}</div>
-                          {client.telefone && (
-                            <div className="text-sm text-muted-foreground">{client.telefone}</div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {selectedClientId && (
-                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm text-green-700 font-medium">Cliente selecionado</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Grade de Horários */}
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Selecione Data e Horário *</Label>
-                  
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <div className="inline-block min-w-full">
-                        <div className="grid gap-1 p-2" style={{ gridTemplateColumns: `80px repeat(${days.length}, minmax(90px, 1fr))` }}>
-                          {/* Header - Dias */}
-                          <div className="p-2"></div>
-                          {days.map((day, idx) => {
-                            const { diaSemana, dia, mes } = formatDateGrid(day);
-                            const isToday = idx === 0;
-                            return (
-                              <div
-                                key={idx}
-                                className={`text-center p-2 rounded-t ${
-                                  isToday ? 'bg-gold/10 border-2 border-gold' : 'bg-muted'
-                                }`}
-                              >
-                                <div className={`text-xs font-semibold ${isToday ? 'text-gold' : 'text-muted-foreground'}`}>
-                                  {diaSemana}
-                                </div>
-                                <div className={`text-lg font-bold ${isToday ? 'text-gold' : 'text-foreground'}`}>
-                                  {dia}
-                                </div>
-                                <div className="text-xs text-muted-foreground capitalize">{mes}</div>
-                              </div>
-                            );
-                          })}
-
-                          {/* Linhas de Horários */}
-                          {horarios.map((horario, hIdx) => (
-                            <React.Fragment key={hIdx}>
-                              {/* Coluna de Horário */}
-                              <div className="flex items-center justify-center bg-muted rounded p-2 text-sm font-semibold text-foreground">
-                                {horario}
-                              </div>
-
-                              {/* Células de Agendamento */}
-                              {days.map((day, dIdx) => {
-                                const available = isAvailable(day, horario);
-                                const isSelected = selectedSlot?.day.getTime() === day.getTime() && selectedSlot?.horario === horario;
-
-                                return (
-                                  <button
-                                    key={dIdx}
-                                    onClick={() => handleSlotClick(day, horario)}
-                                    disabled={!available}
-                                    className={`p-3 rounded transition-all duration-200 border ${
-                                      isSelected
-                                        ? 'bg-gold border-gold text-white shadow-md scale-105'
-                                        : available
-                                        ? 'bg-white border-border hover:border-gold hover:bg-gold/5 hover:scale-105'
-                                        : 'bg-muted border-border cursor-not-allowed opacity-40'
-                                    }`}
-                                  >
-                                    {isSelected ? (
-                                      <Check className="w-4 h-4 mx-auto" />
-                                    ) : available ? (
-                                      <div className="w-4 h-4 mx-auto rounded-full border-2 border-muted-foreground/30"></div>
-                                    ) : (
-                                      <X className="w-4 h-4 mx-auto text-muted-foreground" />
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </React.Fragment>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Legenda */}
-                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-4 h-4 bg-white border border-border rounded"></div>
-                      <span>Disponível</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-4 h-4 bg-gold rounded"></div>
-                      <span>Selecionado</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-4 h-4 bg-muted border border-border rounded opacity-40"></div>
-                      <span>Indisponível</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Informações Adicionais */}
-                {selectedSlot && selectedClientId && (
-                  <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gold" />
-                        <span className="font-semibold">
-                          {format(selectedSlot.day, "EEEE, dd 'de' MMMM", { locale: ptBR })} às {selectedSlot.horario}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="guestCount">Número de Convidados</Label>
-                        <Input
-                          id="guestCount"
-                          type="number"
-                          min="1"
-                          value={guestCount}
-                          onChange={(e) => setGuestCount(e.target.value)}
-                          placeholder="Ex: 150"
-                        />
-                      </div>
-
-                      <div className="grid gap-2">
-                        <Label>Data do Casamento</Label>
-                        <Select value={weddingDateStatus} onValueChange={(val: "defined" | "undefined") => setWeddingDateStatus(val)}>
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Selecione o mês" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="undefined">Ainda não definida</SelectItem>
-                            <SelectItem value="defined">Já tenho a data</SelectItem>
+                            {months.map((month) => (
+                              <SelectItem key={month.value} value={month.value}>
+                                {month.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
-
-                      {weddingDateStatus === "defined" ? (
-                        <div className="grid gap-2">
-                          <Label htmlFor="weddingDate">Data do Casamento</Label>
-                          <Input
-                            id="weddingDate"
-                            type="date"
-                            value={weddingDate}
-                            onChange={(e) => setWeddingDate(e.target.value)}
-                          />
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="grid gap-2">
-                            <Label>Mês Previsto</Label>
-                            <Select value={weddingMonth} onValueChange={setWeddingMonth}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {months.map((month) => (
-                                  <SelectItem key={month.value} value={month.value}>
-                                    {month.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="grid gap-2">
-                            <Label>Ano Previsto</Label>
-                            <Select value={weddingYear} onValueChange={setWeddingYear}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {years.map((year) => (
-                                  <SelectItem key={year} value={year}>
-                                    {year}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      )}
-
                       <div className="grid gap-2">
-                        <Label htmlFor="notes">Observações</Label>
-                        <Input
-                          id="notes"
-                          value={visitNotes}
-                          onChange={(e) => setVisitNotes(e.target.value)}
-                          placeholder="Anotações sobre a visita..."
-                        />
+                        <Label>Ano Previsto (opcional)</Label>
+                        <Select
+                          value={newVisit.weddingYearEstimate}
+                          onValueChange={(value) =>
+                            setNewVisit({ ...newVisit, weddingYearEstimate: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o ano" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {years.map((year) => (
+                              <SelectItem key={year} value={year}>
+                                {year}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
 
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button 
-                  variant="gold" 
-                  onClick={handleCreateVisit}
-                  disabled={!selectedSlot || !selectedClientId}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Confirmar Agendamento
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+                  <div className="grid gap-2">
+                    <Label htmlFor="notes">Observações</Label>
+                    <Input
+                      id="notes"
+                      value={newVisit.notes}
+                      onChange={(e) =>
+                        setNewVisit({ ...newVisit, notes: e.target.value })
+                      }
+                      placeholder="Anotações sobre a visita..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button variant="gold" onClick={handleCreateVisit}>
+                    Agendar Visita
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Filters */}
@@ -666,7 +747,6 @@ export default function Visitas() {
             <span className="text-sm font-medium text-foreground">Filtros</span>
           </div>
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -678,7 +758,6 @@ export default function Visitas() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {/* Status filter buttons */}
             <div className="flex flex-wrap gap-2">
               {(["confirmada", "agendado", "realizada", "cancelada"] as const).map((status) => {
                 const isSelected = statusFilter.includes(status);
@@ -711,33 +790,58 @@ export default function Visitas() {
               })}
             </div>
 
-            {/* Date filter */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "min-w-[140px] justify-start",
-                    !dateFilter && "text-muted-foreground"
-                  )}
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  {dateFilter ? format(dateFilter, "dd/MM/yyyy") : "Data"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={dateFilter}
-                  onSelect={setDateFilter}
-                  initialFocus
-                  locale={ptBR}
-                />
-              </PopoverContent>
-            </Popover>
+            {viewMode === "table" && (
+              <>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "min-w-[140px] justify-start",
+                        !dateFilter && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {dateFilter ? format(dateFilter, "dd/MM/yyyy") : "Data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={dateFilter}
+                      onSelect={setDateFilter}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
 
-            {/* Clear filters */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <ArrowUpDown className="h-4 w-4 mr-2" />
+                      Ordenar
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setSortBy("date")}>
+                      Por Data
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy("time")}>
+                      Por Horário
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy("status")}>
+                      Por Status
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy("name")}>
+                      Por Nome
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
+
             {(statusFilter.length > 0 || dateFilter) && (
               <Button
                 variant="ghost"
@@ -751,133 +855,213 @@ export default function Visitas() {
                 Limpar
               </Button>
             )}
-
-            {/* Sort */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <ArrowUpDown className="h-4 w-4 mr-2" />
-                  Ordenar
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setSortBy("date")}>
-                  Por Data
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("time")}>
-                  Por Horário
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("status")}>
-                  Por Status
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("name")}>
-                  Por Nome
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
 
-        {/* Visits List */}
+        {/* Content - Table or Calendar View */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : (
-          <div className="space-y-4 animate-slide-up">
-            {filteredVisits.map((visit) => (
-              <div
-                key={visit.id}
-                className="bg-card rounded-xl p-6 shadow-soft border border-border transition-all duration-200 hover:shadow-medium"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-champagne flex-shrink-0">
-                      <User className="h-6 w-6 text-gold" />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-foreground">
-                        {visit.client?.nome || "Cliente não vinculado"}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {new Date(visit.visit_date).toLocaleDateString("pt-BR")}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {visit.visit_time}
-                        </span>
-                        {visit.client?.telefone && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-4 w-4" />
-                            {visit.client.telefone}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-1">
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-4 w-4 text-gold" />
-                          {getWeddingDateDisplay(visit)}
-                        </span>
-                        {visit.guest_count && (
-                          <span className="flex items-center gap-1">
-                            <Users className="h-4 w-4" />
-                            {visit.guest_count} convidados
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+        ) : viewMode === "table" ? (
+          /* TABLE VIEW - Gestão e Controle */
+          <div className="bg-card rounded-xl shadow-soft border border-border animate-slide-up overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Horário</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Casamento</TableHead>
+                    <TableHead className="text-center">Convidados</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredVisits.map((visit) => (
+                    <TableRow key={visit.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-champagne flex items-center justify-center flex-shrink-0">
+                            <User className="h-4 w-4 text-gold" />
+                          </div>
+                          <div>
+                            <div>{visit.client?.nome || "Sem cliente"}</div>
+                            {visit.client?.telefone && (
+                              <div className="text-xs text-muted-foreground">{visit.client.telefone}</div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(visit.visit_date).toLocaleDateString("pt-BR")}
+                      </TableCell>
+                      <TableCell>{visit.visit_time}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={cn(
+                                "capitalize border",
+                                statusStyles[visit.status as keyof typeof statusStyles] || statusStyles.agendado
+                              )}
+                            >
+                              {statusLabels[visit.status] || visit.status}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {(["agendado", "confirmada", "realizada", "cancelada"] as const).map((status) => (
+                              <DropdownMenuItem
+                                key={status}
+                                onClick={() => updateVisitStatus(visit.id, status)}
+                                className="capitalize"
+                              >
+                                <div className={`w-2 h-2 rounded-full mr-2 ${
+                                  status === "confirmada" ? "bg-success" :
+                                  status === "agendado" ? "bg-warning" :
+                                  status === "realizada" ? "bg-primary" :
+                                  "bg-destructive"
+                                }`} />
+                                {statusLabels[status]}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {getWeddingDateDisplay(visit)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {visit.guest_count || "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className={cn(
-                            "capitalize border",
-                            statusStyles[visit.status as keyof typeof statusStyles] || statusStyles.agendado
-                          )}
+                          onClick={() => handleOpenDetails(visit)}
                         >
-                          {statusLabels[visit.status] || visit.status}
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {(["agendado", "confirmada", "realizada", "cancelada"] as const).map((status) => (
-                          <DropdownMenuItem
-                            key={status}
-                            onClick={() => updateVisitStatus(visit.id, status)}
-                            className="capitalize"
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filteredVisits.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                        <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Nenhuma visita encontrada</p>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        ) : (
+          /* CALENDAR VIEW - Planejamento Visual */
+          <div className="bg-card rounded-xl shadow-soft border border-border animate-slide-up overflow-hidden">
+            {/* Week Navigation */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <h3 className="font-semibold">
+                {format(weekDays[0], "dd MMM", { locale: ptBR })} - {format(weekDays[6], "dd MMM yyyy", { locale: ptBR })}
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="overflow-x-auto">
+              <div className="inline-block min-w-full">
+                <div className="grid" style={{ gridTemplateColumns: `100px repeat(7, minmax(140px, 1fr))` }}>
+                  {/* Header - Days */}
+                  <div className="sticky left-0 bg-card z-10 p-3 border-r border-b"></div>
+                  {weekDays.map((day, idx) => {
+                    const isToday = isSameDay(day, new Date());
+                    return (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "text-center p-3 border-b",
+                          isToday && "bg-gold/10"
+                        )}
+                      >
+                        <div className={cn(
+                          "text-xs font-semibold uppercase",
+                          isToday ? "text-gold" : "text-muted-foreground"
+                        )}>
+                          {format(day, "EEE", { locale: ptBR })}
+                        </div>
+                        <div className={cn(
+                          "text-2xl font-bold mt-1",
+                          isToday ? "text-gold" : "text-foreground"
+                        )}>
+                          {format(day, "dd")}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Time Slots */}
+                  {horarios.map((horario, hIdx) => (
+                    <React.Fragment key={hIdx}>
+                      {/* Time Label */}
+                      <div className="sticky left-0 bg-card z-10 flex items-center justify-center p-3 border-r border-b text-sm font-semibold text-muted-foreground">
+                        {horario}
+                      </div>
+
+                      {/* Day Cells */}
+                      {weekDays.map((day, dIdx) => {
+                        const visitsInSlot = getVisitsForSlot(day, horario);
+
+                        return (
+                          <div
+                            key={dIdx}
+                            className={cn(
+                              "min-h-[80px] p-2 border-b border-r",
+                              isSameDay(day, new Date()) && "bg-gold/5"
+                            )}
                           >
-                            <div
-                              className={`w-2 h-2 rounded-full mr-2 ${
-                                status === "confirmada" ? "bg-success" :
-                                status === "agendado" ? "bg-warning" :
-                                status === "realizada" ? "bg-primary" :
-                                "bg-destructive"
-                              }`}
-                            />
-                            {statusLabels[status]}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button variant="elegant" size="sm" onClick={() => handleOpenDetails(visit)}>
-                      Detalhes
-                    </Button>
-                  </div>
+                            {visitsInSlot.map((visit) => (
+                              <button
+                                key={visit.id}
+                                onClick={() => handleOpenDetails(visit)}
+                                className={cn(
+                                  "w-full text-left p-2 rounded mb-1 text-xs transition-all hover:scale-105",
+                                  statusStyles[visit.status as keyof typeof statusStyles] || statusStyles.agendado
+                                )}
+                              >
+                                <div className="font-semibold truncate">
+                                  {visit.client?.nome || "Sem cliente"}
+                                </div>
+                                <div className="text-[10px] opacity-75 capitalize">
+                                  {statusLabels[visit.status]}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
-            ))}
-
-            {filteredVisits.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhuma visita encontrada</p>
-              </div>
-            )}
+            </div>
           </div>
         )}
 
