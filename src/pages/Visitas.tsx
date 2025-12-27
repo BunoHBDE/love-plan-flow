@@ -75,6 +75,7 @@ import { cn } from "@/lib/utils";
 import { useVisitsOptimized as useVisits, VisitInsert, Visit } from "@/hooks/useVisitsOptimized";
 import { useClientsOptimized as useClients } from "@/hooks/useClientsOptimized";
 import { DeleteVisitDialog } from "@/components/visits/DeleteVisitDialog";
+import { useToast } from "@/hooks/use-toast";
 
 const statusStyles = {
   confirmada: "bg-success/10 text-success border-success/20",
@@ -97,7 +98,8 @@ type ViewMode = "table" | "calendar";
 
 export default function Visitas() {
   const { visits, loading, createVisit, updateVisit, updateVisitStatus, deleteVisit } = useVisits();
-  const { clients, searchClients } = useClients();
+  const { clients, searchClients, createClient } = useClients();
+  const { toast } = useToast();
   
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [searchTerm, setSearchTerm] = useState("");
@@ -176,6 +178,40 @@ export default function Visitas() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
 
+  // Função para formatar data corretamente (evita problema de timezone)
+  const formatDateLocal = (dateString: string) => {
+    const [year, month, day] = dateString.split('-');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString("pt-BR");
+  };
+
+  // Função para formatar telefone (00) 00000-0000
+  const formatPhoneNumber = (value: string) => {
+    // Remove tudo que não é número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Aplica a máscara
+    if (numbers.length <= 10) {
+      // Formato: (00) 0000-0000
+      return numbers.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3').replace(/-$/, '');
+    } else {
+      // Formato: (00) 00000-0000
+      return numbers.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3').replace(/-$/, '');
+    }
+  };
+
+  // Função para obter nome do visitante (cliente ou extrair das observações)
+  const getVisitorName = (visit: any) => {
+    if (visit.client?.nome) {
+      return visit.client.nome;
+    }
+    // Tenta extrair das observações se começar com "VISITANTE:"
+    if (visit.notes && visit.notes.startsWith('VISITANTE: ')) {
+      const lines = visit.notes.split('\n');
+      return lines[0].replace('VISITANTE: ', '');
+    }
+    return "Visitante sem identificação";
+  };
+
   // Get week days for calendar view
   const getWeekDays = () => {
     const start = startOfWeek(currentWeek, { weekStartsOn: 0 });
@@ -247,16 +283,85 @@ export default function Visitas() {
     setClientSearchResults([]);
   };
 
+  const clearClientSelection = () => {
+    setSelectedClientId(null);
+    setClientSearch("");
+    setNewVisit({
+      ...newVisit,
+      clientName: "",
+      email: "",
+      phone: "",
+    });
+    setClientSearchResults([]);
+  };
+
   const handleCreateVisit = async () => {
-    if (!newVisit.date || !newVisit.time) {
+    // Validações com mensagens específicas
+    if (!newVisit.clientName || newVisit.clientName.trim() === "") {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, preencha o nome do cliente.",
+        variant: "destructive",
+      });
       return;
     }
 
+    if (!newVisit.date) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, selecione a data da visita.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newVisit.time) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, selecione o horário da visita.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let clientId = selectedClientId;
+
+    // Se não selecionou um cliente existente E preencheu email ou telefone, cria um novo cliente
+    if (!selectedClientId && newVisit.clientName && (newVisit.email || newVisit.phone)) {
+      const newClientData = {
+        nome: newVisit.clientName,
+        email: newVisit.email || null,
+        telefone: newVisit.phone || null,
+        cpf: null,
+        cep: null,
+        rua: null,
+        numero: null,
+        complemento: null,
+        bairro: null,
+        cidade: null,
+        estado_uf: null,
+      };
+
+      const createdClient = await createClient(newClientData);
+      if (createdClient) {
+        clientId = createdClient.id;
+      } else {
+        // Se falhar ao criar cliente, não continua
+        return;
+      }
+    }
+    // Se não preencheu email nem telefone, clientId fica null (visita sem cliente cadastrado)
+    // Neste caso, adiciona o nome nas observações
+    let notesWithClientName = newVisit.notes || "";
+    if (!clientId && newVisit.clientName) {
+      notesWithClientName = `VISITANTE: ${newVisit.clientName}${newVisit.notes ? '\n\n' + newVisit.notes : ''}`;
+    }
+
     const visitData: VisitInsert = {
-      client_id: selectedClientId,
+      client_id: clientId,
       visit_date: newVisit.date,
       visit_time: newVisit.time,
-      notes: newVisit.notes || null,
+      notes: notesWithClientName || null,
       guest_count: newVisit.guestCount ? parseInt(newVisit.guestCount) : null,
       wedding_date_status: newVisit.weddingDateStatus === "defined" ? "com_data" : "sem_data",
       wedding_date: newVisit.weddingDate || null,
@@ -293,8 +398,12 @@ export default function Visitas() {
 
   const handleOpenEdit = () => {
     if (!selectedVisit) return;
+    
+    // Obtém o nome do visitante (cliente ou das observações)
+    const visitorName = getVisitorName(selectedVisit);
+    
     setEditVisit({
-      clientName: selectedVisit.client?.nome || "",
+      clientName: visitorName,
       email: selectedVisit.client?.email || "",
       phone: selectedVisit.client?.telefone || "",
       date: selectedVisit.visit_date,
@@ -307,6 +416,7 @@ export default function Visitas() {
       weddingYearEstimate: selectedVisit.wedding_year || "",
     });
     setOriginalEditVisit(JSON.stringify({
+      clientName: visitorName,
       date: selectedVisit.visit_date,
       time: selectedVisit.visit_time,
       notes: selectedVisit.notes || "",
@@ -322,6 +432,7 @@ export default function Visitas() {
 
   const handleCloseEdit = () => {
     const currentEditData = JSON.stringify({
+      clientName: editVisit.clientName,
       date: editVisit.date,
       time: editVisit.time,
       notes: editVisit.notes,
@@ -356,10 +467,50 @@ export default function Visitas() {
   const handleSaveEdit = async () => {
     if (!selectedVisit) return;
 
+    // Validações
+    if (!editVisit.clientName || editVisit.clientName.trim() === "") {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, preencha o nome do cliente/visitante.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editVisit.date) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, selecione a data da visita.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editVisit.time) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, selecione o horário da visita.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Se é visitante (sem client_id), atualiza o nome nas observações
+    let updatedNotes = editVisit.notes || "";
+    if (!selectedVisit.client_id) {
+      // Remove o nome antigo das observações se existir
+      if (selectedVisit.notes && selectedVisit.notes.startsWith('VISITANTE: ')) {
+        const oldNotes = selectedVisit.notes.split('\n\n').slice(1).join('\n\n');
+        updatedNotes = oldNotes;
+      }
+      // Adiciona o novo nome
+      updatedNotes = `VISITANTE: ${editVisit.clientName}${updatedNotes ? '\n\n' + updatedNotes : ''}`;
+    }
+
     const updates: Partial<VisitInsert> = {
       visit_date: editVisit.date,
       visit_time: editVisit.time,
-      notes: editVisit.notes || null,
+      notes: updatedNotes || null,
       guest_count: editVisit.guestCount ? parseInt(editVisit.guestCount) : null,
       wedding_date_status: editVisit.weddingDateStatus === "defined" ? "com_data" : "sem_data",
       wedding_date: editVisit.weddingDate || null,
@@ -382,7 +533,7 @@ export default function Visitas() {
 
   const getWeddingDateDisplay = (visit: any) => {
     if (visit.wedding_date_status === "com_data" && visit.wedding_date) {
-      return new Date(visit.wedding_date).toLocaleDateString("pt-BR");
+      return formatDateLocal(visit.wedding_date);
     }
     if (visit.wedding_month || visit.wedding_year) {
       const monthLabel = months.find(m => m.value === visit.wedding_month)?.label || "";
@@ -548,39 +699,85 @@ export default function Visitas() {
                 <div className="grid gap-4 py-4">
                   {/* Client Search */}
                   <div className="grid gap-2">
-                    <Label>Cliente *</Label>
+                    <Label>Cliente <span className="text-destructive">*</span></Label>
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Buscar cliente existente..."
+                        placeholder="Digite o nome do cliente ou busque existente..."
                         value={clientSearch}
-                        onChange={(e) => handleClientSearch(e.target.value)}
+                        onChange={(e) => {
+                          handleClientSearch(e.target.value);
+                          setNewVisit({ ...newVisit, clientName: e.target.value });
+                        }}
                         className="pl-10"
                       />
                     </div>
                     {clientSearchResults.length > 0 && (
-                      <div className="border rounded-lg divide-y max-h-32 overflow-y-auto">
+                      <div className="border rounded-lg divide-y max-h-32 overflow-y-auto bg-card shadow-lg">
                         {clientSearchResults.map((client: any) => (
                           <button
                             key={client.id}
                             onClick={() => selectClient(client)}
-                            className="w-full text-left px-3 py-2 hover:bg-secondary text-sm"
+                            className="w-full text-left px-3 py-2 hover:bg-secondary text-sm flex items-center gap-2"
                           >
-                            {client.nome}
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <div className="font-medium">{client.nome}</div>
+                              {client.telefone && (
+                                <div className="text-xs text-muted-foreground">{client.telefone}</div>
+                              )}
+                            </div>
                           </button>
                         ))}
                       </div>
                     )}
-                    {selectedClientId && (
-                      <p className="text-sm text-muted-foreground">
-                        Cliente: <span className="font-medium text-foreground">{newVisit.clientName}</span>
+                    {selectedClientId ? (
+                      <p className="text-sm text-green-700">
+                        ✓ Cliente cadastrado
                       </p>
-                    )}
+                    ) : newVisit.clientName && (newVisit.email || newVisit.phone) ? (
+                      <p className="text-sm text-blue-700">
+                        ✓ Novo cliente
+                      </p>
+                    ) : null}
                   </div>
+
+                  {/* Additional fields for non-registered clients */}
+                  {!selectedClientId && newVisit.clientName && (
+                    <div className="grid gap-4 p-4 bg-muted/30 rounded-lg border">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Informações de contato (opcional)
+                      </p>
+                      <div className="grid gap-2">
+                        <Label htmlFor="clientEmail">Email</Label>
+                        <Input
+                          id="clientEmail"
+                          type="email"
+                          placeholder="email@exemplo.com"
+                          value={newVisit.email}
+                          onChange={(e) => setNewVisit({ ...newVisit, email: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="clientPhone">Telefone</Label>
+                        <Input
+                          id="clientPhone"
+                          type="tel"
+                          placeholder="(00) 00000-0000"
+                          value={newVisit.phone}
+                          onChange={(e) => {
+                            const formatted = formatPhoneNumber(e.target.value);
+                            setNewVisit({ ...newVisit, phone: formatted });
+                          }}
+                          maxLength={15}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="date">Data *</Label>
+                      <Label htmlFor="date">Data <span className="text-destructive">*</span></Label>
                       <Input
                         id="date"
                         type="date"
@@ -591,7 +788,7 @@ export default function Visitas() {
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="time">Horário *</Label>
+                      <Label htmlFor="time">Horário <span className="text-destructive">*</span></Label>
                       <Input
                         id="time"
                         type="time"
@@ -792,30 +989,22 @@ export default function Visitas() {
 
             {viewMode === "table" && (
               <>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "min-w-[140px] justify-start",
-                        !dateFilter && "text-muted-foreground"
-                      )}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {dateFilter ? format(dateFilter, "dd/MM/yyyy") : "Data"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={dateFilter}
-                      onSelect={setDateFilter}
-                      initialFocus
-                      locale={ptBR}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <div className="relative min-w-[180px]">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    type="date"
+                    value={dateFilter ? format(dateFilter, "yyyy-MM-dd") : ""}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setDateFilter(new Date(e.target.value + 'T12:00:00'));
+                      } else {
+                        setDateFilter(undefined);
+                      }
+                    }}
+                    className="pl-10"
+                    placeholder="Filtrar por data"
+                  />
+                </div>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -888,7 +1077,7 @@ export default function Visitas() {
                             <User className="h-4 w-4 text-gold" />
                           </div>
                           <div>
-                            <div>{visit.client?.nome || "Sem cliente"}</div>
+                            <div>{getVisitorName(visit)}</div>
                             {visit.client?.telefone && (
                               <div className="text-xs text-muted-foreground">{visit.client.telefone}</div>
                             )}
@@ -896,7 +1085,7 @@ export default function Visitas() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {new Date(visit.visit_date).toLocaleDateString("pt-BR")}
+                        {formatDateLocal(visit.visit_date)}
                       </TableCell>
                       <TableCell>{visit.visit_time}</TableCell>
                       <TableCell>
@@ -1047,7 +1236,7 @@ export default function Visitas() {
                                 )}
                               >
                                 <div className="font-semibold truncate">
-                                  {visit.client?.nome || "Sem cliente"}
+                                  {getVisitorName(visit)}
                                 </div>
                                 <div className="text-[10px] opacity-75 capitalize">
                                   {statusLabels[visit.status]}
@@ -1081,7 +1270,7 @@ export default function Visitas() {
                     <User className="h-8 w-8 text-gold" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">{selectedVisit.client?.nome || "Sem cliente"}</h3>
+                    <h3 className="text-lg font-semibold text-foreground">{getVisitorName(selectedVisit)}</h3>
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border mt-1 ${statusStyles[selectedVisit.status as keyof typeof statusStyles] || statusStyles.agendado}`}>
                       {statusLabels[selectedVisit.status] || selectedVisit.status}
                     </span>
@@ -1104,7 +1293,7 @@ export default function Visitas() {
                   <div className="flex items-center gap-3">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-foreground">
-                      {new Date(selectedVisit.visit_date).toLocaleDateString("pt-BR")} às {selectedVisit.visit_time}
+                      {formatDateLocal(selectedVisit.visit_date)} às {selectedVisit.visit_time}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -1122,7 +1311,11 @@ export default function Visitas() {
                 {selectedVisit.notes && (
                   <div className="p-4 bg-muted/50 rounded-lg border border-border">
                     <Label className="text-sm text-muted-foreground mb-2 block">Observações</Label>
-                    <p className="text-foreground">{selectedVisit.notes}</p>
+                    <p className="text-foreground whitespace-pre-wrap">
+                      {selectedVisit.notes.startsWith('VISITANTE: ') 
+                        ? selectedVisit.notes.split('\n\n').slice(1).join('\n\n') 
+                        : selectedVisit.notes}
+                    </p>
                   </div>
                 )}
               </div>
@@ -1165,9 +1358,25 @@ export default function Visitas() {
             </DialogHeader>
 
             <div className="grid gap-4 py-4">
+              {/* Nome do Cliente/Visitante */}
+              <div className="grid gap-2">
+                <Label htmlFor="editClientName">Nome do Cliente/Visitante <span className="text-destructive">*</span></Label>
+                <Input
+                  id="editClientName"
+                  value={editVisit.clientName}
+                  onChange={(e) =>
+                    setEditVisit({ ...editVisit, clientName: e.target.value })
+                  }
+                  placeholder="Nome do cliente ou visitante"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {selectedVisit?.client_id ? "✓ Cliente cadastrado no sistema" : "Visitante sem cadastro"}
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="editDate">Data *</Label>
+                  <Label htmlFor="editDate">Data <span className="text-destructive">*</span></Label>
                   <Input
                     id="editDate"
                     type="date"
@@ -1178,7 +1387,7 @@ export default function Visitas() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="editTime">Horário *</Label>
+                  <Label htmlFor="editTime">Horário <span className="text-destructive">*</span></Label>
                   <Input
                     id="editTime"
                     type="time"
