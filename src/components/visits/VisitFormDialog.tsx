@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,12 +29,16 @@ interface VisitFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (visitData: VisitInsert, clientData?: any) => Promise<void>;
+  initialDate?: string;
+  initialTime?: string;
 }
 
 export function VisitFormDialog({
   open,
   onOpenChange,
   onSubmit,
+  initialDate,
+  initialTime,
 }: VisitFormDialogProps) {
   const { formData, updateField, updatePhone, resetForm, validateForm } = useVisitForm();
   const { searchClients } = useClients();
@@ -45,6 +49,16 @@ export function VisitFormDialog({
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   const years = getYearsArray();
+
+  // Preenche data e hora quando abre o dialog com valores iniciais
+  useEffect(() => {
+    if (open && initialDate) {
+      updateField("date", initialDate);
+    }
+    if (open && initialTime) {
+      updateField("time", initialTime);
+    }
+  }, [open, initialDate, initialTime]);
 
   const handleClientSearch = async (term: string) => {
     setClientSearch(term);

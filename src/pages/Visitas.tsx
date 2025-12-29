@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { 
@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 // Componentes modulares
 import { VisitFilters } from "@/components/visits/VisitFilters";
 import { VisitTableView } from "@/components/visits/VisitTableView";
-import { VisitCalendarView } from "@/components/visits/VisitCalendarView";
+import { VisitScheduleView } from "@/components/visits/VisitScheduleView";
 import { VisitDetailsDialog } from "@/components/visits/VisitDetailsDialog";
 import { VisitFormDialog } from "@/components/visits/VisitFormDialog";
 import { VisitEditDialog } from "@/components/visits/VisitEditDialog";
@@ -65,6 +65,10 @@ export default function Visitas() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [deletingVisit, setDeletingVisit] = useState<Visit | null>(null);
+  
+  // Initial form values quando agenda do calendário
+  const [initialFormDate, setInitialFormDate] = useState<string | undefined>();
+  const [initialFormTime, setInitialFormTime] = useState<string | undefined>();
 
   // Helper functions
   const formatDateLocal = (dateString: string) => {
@@ -170,6 +174,13 @@ export default function Visitas() {
     }
   };
 
+  // Seleciona data de hoje quando abre a view de horários
+  useEffect(() => {
+    if (viewMode === "calendar" && !dateFilter) {
+      setDateFilter(new Date());
+    }
+  }, [viewMode]);
+
   const handleCreateVisit = async (visitData: VisitInsert, clientData?: any) => {
     try {
       let clientId = visitData.client_id;
@@ -215,6 +226,14 @@ export default function Visitas() {
     return success;
   };
 
+  const handleScheduleFromCalendar = (date: string, time: string) => {
+    // Define valores iniciais
+    setInitialFormDate(date);
+    setInitialFormTime(time);
+    // Abre o formulário
+    setIsFormOpen(true);
+  };
+
   const horarios = [
     '08:00', '09:00', '10:00', '11:00', '12:00',
     '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
@@ -252,11 +271,9 @@ export default function Visitas() {
                   size="sm"
                   onClick={() => setViewMode("calendar")}
                   className="gap-2"
-                  disabled
-                  title="Em breve"
                 >
                   <CalendarDays className="h-4 w-4" />
-                  <span className="hidden sm:inline">Calendário</span>
+                  <span className="hidden sm:inline">Horários</span>
                 </Button>
               </div>
 
@@ -314,24 +331,32 @@ export default function Visitas() {
             onViewDetails={handleViewDetails}
           />
         ) : (
-          <VisitCalendarView
-            currentWeek={currentWeek}
-            weekDays={getWeekDays()}
+          <VisitScheduleView
+            dateFilter={dateFilter}
+            onDateChange={setDateFilter}
             horarios={horarios}
-            getVisitsForSlot={getVisitsForSlot}
+            visits={visits}
+            statusFilter={statusFilter}
             getVisitorName={getVisitorName}
-            onPreviousWeek={() => setCurrentWeek(subWeeks(currentWeek, 1))}
-            onNextWeek={() => setCurrentWeek(addWeeks(currentWeek, 1))}
             onViewDetails={handleViewDetails}
-            onReschedule={handleRescheduleVisit}
+            onScheduleVisit={handleScheduleFromCalendar}
           />
         )}
 
         {/* Dialogs */}
         <VisitFormDialog 
           open={isFormOpen}
-          onOpenChange={setIsFormOpen}
+          onOpenChange={(open) => {
+            setIsFormOpen(open);
+            if (!open) {
+              // Limpa valores iniciais ao fechar
+              setInitialFormDate(undefined);
+              setInitialFormTime(undefined);
+            }
+          }}
           onSubmit={handleCreateVisit}
+          initialDate={initialFormDate}
+          initialTime={initialFormTime}
         />
 
         <VisitEditDialog
