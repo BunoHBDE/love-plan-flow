@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { 
@@ -8,7 +8,9 @@ import {
   Settings,
   Loader2
 } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks } from "date-fns";
+import { format } from "date-fns";
+
+// Hooks
 import { useVisitsOptimized as useVisits, Visit, VisitInsert } from "@/hooks/useVisitsOptimized";
 import { useClientsOptimized as useClients } from "@/hooks/useClientsOptimized";
 import { useToast } from "@/hooks/use-toast";
@@ -23,42 +25,40 @@ import { VisitEditDialog } from "@/components/visits/VisitEditDialog";
 import { VisitSettingsDialog } from "@/components/visits/VisitSettingsDialog";
 import { DeleteVisitDialog } from "@/components/visits/DeleteVisitDialog";
 
+// Constantes centralizadas
+import { MONTHS, DEFAULT_TIME_SLOTS } from "@/constants/visits";
+
+// ==========================================
+// TIPOS
+// ==========================================
+
 type ViewMode = "table" | "calendar";
 type SortOption = "date" | "time" | "status" | "name";
 
-const months = [
-  { value: "01", label: "Janeiro" },
-  { value: "02", label: "Fevereiro" },
-  { value: "03", label: "Março" },
-  { value: "04", label: "Abril" },
-  { value: "05", label: "Maio" },
-  { value: "06", label: "Junho" },
-  { value: "07", label: "Julho" },
-  { value: "08", label: "Agosto" },
-  { value: "09", label: "Setembro" },
-  { value: "10", label: "Outubro" },
-  { value: "11", label: "Novembro" },
-  { value: "12", label: "Dezembro" },
-];
+// ==========================================
+// COMPONENTE PRINCIPAL
+// ==========================================
 
 export default function Visitas() {
+  // Hooks de dados
   const { visits, loading, createVisit, updateVisit, updateVisitStatus, deleteVisit } = useVisits();
-  const { clients, searchClients, createClient } = useClients();
+  const { createClient } = useClients();
   const { toast } = useToast();
   
-  // View state
+  // ==========================================
+  // ESTADOS
+  // ==========================================
+  
+  // Modo de visualização (tabela ou calendário)
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   
-  // Filter state
+  // Filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [sortBy, setSortBy] = useState<SortOption>("date");
   
-  // Calendar state
-  const [currentWeek, setCurrentWeek] = useState(new Date());
-  
-  // Dialog states
+  // Estados dos dialogs
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -66,67 +66,94 @@ export default function Visitas() {
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [deletingVisit, setDeletingVisit] = useState<Visit | null>(null);
   
-  // Initial form values quando agenda do calendário
+  // Valores iniciais para formulário (quando agenda via calendário)
   const [initialFormDate, setInitialFormDate] = useState<string | undefined>();
   const [initialFormTime, setInitialFormTime] = useState<string | undefined>();
 
-  // Helper functions
-  const formatDateLocal = (dateString: string) => {
-    const [year, month, day] = dateString.split('-');
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString("pt-BR");
-  };
+  // ==========================================
+  // FUNÇÕES AUXILIARES
+  // ==========================================
 
-  const getVisitorName = (visit: Visit) => {
+  /**
+   * Formata uma data no padrão brasileiro (DD/MM/AAAA)
+   * Evita problemas de timezone ao criar a data localmente
+   */
+  const formatDateLocal = useCallback((dateString: string): string => {
+    const [year, month, day] = dateString.split('-');
+    return new Date(
+      parseInt(year), 
+      parseInt(month) - 1, 
+      parseInt(day)
+    ).toLocaleDateString("pt-BR");
+  }, []);
+
+  /**
+   * Obtém o nome do visitante
+   * Pode vir do cliente vinculado ou das notas (visitante sem cadastro)
+   */
+  const getVisitorName = useCallback((visit: Visit): string => {
+    // Se tem cliente vinculado, usa o nome dele
     if (visit.client?.nome) {
       return visit.client.nome;
     }
+    
+    // Se tem notas com prefixo VISITANTE:, extrai o nome
     if (visit.notes && visit.notes.startsWith('VISITANTE: ')) {
       const lines = visit.notes.split('\n');
       return lines[0].replace('VISITANTE: ', '');
     }
+    
+    // Fallback
     return "Visitante sem identificação";
-  };
+  }, []);
 
-  const getWeddingDateDisplay = (visit: Visit) => {
+  /**
+   * Formata a exibição da data do casamento
+   * Pode ser data definida, previsão (mês/ano) ou indefinida
+   */
+  const getWeddingDateDisplay = useCallback((visit: Visit): string => {
+    // Se tem data definida
     if (visit.wedding_date_status === "com_data" && visit.wedding_date) {
       return formatDateLocal(visit.wedding_date);
     }
+    
+    // Se tem previsão de mês/ano
     if (visit.wedding_month || visit.wedding_year) {
-      const monthLabel = months.find(m => m.value === visit.wedding_month)?.label || "";
-      return `Previsão: ${monthLabel} ${visit.wedding_year || ""}`.trim();
+      const monthLabel = MONTHS.find(m => m.value === visit.wedding_month)?.label || "";
+      const yearLabel = visit.wedding_year || "";
+      return `Previsão: ${monthLabel} ${yearLabel}`.trim();
     }
+    
+    // Indefinida
     return "Data não definida";
-  };
+  }, [formatDateLocal]);
 
-  // Calendar helpers
-  const getWeekDays = () => {
-    const start = startOfWeek(currentWeek, { weekStartsOn: 0 });
-    const end = endOfWeek(currentWeek, { weekStartsOn: 0 });
-    return eachDayOfInterval({ start, end });
-  };
+  // ==========================================
+  // FILTROS E ORDENAÇÃO
+  // ==========================================
 
-  const getVisitsForSlot = (day: Date, time: string) => {
-    const dateStr = format(day, 'yyyy-MM-dd');
-    return visits.filter(visit => 
-      visit.visit_date === dateStr && 
-      visit.visit_time === time &&
-      (statusFilter.length === 0 || statusFilter.includes(visit.status))
-    );
-  };
-
-  // Filtered and sorted visits
+  /**
+   * Aplica filtros e ordenação na lista de visitas
+   */
   const filteredVisits = visits
     .filter((visit) => {
+      // Filtro por busca (nome ou email)
       const clientName = visit.client?.nome || "";
       const clientEmail = visit.client?.email || "";
       const matchesSearch =
         clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         clientEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filtro por status
       const matchesStatus = statusFilter.length === 0 || statusFilter.includes(visit.status);
+      
+      // Filtro por data
       const matchesDate = !dateFilter || visit.visit_date === format(dateFilter, "yyyy-MM-dd");
+      
       return matchesSearch && matchesStatus && matchesDate;
     })
     .sort((a, b) => {
+      // Aplica ordenação baseada na opção selecionada
       switch (sortBy) {
         case "date":
           return new Date(a.visit_date).getTime() - new Date(b.visit_date).getTime();
@@ -141,47 +168,54 @@ export default function Visitas() {
       }
     });
 
-  // Event handlers
-  const handleViewDetails = (visit: Visit) => {
+  // ==========================================
+  // EFEITOS
+  // ==========================================
+
+  /**
+   * Define a data de hoje quando muda para o modo calendário
+   */
+  useEffect(() => {
+    if (viewMode === "calendar" && !dateFilter) {
+      setDateFilter(new Date());
+    }
+  }, [viewMode, dateFilter]);
+
+  // ==========================================
+  // HANDLERS
+  // ==========================================
+
+  /**
+   * Abre o dialog de detalhes de uma visita
+   */
+  const handleViewDetails = useCallback((visit: Visit) => {
     setSelectedVisit(visit);
     setIsDetailsOpen(true);
-  };
+  }, []);
 
-  const handleEditVisit = () => {
+  /**
+   * Abre o dialog de edição (a partir dos detalhes)
+   */
+  const handleEditVisit = useCallback(() => {
     setIsDetailsOpen(false);
     setIsEditOpen(true);
-  };
+  }, []);
 
-  const handleDeleteVisit = async () => {
+  /**
+   * Exclui a visita selecionada
+   */
+  const handleDeleteVisit = useCallback(async () => {
     if (deletingVisit) {
       await deleteVisit(deletingVisit.id);
       setDeletingVisit(null);
       setIsDetailsOpen(false);
     }
-  };
+  }, [deletingVisit, deleteVisit]);
 
-  const handleRescheduleVisit = async (visitId: string, newDate: string, newTime: string) => {
-    const success = await updateVisit(visitId, {
-      visit_date: newDate,
-      visit_time: newTime,
-    });
-    
-    if (success) {
-      toast({
-        title: "Visita reagendada",
-        description: `Nova data: ${formatDateLocal(newDate)} às ${newTime}`,
-      });
-    }
-  };
-
-  // Seleciona data de hoje quando abre a view de horários
-  useEffect(() => {
-    if (viewMode === "calendar" && !dateFilter) {
-      setDateFilter(new Date());
-    }
-  }, [viewMode]);
-
-  const handleCreateVisit = async (visitData: VisitInsert, clientData?: any) => {
+  /**
+   * Cria uma nova visita
+   */
+  const handleCreateVisit = useCallback(async (visitData: VisitInsert, clientData?: any) => {
     try {
       let clientId = visitData.client_id;
 
@@ -212,9 +246,12 @@ export default function Visitas() {
         variant: "destructive",
       });
     }
-  };
+  }, [createClient, createVisit, toast]);
 
-  const handleUpdateVisit = async (visitId: string, updates: Partial<VisitInsert>) => {
+  /**
+   * Atualiza uma visita existente
+   */
+  const handleUpdateVisit = useCallback(async (visitId: string, updates: Partial<VisitInsert>): Promise<boolean> => {
     const success = await updateVisit(visitId, updates);
     if (success) {
       toast({
@@ -224,27 +261,40 @@ export default function Visitas() {
       setIsEditOpen(false);
     }
     return success;
-  };
+  }, [updateVisit, toast]);
 
-  const handleScheduleFromCalendar = (date: string, time: string) => {
-    // Define valores iniciais
+  /**
+   * Abre formulário de agendamento a partir do calendário
+   * Preenche data e hora automaticamente
+   */
+  const handleScheduleFromCalendar = useCallback((date: string, time: string) => {
     setInitialFormDate(date);
     setInitialFormTime(time);
-    // Abre o formulário
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const horarios = [
-    '08:00', '09:00', '10:00', '11:00', '12:00',
-    '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
-  ];
+  /**
+   * Limpa valores iniciais quando fecha o formulário
+   */
+  const handleFormOpenChange = useCallback((open: boolean) => {
+    setIsFormOpen(open);
+    if (!open) {
+      setInitialFormDate(undefined);
+      setInitialFormTime(undefined);
+    }
+  }, []);
+
+  // ==========================================
+  // RENDERIZAÇÃO
+  // ==========================================
 
   return (
     <MainLayout>
       <div className="space-y-8">
-        {/* Header */}
+        {/* ==================== HEADER ==================== */}
         <div className="flex flex-col gap-4 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Título */}
             <div>
               <h1 className="text-3xl font-display font-bold text-foreground">
                 Visitas
@@ -254,8 +304,9 @@ export default function Visitas() {
               </p>
             </div>
 
+            {/* Controles */}
             <div className="flex gap-2">
-              {/* View Mode Toggle */}
+              {/* Toggle de Modo de Visualização */}
               <div className="flex gap-1 p-1 bg-muted rounded-lg">
                 <Button
                   variant={viewMode === "table" ? "default" : "ghost"}
@@ -277,7 +328,7 @@ export default function Visitas() {
                 </Button>
               </div>
 
-              {/* Settings Button */}
+              {/* Botão de Configurações */}
               <Button 
                 variant="outline" 
                 size="lg"
@@ -289,7 +340,7 @@ export default function Visitas() {
             </div>
           </div>
 
-          {/* Action Bar */}
+          {/* Botão de Ação Principal */}
           <div className="flex gap-2">
             <Button 
               variant="gold" 
@@ -303,7 +354,7 @@ export default function Visitas() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* ==================== FILTROS ==================== */}
         <VisitFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -316,12 +367,14 @@ export default function Visitas() {
           showDateFilter={viewMode === "table"}
         />
 
-        {/* Content */}
+        {/* ==================== CONTEÚDO PRINCIPAL ==================== */}
         {loading ? (
+          // Estado de Carregamento
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : viewMode === "table" ? (
+          // Visualização em Tabela
           <VisitTableView
             visits={filteredVisits}
             formatDateLocal={formatDateLocal}
@@ -331,36 +384,33 @@ export default function Visitas() {
             onViewDetails={handleViewDetails}
           />
         ) : (
+          // Visualização em Calendário/Agenda
           <VisitScheduleView
             dateFilter={dateFilter}
             onDateChange={setDateFilter}
-            horarios={horarios}
+            horarios={DEFAULT_TIME_SLOTS}
             visits={visits}
             statusFilter={statusFilter}
             getVisitorName={getVisitorName}
-            getWeddingDateDisplay={getWeddingDateDisplay}  // ADICIONAR ESTA LINHA
+            getWeddingDateDisplay={getWeddingDateDisplay}
             onViewDetails={handleViewDetails}
             onScheduleVisit={handleScheduleFromCalendar}
           />
         )}
 
-        {/* Dialogs */}
+        {/* ==================== DIALOGS ==================== */}
+        
+        {/* Formulário de Nova Visita */}
         <VisitFormDialog 
           open={isFormOpen}
-          onOpenChange={(open) => {
-            setIsFormOpen(open);
-            if (!open) {
-              // Limpa valores iniciais ao fechar
-              setInitialFormDate(undefined);
-              setInitialFormTime(undefined);
-            }
-          }}
+          onOpenChange={handleFormOpenChange}
           onSubmit={handleCreateVisit}
           initialDate={initialFormDate}
           initialTime={initialFormTime}
           visits={visits}
         />
 
+        {/* Formulário de Edição */}
         <VisitEditDialog
           open={isEditOpen}
           onOpenChange={setIsEditOpen}
@@ -369,6 +419,7 @@ export default function Visitas() {
           onSubmit={handleUpdateVisit}
         />
 
+        {/* Detalhes da Visita */}
         <VisitDetailsDialog
           open={isDetailsOpen}
           onOpenChange={setIsDetailsOpen}
@@ -383,11 +434,13 @@ export default function Visitas() {
           }}
         />
 
+        {/* Configurações */}
         <VisitSettingsDialog
           open={isSettingsOpen}
           onOpenChange={setIsSettingsOpen}
         />
 
+        {/* Confirmação de Exclusão */}
         <DeleteVisitDialog
           open={!!deletingVisit}
           onOpenChange={(open) => !open && setDeletingVisit(null)}
@@ -397,4 +450,4 @@ export default function Visitas() {
       </div>
     </MainLayout>
   );
-} 
+}

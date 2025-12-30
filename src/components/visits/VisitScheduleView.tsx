@@ -93,7 +93,7 @@ export function VisitScheduleView({
               onClick={() => onDateChange(undefined)}
               className="w-full mt-4"
             >
-              Limpar Data
+              Hoje
             </Button>
           )}
 

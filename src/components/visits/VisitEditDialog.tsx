@@ -19,33 +19,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Users, Heart } from "lucide-react";
+import { Users, Heart, Calendar, Clock, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+// Importa tipos e constantes
 import type { Visit, VisitInsert } from "@/hooks/useVisitsOptimized";
+import { MONTHS, getYearsArray, WEDDING_DATE_STATUS } from "@/constants/visits";
 
-const months = [
-  { value: "01", label: "Janeiro" },
-  { value: "02", label: "Fevereiro" },
-  { value: "03", label: "Março" },
-  { value: "04", label: "Abril" },
-  { value: "05", label: "Maio" },
-  { value: "06", label: "Junho" },
-  { value: "07", label: "Julho" },
-  { value: "08", label: "Agosto" },
-  { value: "09", label: "Setembro" },
-  { value: "10", label: "Outubro" },
-  { value: "11", label: "Novembro" },
-  { value: "12", label: "Dezembro" },
-];
+// ==========================================
+// TIPOS
+// ==========================================
 
-const getYearsArray = () => {
-  const currentYear = new Date().getFullYear();
-  const years = [];
-  for (let i = 0; i <= 5; i++) {
-    years.push((currentYear + i).toString());
-  }
-  return years;
-};
+interface FormData {
+  clientName: string;
+  date: string;
+  time: string;
+  notes: string;
+  guestCount: string;
+  weddingDateStatus: "defined" | "undefined";
+  weddingDate: string;
+  weddingMonthEstimate: string;
+  weddingYearEstimate: string;
+}
 
 interface VisitEditDialogProps {
   open: boolean;
@@ -55,6 +50,10 @@ interface VisitEditDialogProps {
   onSubmit: (visitId: string, updates: Partial<VisitInsert>) => Promise<boolean>;
 }
 
+// ==========================================
+// COMPONENTE
+// ==========================================
+
 export function VisitEditDialog({
   open,
   onOpenChange,
@@ -63,99 +62,133 @@ export function VisitEditDialog({
   onSubmit,
 }: VisitEditDialogProps) {
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Estado do formulário
+  const [formData, setFormData] = useState<FormData>({
     clientName: "",
     date: "",
     time: "",
     notes: "",
     guestCount: "",
-    weddingDateStatus: "undefined" as "defined" | "undefined",
+    weddingDateStatus: "undefined",
     weddingDate: "",
     weddingMonthEstimate: "",
     weddingYearEstimate: "",
   });
 
+  // Gera array de anos disponíveis
   const years = getYearsArray();
 
-  // Load visit data ONLY when dialog opens
+  /**
+   * Carrega os dados da visita quando o dialog abre
+   */
   useEffect(() => {
     if (visit && open) {
       const visitorName = getVisitorName(visit);
+      
+      // Extrai notas (remove prefixo VISITANTE: se existir)
+      let cleanNotes = visit.notes || "";
+      if (cleanNotes.startsWith('VISITANTE: ')) {
+        cleanNotes = cleanNotes.split('\n\n').slice(1).join('\n\n');
+      }
       
       setFormData({
         clientName: visitorName,
         date: visit.visit_date,
         time: visit.visit_time,
-        notes: visit.notes?.startsWith('VISITANTE: ') 
-          ? visit.notes.split('\n\n').slice(1).join('\n\n')
-          : visit.notes || "",
+        notes: cleanNotes,
         guestCount: visit.guest_count?.toString() || "",
-        weddingDateStatus: (visit.wedding_date_status === "com_data" ? "defined" : "undefined") as "defined" | "undefined",
+        weddingDateStatus: visit.wedding_date_status === WEDDING_DATE_STATUS.COM_DATA 
+          ? "defined" 
+          : "undefined",
         weddingDate: visit.wedding_date || "",
         weddingMonthEstimate: visit.wedding_month || "",
         weddingYearEstimate: visit.wedding_year || "",
       });
     }
-  }, [visit?.id, open]); // Só recarrega se mudar o ID da visita ou abrir/fechar
+  }, [visit, open, getVisitorName]);
 
-  const updateField = (field: string, value: string) => {
+  /**
+   * Atualiza um campo do formulário
+   */
+  const updateField = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const validateForm = () => {
+  /**
+   * Valida o formulário antes de enviar
+   */
+  const validateForm = (): boolean => {
     if (!formData.clientName.trim()) {
-      return { isValid: false, error: "Preencha o nome do cliente" };
-    }
-    if (!formData.date) {
-      return { isValid: false, error: "Preencha a data da visita" };
-    }
-    if (!formData.time) {
-      return { isValid: false, error: "Preencha o horário da visita" };
-    }
-    return { isValid: true, error: "" };
-  };
-
-  const handleSave = async () => {
-    if (!visit) return;
-
-    const validation = validateForm();
-    
-    if (!validation.isValid) {
       toast({
         title: "Campo obrigatório",
-        description: validation.error,
+        description: "Por favor, preencha o nome do cliente.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
-    // Se é visitante (sem client_id), atualiza o nome nas observações
-    let updatedNotes = formData.notes || "";
-    if (!visit.client_id) {
-      if (visit.notes && visit.notes.startsWith('VISITANTE: ')) {
-        const oldNotes = visit.notes.split('\n\n').slice(1).join('\n\n');
-        updatedNotes = oldNotes;
-      }
-      updatedNotes = `VISITANTE: ${formData.clientName}${updatedNotes ? '\n\n' + updatedNotes : ''}`;
+    if (!formData.date) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, selecione a data da visita.",
+        variant: "destructive",
+      });
+      return false;
     }
 
+    if (!formData.time) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Por favor, selecione o horário da visita.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  /**
+   * Envia as alterações
+   */
+  const handleSubmit = async () => {
+    if (!visit || !validateForm()) return;
+
+    setIsSubmitting(true);
+
+    // Prepara as notas (adiciona prefixo se for visitante sem cliente vinculado)
+    let updatedNotes = formData.notes;
+    if (!visit.client_id && formData.clientName) {
+      const existingNotes = formData.notes ? `\n\n${formData.notes}` : '';
+      updatedNotes = `VISITANTE: ${formData.clientName}${existingNotes}`;
+    }
+
+    // Monta objeto de atualizações
     const updates: Partial<VisitInsert> = {
       visit_date: formData.date,
       visit_time: formData.time,
       notes: updatedNotes || null,
       guest_count: formData.guestCount ? parseInt(formData.guestCount) : null,
-      wedding_date_status: formData.weddingDateStatus === "defined" ? "com_data" : "sem_data",
+      wedding_date_status: formData.weddingDateStatus === "defined" 
+        ? WEDDING_DATE_STATUS.COM_DATA 
+        : WEDDING_DATE_STATUS.SEM_DATA,
       wedding_date: formData.weddingDate || null,
       wedding_month: formData.weddingMonthEstimate || null,
       wedding_year: formData.weddingYearEstimate || null,
     };
 
     const success = await onSubmit(visit.id, updates);
+    
+    setIsSubmitting(false);
+    
     if (success) {
       onOpenChange(false);
     }
   };
 
+  // Não renderiza se não houver visita
   if (!visit) return null;
 
   return (
@@ -173,7 +206,9 @@ export function VisitEditDialog({
         <div className="grid gap-4 py-4">
           {/* Nome do Cliente/Visitante */}
           <div className="grid gap-2">
-            <Label htmlFor="editClientName">Nome do Cliente/Visitante <span className="text-destructive">*</span></Label>
+            <Label htmlFor="editClientName">
+              Nome do Cliente/Visitante <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="editClientName"
               value={formData.clientName}
@@ -181,13 +216,20 @@ export function VisitEditDialog({
               placeholder="Nome do cliente ou visitante"
             />
             <p className="text-xs text-muted-foreground">
-              {visit.client_id ? "✓ Cliente cadastrado no sistema" : "Visitante sem cadastro"}
+              {visit.client_id 
+                ? "Este visitante está vinculado a um cliente cadastrado."
+                : "Visitante sem cadastro no sistema."}
             </p>
           </div>
 
+          {/* Data e Horário */}
           <div className="grid grid-cols-2 gap-4">
+            {/* Data */}
             <div className="grid gap-2">
-              <Label htmlFor="editDate">Data <span className="text-destructive">*</span></Label>
+              <Label htmlFor="editDate">
+                <Calendar className="inline h-4 w-4 mr-1" />
+                Data <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="editDate"
                 type="date"
@@ -195,8 +237,13 @@ export function VisitEditDialog({
                 onChange={(e) => updateField("date", e.target.value)}
               />
             </div>
+
+            {/* Horário */}
             <div className="grid gap-2">
-              <Label htmlFor="editTime">Horário <span className="text-destructive">*</span></Label>
+              <Label htmlFor="editTime">
+                <Clock className="inline h-4 w-4 mr-1" />
+                Horário <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="editTime"
                 type="time"
@@ -206,47 +253,52 @@ export function VisitEditDialog({
             </div>
           </div>
 
+          {/* Número de Convidados */}
           <div className="grid gap-2">
-            <Label htmlFor="editGuestCount">Número de Convidados</Label>
-            <div className="relative">
-              <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="editGuestCount"
-                type="number"
-                placeholder="Ex: 150"
-                value={formData.guestCount}
-                onChange={(e) => updateField("guestCount", e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <Label htmlFor="editGuestCount">
+              <Users className="inline h-4 w-4 mr-1" />
+              Número de Convidados (estimado)
+            </Label>
+            <Input
+              id="editGuestCount"
+              type="number"
+              min="1"
+              max="2000"
+              value={formData.guestCount}
+              onChange={(e) => updateField("guestCount", e.target.value)}
+              placeholder="Ex: 150"
+            />
           </div>
 
-          <div className="grid gap-3">
-            <Label className="flex items-center gap-2">
-              <Heart className="h-4 w-4 text-gold" />
+          {/* Data do Casamento */}
+          <div className="space-y-3">
+            <Label>
+              <Heart className="inline h-4 w-4 mr-1 text-rose-500" />
               Data do Casamento
             </Label>
+            
             <RadioGroup
               value={formData.weddingDateStatus}
-              onValueChange={(value) => updateField("weddingDateStatus", value as "defined" | "undefined")}
+              onValueChange={(value) => updateField("weddingDateStatus", value)}
+              className="flex gap-4"
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="defined" id="editDefined" />
-                <Label htmlFor="editDefined" className="font-normal cursor-pointer">
+                <RadioGroupItem value="defined" id="edit-defined" />
+                <Label htmlFor="edit-defined" className="cursor-pointer">
                   Data definida
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="undefined" id="editUndefined" />
-                <Label htmlFor="editUndefined" className="font-normal cursor-pointer">
-                  Data ainda não definida
+                <RadioGroupItem value="undefined" id="edit-undefined" />
+                <Label htmlFor="edit-undefined" className="cursor-pointer">
+                  Ainda sem data
                 </Label>
               </div>
             </RadioGroup>
 
+            {/* Campos condicionais baseados na seleção */}
             {formData.weddingDateStatus === "defined" ? (
               <Input
-                id="editWeddingDate"
                 type="date"
                 value={formData.weddingDate}
                 onChange={(e) => updateField("weddingDate", e.target.value)}
@@ -257,23 +309,24 @@ export function VisitEditDialog({
                   value={formData.weddingMonthEstimate}
                   onValueChange={(value) => updateField("weddingMonthEstimate", value)}
                 >
-                  <SelectTrigger id="editWeddingMonth">
-                    <SelectValue placeholder="Mês (previsão)" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Mês estimado" />
                   </SelectTrigger>
                   <SelectContent>
-                    {months.map((month) => (
+                    {MONTHS.map((month) => (
                       <SelectItem key={month.value} value={month.value}>
                         {month.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+
                 <Select
                   value={formData.weddingYearEstimate}
                   onValueChange={(value) => updateField("weddingYearEstimate", value)}
                 >
-                  <SelectTrigger id="editWeddingYear">
-                    <SelectValue placeholder="Ano (previsão)" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Ano estimado" />
                   </SelectTrigger>
                   <SelectContent>
                     {years.map((year) => (
@@ -287,23 +340,33 @@ export function VisitEditDialog({
             )}
           </div>
 
+          {/* Observações */}
           <div className="grid gap-2">
             <Label htmlFor="editNotes">Observações</Label>
             <Textarea
               id="editNotes"
-              placeholder="Adicione observações sobre a visita..."
               value={formData.notes}
               onChange={(e) => updateField("notes", e.target.value)}
-              rows={4}
+              placeholder="Informações adicionais sobre a visita..."
+              rows={3}
             />
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+          >
             Cancelar
           </Button>
-          <Button variant="gold" onClick={handleSave}>
+          <Button 
+            variant="gold" 
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Salvar Alterações
           </Button>
         </DialogFooter>

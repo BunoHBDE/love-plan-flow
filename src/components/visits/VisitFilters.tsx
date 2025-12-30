@@ -17,12 +17,12 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-const statusLabels: Record<string, string> = {
-  confirmada: "Confirmada",
-  agendado: "Agendada",
-  realizada: "Realizada",
-  cancelada: "Cancelada",
-};
+// Importa constantes centralizadas
+import { STATUS_LABELS, STATUS_OPTIONS } from "@/constants/visits";
+
+// ==========================================
+// TIPOS
+// ==========================================
 
 type SortOption = "date" | "time" | "status" | "name";
 
@@ -38,6 +38,21 @@ interface VisitFiltersProps {
   showDateFilter?: boolean;
 }
 
+// ==========================================
+// ESTILOS DOS BOTÕES DE STATUS (quando selecionados)
+// ==========================================
+
+const selectedButtonStyles: Record<string, string> = {
+  agendada: "bg-warning text-warning-foreground hover:bg-warning/90 border-warning",
+  confirmada: "bg-success text-success-foreground hover:bg-success/90 border-success",
+  realizada: "bg-primary text-primary-foreground hover:bg-primary/90 border-primary",
+  cancelada: "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-destructive",
+};
+
+// ==========================================
+// COMPONENTE
+// ==========================================
+
 export function VisitFilters({
   searchTerm,
   onSearchChange,
@@ -50,6 +65,9 @@ export function VisitFilters({
   showDateFilter = true
 }: VisitFiltersProps) {
   
+  /**
+   * Adiciona ou remove um status do filtro
+   */
   const toggleStatus = (status: string) => {
     onStatusFilterChange(
       statusFilter.includes(status)
@@ -58,18 +76,41 @@ export function VisitFilters({
     );
   };
 
+  /**
+   * Limpa todos os filtros aplicados
+   */
   const clearFilters = () => {
     onStatusFilterChange([]);
     onDateFilterChange(undefined);
   };
 
+  // Verifica se há algum filtro ativo
+  const hasActiveFilters = statusFilter.length > 0 || dateFilter !== undefined;
+
   return (
     <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up space-y-4">
-      <div className="flex items-center gap-2">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium text-foreground">Filtros</span>
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">Filtros</span>
+        </div>
+        
+        {/* Botão Limpar Filtros (só aparece se tiver filtro ativo) */}
+        {hasActiveFilters && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={clearFilters}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Limpar
+          </Button>
+        )}
       </div>
 
+      {/* Campo de Busca */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -80,33 +121,30 @@ export function VisitFilters({
         />
       </div>
 
+      {/* Filtros e Ordenação */}
       <div className="flex flex-wrap gap-3">
+        {/* Botões de Status */}
         <div className="flex flex-wrap gap-2">
-          {(["confirmada", "agendado", "realizada", "cancelada"] as const).map((status) => {
-            const isSelected = statusFilter.includes(status);
-            const selectedStyles: Record<string, string> = {
-              confirmada: "bg-success text-success-foreground hover:bg-success/90 border-success",
-              agendado: "bg-warning text-warning-foreground hover:bg-warning/90 border-warning",
-              realizada: "bg-primary text-primary-foreground hover:bg-primary/90 border-primary",
-              cancelada: "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-destructive",
-            };
+          {STATUS_OPTIONS.map((option) => {
+            const isSelected = statusFilter.includes(option.value);
             return (
               <Button
-                key={status}
+                key={option.value}
                 variant="outline"
                 size="sm"
                 className={cn(
                   "transition-all",
-                  isSelected && selectedStyles[status]
+                  isSelected && selectedButtonStyles[option.value]
                 )}
-                onClick={() => toggleStatus(status)}
+                onClick={() => toggleStatus(option.value)}
               >
-                {statusLabels[status]}
+                {option.label}
               </Button>
             );
           })}
         </div>
 
+        {/* Filtro de Data (condicional) */}
         {showDateFilter && (
           <div className="relative min-w-[180px]">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -114,53 +152,49 @@ export function VisitFilters({
               type="date"
               value={dateFilter ? format(dateFilter, "yyyy-MM-dd") : ""}
               onChange={(e) => {
-                if (e.target.value) {
-                  onDateFilterChange(new Date(e.target.value + 'T12:00:00'));
-                } else {
-                  onDateFilterChange(undefined);
-                }
+                const value = e.target.value;
+                onDateFilterChange(value ? new Date(value + "T00:00:00") : undefined);
               }}
               className="pl-10"
-              placeholder="Filtrar por data"
             />
           </div>
         )}
 
-        {showDateFilter && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                Ordenar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onSortChange("date")}>
-                Por Data
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSortChange("time")}>
-                Por Horário
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSortChange("status")}>
-                Por Status
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSortChange("name")}>
-                Por Nome
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
-        {(statusFilter.length > 0 || dateFilter) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearFilters}
-          >
-            <X className="h-4 w-4 mr-1" />
-            Limpar
-          </Button>
-        )}
+        {/* Dropdown de Ordenação */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <ArrowUpDown className="h-4 w-4" />
+              Ordenar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={() => onSortChange("date")}
+              className={sortBy === "date" ? "bg-accent" : ""}
+            >
+              Por Data
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => onSortChange("time")}
+              className={sortBy === "time" ? "bg-accent" : ""}
+            >
+              Por Horário
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => onSortChange("status")}
+              className={sortBy === "status" ? "bg-accent" : ""}
+            >
+              Por Status
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => onSortChange("name")}
+              className={sortBy === "name" ? "bg-accent" : ""}
+            >
+              Por Nome
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
