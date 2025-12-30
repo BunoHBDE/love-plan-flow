@@ -256,6 +256,45 @@ export type Database = {
         }
         Relationships: []
       }
+      visit_settings: {
+        Row: {
+          id: string;
+          user_id: string;
+          start_time: string;
+          end_time: string;
+          default_duration: number;
+          interval_between_visits: number;
+          allow_overlapping: boolean;
+          max_visits_per_slot: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          start_time: string;
+          end_time: string;
+          default_duration: number;
+          interval_between_visits?: number;
+          allow_overlapping?: boolean;
+          max_visits_per_slot?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          start_time?: string;
+          end_time?: string;
+          default_duration?: number;
+          interval_between_visits?: number;
+          allow_overlapping?: boolean;
+          max_visits_per_slot?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      }
       visits: {
         Row: {
           client_id: string | null
@@ -272,6 +311,8 @@ export type Database = {
           wedding_date_status: string
           wedding_month: string | null
           wedding_year: string | null
+          visit_end_time?: string | null;
+          duration?: number | null;
         }
         Insert: {
           client_id?: string | null
@@ -288,6 +329,8 @@ export type Database = {
           wedding_date_status?: string
           wedding_month?: string | null
           wedding_year?: string | null
+          visit_end_time?: string | null;
+          duration?: number | null;
         }
         Update: {
           client_id?: string | null
@@ -304,6 +347,8 @@ export type Database = {
           wedding_date_status?: string
           wedding_month?: string | null
           wedding_year?: string | null
+          visit_end_time?: string | null;
+          duration?: number | null;
         }
         Relationships: [
           {
