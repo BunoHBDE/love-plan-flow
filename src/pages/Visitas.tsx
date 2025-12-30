@@ -338,6 +338,7 @@ export default function Visitas() {
             visits={visits}
             statusFilter={statusFilter}
             getVisitorName={getVisitorName}
+            getWeddingDateDisplay={getWeddingDateDisplay}  // ADICIONAR ESTA LINHA
             onViewDetails={handleViewDetails}
             onScheduleVisit={handleScheduleFromCalendar}
           />
@@ -357,6 +358,7 @@ export default function Visitas() {
           onSubmit={handleCreateVisit}
           initialDate={initialFormDate}
           initialTime={initialFormTime}
+          visits={visits}
         />
 
         <VisitEditDialog
@@ -395,4 +397,4 @@ export default function Visitas() {
       </div>
     </MainLayout>
   );
-}
+} 

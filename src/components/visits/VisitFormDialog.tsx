@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar, User, Clock, AlertCircle, Info } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -32,7 +33,7 @@ import { useClientsOptimized as useClients } from "@/hooks/useClientsOptimized";
 import { useVisitSettings } from "@/hooks/useVisitSettings";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { VisitInsert } from "@/hooks/useVisitsOptimized";
+import { VisitInsert, Visit } from "@/hooks/useVisitsOptimized";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
@@ -42,14 +43,16 @@ interface VisitFormDialogProps {
   onSubmit: (visitData: VisitInsert, clientData?: any) => Promise<void>;
   initialDate?: string;
   initialTime?: string;
+  visits?: Visit[];
 }
 
-export function VisitFormDialog({
+export function VisitFormDialog ({
   open,
   onOpenChange,
   onSubmit,
   initialDate,
   initialTime,
+  visits = [],
 }: VisitFormDialogProps) {
   const { formData, updateField, updatePhone, resetForm, validateForm } = useVisitForm();
   const { searchClients } = useClients();
@@ -75,6 +78,21 @@ export function VisitFormDialog({
   const availableSlots = generateAvailableSlots(settings);
   const currentSettings = settings || defaultSettings;
 
+  // CORREÇÃO BUG 2: Filtrar horários já ocupados
+  const occupiedSlots = useMemo(() => {
+    if (!formData.date) return new Set<string>();
+    
+    return new Set(
+      visits
+        .filter(v => v.visit_date === formData.date)
+        .map(v => v.visit_time.substring(0, 5))
+    );
+  }, [visits, formData.date]);
+
+  const availableSlotsFiltered = useMemo(() => {
+    return availableSlots.filter(slot => !occupiedSlots.has(slot));
+  }, [availableSlots, occupiedSlots]);
+
   // Preenche data e hora quando abre o dialog com valores iniciais
   useEffect(() => {
     if (open && initialDate) {
@@ -82,14 +100,10 @@ export function VisitFormDialog({
     }
     if (open && initialTime) {
       updateField("time", initialTime);
-      // Calcular end time automaticamente
-      const endTime = calculateEndTime(initialTime);
-      setCalculatedEndTime(endTime);
-      setIsTimeOutOfRange(!isTimeInRange(initialTime));
     }
   }, [open, initialDate, initialTime]);
 
-  // Calcular horário de término quando muda o horário de início
+  // Calcular horário de término quando o horário muda
   useEffect(() => {
     if (formData.time) {
       const endTime = calculateEndTime(formData.time);
@@ -122,8 +136,8 @@ export function VisitFormDialog({
     setClientSearchResults([]);
   };
 
-  const handleTimeSelect = (time: string) => {
-    updateField("time", time);
+  const handleTimeSelect = (value: string) => {
+    updateField("time", value);
   };
 
   const handleSubmit = async () => {
@@ -136,14 +150,6 @@ export function VisitFormDialog({
         variant: "destructive",
       });
       return;
-    }
-
-    // Validar se horário está fora do range (apenas warning, não bloqueia)
-    if (isTimeOutOfRange) {
-      toast({
-        title: "⚠️ Horário Incomum",
-        description: `Este horário está fora do padrão configurado (${currentSettings.start_time} - ${currentSettings.end_time})`,
-      });
     }
 
     let clientId = selectedClientId;
@@ -168,8 +174,8 @@ export function VisitFormDialog({
       client_id: clientId,
       visit_date: formData.date,
       visit_time: formData.time,
-      visit_end_time: calculatedEndTime, // 🔥 NOVO
-      duration: currentSettings.default_duration, // 🔥 NOVO
+      visit_end_time: calculatedEndTime,
+      duration: currentSettings.default_duration,
       notes: notes || null,
       guest_count: formData.guestCount ? parseInt(formData.guestCount) : null,
       wedding_date_status: formData.weddingDateStatus === "defined" ? "com_data" : "sem_data",
@@ -191,12 +197,26 @@ export function VisitFormDialog({
     onOpenChange(false);
   };
 
+  // Gerar todos os horários possíveis (00:00 a 23:45, a cada 15min)
+  const allPossibleTimes = useMemo(() => {
+    const times: string[] = [];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 15) {
+        const time = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        if (!availableSlotsFiltered.includes(time)) {
+          times.push(time);
+        }
+      }
+    }
+    return times;
+  }, [availableSlotsFiltered]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">
-            📅 Agendar Nova Visita
+            Agendar Nova Visita
           </DialogTitle>
           <DialogDescription>
             Preencha os dados para agendar uma nova visita ao espaço
@@ -271,7 +291,7 @@ export function VisitFormDialog({
             </div>
           )}
 
-          {/* Date & Time - Lado a lado */}
+          {/* Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             {/* Date */}
             <div className="grid gap-2">
@@ -287,7 +307,7 @@ export function VisitFormDialog({
                   >
                     <Calendar className="mr-2 h-4 w-4" />
                     {formData.date ? (
-                      format(new Date(formData.date), "dd/MM/yyyy", { locale: ptBR })
+                      format(new Date(formData.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })
                     ) : (
                       <span>Selecione a data</span>
                     )}
@@ -296,7 +316,7 @@ export function VisitFormDialog({
                 <PopoverContent className="w-auto p-0" align="start">
                   <CalendarComponent
                     mode="single"
-                    selected={formData.date ? new Date(formData.date) : undefined}
+                    selected={formData.date ? new Date(formData.date + 'T12:00:00') : undefined}
                     onSelect={(date) => {
                       if (date) {
                         updateField("date", format(date, "yyyy-MM-dd"));
@@ -309,7 +329,7 @@ export function VisitFormDialog({
               </Popover>
             </div>
 
-            {/* Time */}
+            {/* Time - CORREÇÃO BUG 4: Input livre + Select */}
             <div className="grid gap-2">
               <Label className="flex items-center gap-2">
                 Horário <span className="text-destructive">*</span>
@@ -319,59 +339,92 @@ export function VisitFormDialog({
                   </Badge>
                 )}
               </Label>
-              <Select value={formData.time} onValueChange={handleTimeSelect}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o horário" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {/* Horários dentro do range configurado */}
-                  {availableSlots.length > 0 && (
-                    <>
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                        Horários Disponíveis
-                      </div>
-                      {availableSlots.map((slot) => (
-                        <SelectItem key={slot} value={slot}>
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-3 w-3 text-green-600" />
-                            {slot}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </>
-                  )}
-                  
-                  {/* Todos os horários (incluindo fora do range) */}
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
-                    Outros Horários
-                  </div>
-                  {Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`)
-                    .filter(time => !availableSlots.includes(time))
-                    .map((time) => (
-                      <SelectItem key={time} value={time}>
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="h-3 w-3 text-warning" />
-                          <span className="text-muted-foreground">{time}</span>
+              
+              <div className="flex gap-2">  
+
+                <Select value={formData.time} onValueChange={handleTimeSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Horários sugeridos" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {/* Horários dentro do range configurado */}
+                    {availableSlotsFiltered.length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                          Horários Disponíveis
                         </div>
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+                        {availableSlotsFiltered.map((slot) => (
+                          <SelectItem key={slot} value={slot}>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-3 w-3 text-green-600" />
+                              {slot}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Outros horários */}
+                    {allPossibleTimes.length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
+                          Outros Horários
+                        </div>
+                        {allPossibleTimes.slice(0, 20).map((time) => (
+                          <SelectItem key={time} value={time}>
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-3 w-3 text-amber-600" />
+                              {time}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                
+                {/* Input manual de horário */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="icon" title="Horário personalizado">
+                      <Clock className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-4" align="end">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Horário personalizado</Label>
+                      <Input
+                        type="time"
+                        value={formData.time}
+                        onChange={(e) => handleTimeSelect(e.target.value)}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use para horários como 15:30, 14:45, etc.
+                      </p>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              
+              </div>
             </div>
           </div>
 
-          {/* Preview de Duração */}
-          {formData.time && (
-            <Alert className="bg-primary/5 border-primary/20">
-              <Clock className="h-4 w-4 text-primary" />
-              <AlertDescription className="text-sm">
-                <strong>Duração estimada:</strong> {currentSettings.default_duration} minutos
+          {/* Preview de duração */}
+          {formData.time && calculatedEndTime && (
+            <Alert className={isTimeOutOfRange ? "bg-amber-50 border-amber-200" : "bg-primary/5"}>
+              <Clock className="h-4 w-4" />
+              <AlertDescription>
+                <span className="font-semibold">Duração estimada:</span> {currentSettings.default_duration} minutos
                 <br />
-                <strong>Término previsto:</strong> {calculatedEndTime}
+                <span className="font-semibold">Término previsto:</span> {calculatedEndTime}
                 {isTimeOutOfRange && (
                   <>
                     <br />
-                    <span className="text-warning">⚠️ Este horário está fora do padrão configurado ({currentSettings.start_time} - {currentSettings.end_time})</span>
+                    <span className="text-warning flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3" />
+                      Este horário está fora do padrão ({currentSettings.start_time} - {currentSettings.end_time})
+                    </span>
                   </>
                 )}
               </AlertDescription>
@@ -393,18 +446,23 @@ export function VisitFormDialog({
           {/* Wedding Date Status */}
           <div className="grid gap-2">
             <Label>Data do Casamento</Label>
-            <Select
+            <RadioGroup
               value={formData.weddingDateStatus}
               onValueChange={(value) => updateField("weddingDateStatus", value)}
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="undefined">Ainda não definida</SelectItem>
-                <SelectItem value="defined">Já tem data definida</SelectItem>
-              </SelectContent>
-            </Select>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="undefined" id="undefined" />
+                <Label htmlFor="undefined" className="font-normal cursor-pointer">
+                  Ainda não definida
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="defined" id="defined" />
+                <Label htmlFor="defined" className="font-normal cursor-pointer">
+                  Já tem data definida
+                </Label>
+              </div>
+            </RadioGroup>
           </div>
 
           {/* Wedding Date - If defined */}
@@ -422,7 +480,7 @@ export function VisitFormDialog({
                   >
                     <Calendar className="mr-2 h-4 w-4" />
                     {formData.weddingDate ? (
-                      format(new Date(formData.weddingDate), "dd/MM/yyyy", { locale: ptBR })
+                      format(new Date(formData.weddingDate + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })
                     ) : (
                       <span>Selecione a data</span>
                     )}
@@ -431,10 +489,11 @@ export function VisitFormDialog({
                 <PopoverContent className="w-auto p-0" align="start">
                   <CalendarComponent
                     mode="single"
-                    selected={formData.weddingDate ? new Date(formData.weddingDate) : undefined}
+                    selected={formData.weddingDate ? new Date(formData.weddingDate + 'T12:00:00') : undefined}
                     onSelect={(date) => {
                       if (date) {
-                        updateField("weddingDate", format(date, "yyyy-MM-dd"));
+                        const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+                        updateField("weddingDate", format(localDate, "yyyy-MM-dd"));
                       }
                     }}
                     locale={ptBR}

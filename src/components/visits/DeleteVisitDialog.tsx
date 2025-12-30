@@ -8,7 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Visit } from "@/hooks/useVisits";
+import { Visit } from "@/hooks/useVisitsOptimized";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 

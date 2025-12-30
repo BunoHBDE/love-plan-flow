@@ -1,6 +1,5 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Calendar, Heart, Mail, Phone, Trash2, User, Users } from "lucide-react";
+import { Calendar, Heart, Mail, Phone, Trash2, User, Users, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Visit } from "@/hooks/useVisitsOptimized";
 
@@ -54,14 +53,15 @@ export function VisitDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             Detalhes da Visita
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-6 py-4">
+          {/* Header com nome e status */}
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-champagne">
               <User className="h-8 w-8 text-gold" />
@@ -77,66 +77,102 @@ export function VisitDetailsDialog({
             </div>
           </div>
 
-          <div className="grid gap-3 p-4 bg-muted/50 rounded-lg border border-border">
+          {/* Informações principais */}
+          <div className="grid gap-4 p-5 bg-muted/30 rounded-xl border border-border">
+            {/* Data e Hora */}
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-muted-foreground">Data e Horário</p>
+                <p className="text-base font-semibold text-foreground mt-0.5">
+                  {formatDateLocal(visit.visit_date)} às {visit.visit_time}
+                </p>
+                {visit.visit_end_time && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Término: {visit.visit_end_time} ({visit.duration} minutos)
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Email */}
             {visit.client?.email && (
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-foreground">{visit.client.email}</span>
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+                  <Mail className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">E-mail</p>
+                  <p className="text-base text-foreground mt-0.5">{visit.client.email}</p>
+                </div>
               </div>
             )}
+
+            {/* Telefone */}
             {visit.client?.telefone && (
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span className="text-foreground">{visit.client.telefone}</span>
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
+                  <Phone className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">Telefone</p>
+                  <p className="text-base text-foreground mt-0.5">{visit.client.telefone}</p>
+                </div>
               </div>
             )}
-            <div className="flex items-center gap-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-foreground">
-                {formatDateLocal(visit.visit_date)} às {visit.visit_time}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Heart className="h-4 w-4 text-gold" />
-              <span className="text-foreground">{getWeddingDateDisplay(visit)}</span>
-            </div>
+
+            {/* Convidados */}
             {visit.guest_count && (
-              <div className="flex items-center gap-3">
-                <Users className="h-4 w-4 text-gold" />
-                <span className="text-foreground">{visit.guest_count} convidados</span>
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
+                  <Users className="h-5 w-5 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">Número de Convidados</p>
+                  <p className="text-base font-semibold text-foreground mt-0.5">{visit.guest_count}</p>
+                </div>
               </div>
             )}
+
+            {/* Data do Casamento */}
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/10">
+                <Heart className="h-5 w-5 text-rose-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-muted-foreground">Data do Casamento</p>
+                <p className="text-base text-foreground mt-0.5">{getWeddingDateDisplay(visit)}</p>
+              </div>
+            </div>
           </div>
 
-          {visit.notes && (
-            <div className="p-4 bg-muted/50 rounded-lg border border-border">
-              <Label className="text-sm text-muted-foreground mb-2 block">Observações</Label>
-              <p className="text-foreground whitespace-pre-wrap">
-                {visit.notes.startsWith('VISITANTE: ') 
-                  ? visit.notes.split('\n\n').slice(1).join('\n\n') 
-                  : visit.notes}
+          {/* Observações */}
+          {visit.notes && !visit.notes.startsWith('VISITANTE: ') && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-2">
+                Observações
+              </p>
+              <p className="text-sm text-amber-800 dark:text-amber-200 whitespace-pre-wrap">
+                {visit.notes}
               </p>
             </div>
           )}
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button 
-            variant="ghost" 
-            onClick={onDelete}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
+          <Button variant="outline" onClick={onEdit}>
+            <Pencil className="h-4 w-4 mr-2" />
+            Editar
+          </Button>
+          <Button variant="destructive" onClick={onDelete}>
             <Trash2 className="h-4 w-4 mr-2" />
             Excluir
           </Button>
-          <div className="flex gap-2 sm:ml-auto">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Fechar
-            </Button>
-            <Button variant="gold" onClick={onEdit}>
-              Editar
-            </Button>
-          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
