@@ -9,6 +9,8 @@ export interface Visit {
   client_id: string | null;
   visit_date: string;
   visit_time: string;
+  visit_end_time: string | null;
+  duration: number | null;
   status: string;
   notes: string | null;
   guest_count: number | null;
@@ -18,7 +20,7 @@ export interface Visit {
   wedding_year: string | null;
   created_at: string;
   updated_at: string;
-  // Joined client data
+  created_by: string;
   client?: {
     nome: string;
     email: string | null;
@@ -26,10 +28,13 @@ export interface Visit {
   } | null;
 }
 
+
 export interface VisitInsert {
   client_id?: string | null;
   visit_date: string;
   visit_time: string;
+  visit_end_time?: string | null;
+  duration?: number | null;
   status?: string;
   notes?: string | null;
   guest_count?: number | null;
@@ -39,11 +44,20 @@ export interface VisitInsert {
   wedding_year?: string | null;
 }
 
+
+
 // Zod validation schema for visit data
 const visitSchema = z.object({
   client_id: z.string().uuid("Cliente inválido").optional().nullable(),
   visit_date: z.string().min(1, "Data da visita é obrigatória"),
   visit_time: z.string().min(1, "Horário da visita é obrigatório"),
+  visit_end_time: z.string().optional().nullable(), 
+  duration: z.number()                              
+    .int()
+    .min(15, "Duração mínima: 15 minutos")
+    .max(480, "Duração máxima: 8 horas")
+    .optional()
+    .nullable(),
   status: z.string().max(50).optional(),
   notes: z.string().max(1000, "Notas muito longas").optional().nullable(),
   guest_count: z.number()

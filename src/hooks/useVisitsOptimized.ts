@@ -34,6 +34,8 @@ export interface VisitInsert {
   client_id?: string | null;
   visit_date: string;
   visit_time: string;
+  visit_end_time?: string | null;  
+  duration?: number | null;
   status?: string;
   notes?: string | null;
   guest_count?: number | null;
@@ -51,6 +53,13 @@ const visitSchema = z.object({
   client_id: z.string().uuid().nullable().optional(),
   visit_date: z.string().min(1, "Data da visita é obrigatória"),
   visit_time: z.string().min(1, "Horário é obrigatório"),
+  visit_end_time: z.string().optional().nullable(),  
+  duration: z.number()                               
+    .int()
+    .min(15, "Duração mínima: 15 minutos")
+    .max(480, "Duração máxima: 8 horas")
+    .optional()
+    .nullable(),
   status: z.string().optional(),
   notes: z.string().nullable().optional(),
   guest_count: z.number().min(1).nullable().optional(),
