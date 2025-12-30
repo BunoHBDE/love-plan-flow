@@ -14,6 +14,8 @@ export interface Visit {
   client_id: string | null;
   visit_date: string;
   visit_time: string;
+  visit_end_time?: string | null;
+  duration?: number | null;           
   status: string;
   notes: string | null;
   guest_count: number | null;
