@@ -20,8 +20,7 @@ import { VisitFilters } from "@/components/visits/VisitFilters";
 import { VisitTableView } from "@/components/visits/VisitTableView";
 import { VisitScheduleView } from "@/components/visits/VisitScheduleView";
 import { VisitDetailsDialog } from "@/components/visits/VisitDetailsDialog";
-import { VisitFormDialog } from "@/components/visits/VisitFormDialog";
-import { VisitEditDialog } from "@/components/visits/VisitEditDialog";
+import { VisitDialog } from "@/components/visits/VisitDialog"; // ← NOVO: Componente unificado
 import { VisitSettingsDialog } from "@/components/visits/VisitSettingsDialog";
 import { DeleteVisitDialog } from "@/components/visits/DeleteVisitDialog";
 
@@ -58,10 +57,10 @@ export default function Visitas() {
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [sortBy, setSortBy] = useState<SortOption>("date");
   
-  // Estados dos dialogs
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  // Estados dos dialogs - SIMPLIFICADO
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [deletingVisit, setDeletingVisit] = useState<Visit | null>(null);
@@ -97,63 +96,54 @@ export default function Visitas() {
       return visit.client.nome;
     }
     
-    // Se tem notas com prefixo VISITANTE:, extrai o nome
-    if (visit.notes && visit.notes.startsWith('VISITANTE: ')) {
-      const lines = visit.notes.split('\n');
-      return lines[0].replace('VISITANTE: ', '');
+    // Se não tem cliente, tenta extrair das notas
+    if (visit.notes?.startsWith('VISITANTE: ')) {
+      const firstLine = visit.notes.split('\n')[0];
+      return firstLine.replace('VISITANTE: ', '');
     }
     
-    // Fallback
-    return "Visitante sem identificação";
+    return "Visitante";
   }, []);
 
   /**
    * Formata a exibição da data do casamento
-   * Pode ser data definida, previsão (mês/ano) ou indefinida
    */
   const getWeddingDateDisplay = useCallback((visit: Visit): string => {
-    // Se tem data definida
-    if (visit.wedding_date_status === "com_data" && visit.wedding_date) {
+    if (visit.wedding_date) {
       return formatDateLocal(visit.wedding_date);
     }
     
-    // Se tem previsão de mês/ano
-    if (visit.wedding_month || visit.wedding_year) {
-      const monthLabel = MONTHS.find(m => m.value === visit.wedding_month)?.label || "";
-      const yearLabel = visit.wedding_year || "";
-      return `Previsão: ${monthLabel} ${yearLabel}`.trim();
+    if (visit.wedding_month && visit.wedding_year) {
+      const monthNames: Record<string, string> = {
+        "01": "Janeiro", "02": "Fevereiro", "03": "Março",
+        "04": "Abril", "05": "Maio", "06": "Junho",
+        "07": "Julho", "08": "Agosto", "09": "Setembro",
+        "10": "Outubro", "11": "Novembro", "12": "Dezembro"
+      };
+      return `${monthNames[visit.wedding_month] || visit.wedding_month}/${visit.wedding_year}`;
     }
     
-    // Indefinida
-    return "Data não definida";
+    return "Não definida";
   }, [formatDateLocal]);
 
   // ==========================================
-  // FILTROS E ORDENAÇÃO
+  // DADOS FILTRADOS E ORDENADOS
   // ==========================================
 
-  /**
-   * Aplica filtros e ordenação na lista de visitas
-   */
   const filteredVisits = visits
     .filter((visit) => {
-      // Filtro por busca (nome ou email)
-      const clientName = visit.client?.nome || "";
-      const clientEmail = visit.client?.email || "";
-      const matchesSearch =
-        clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        clientEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      const visitorName = getVisitorName(visit);
+      const matchesSearch = 
+        visitorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (visit.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
       
-      // Filtro por status
       const matchesStatus = statusFilter.length === 0 || statusFilter.includes(visit.status);
       
-      // Filtro por data
       const matchesDate = !dateFilter || visit.visit_date === format(dateFilter, "yyyy-MM-dd");
       
       return matchesSearch && matchesStatus && matchesDate;
     })
     .sort((a, b) => {
-      // Aplica ordenação baseada na opção selecionada
       switch (sortBy) {
         case "date":
           return new Date(a.visit_date).getTime() - new Date(b.visit_date).getTime();
@@ -198,7 +188,17 @@ export default function Visitas() {
    */
   const handleEditVisit = useCallback(() => {
     setIsDetailsOpen(false);
-    setIsEditOpen(true);
+    setDialogMode("edit");
+    setIsDialogOpen(true);
+  }, []);
+
+  /**
+   * Abre o dialog para criar nova visita
+   */
+  const handleOpenCreateDialog = useCallback(() => {
+    setSelectedVisit(null);
+    setDialogMode("create");
+    setIsDialogOpen(true);
   }, []);
 
   /**
@@ -238,7 +238,7 @@ export default function Visitas() {
         description: "A visita foi agendada com sucesso!",
       });
       
-      setIsFormOpen(false);
+      setIsDialogOpen(false);
     } catch (error) {
       toast({
         title: "Erro",
@@ -258,7 +258,7 @@ export default function Visitas() {
         title: "Visita atualizada",
         description: "As alterações foram salvas com sucesso!",
       });
-      setIsEditOpen(false);
+      setIsDialogOpen(false);
     }
     return success;
   }, [updateVisit, toast]);
@@ -270,17 +270,21 @@ export default function Visitas() {
   const handleScheduleFromCalendar = useCallback((date: string, time: string) => {
     setInitialFormDate(date);
     setInitialFormTime(time);
-    setIsFormOpen(true);
+    setSelectedVisit(null);
+    setDialogMode("create");
+    setIsDialogOpen(true);
   }, []);
 
   /**
-   * Limpa valores iniciais quando fecha o formulário
+   * Handler para mudança de estado do dialog
+   * Limpa valores iniciais quando fecha
    */
-  const handleFormOpenChange = useCallback((open: boolean) => {
-    setIsFormOpen(open);
+  const handleDialogOpenChange = useCallback((open: boolean) => {
+    setIsDialogOpen(open);
     if (!open) {
       setInitialFormDate(undefined);
       setInitialFormTime(undefined);
+      // Não limpa selectedVisit aqui para permitir reabrir em modo edit
     }
   }, []);
 
@@ -346,7 +350,7 @@ export default function Visitas() {
               variant="gold" 
               size="lg" 
               className="gap-2"
-              onClick={() => setIsFormOpen(true)}
+              onClick={handleOpenCreateDialog}
             >
               <Plus className="h-5 w-5" />
               Agendar Visita
@@ -400,23 +404,20 @@ export default function Visitas() {
 
         {/* ==================== DIALOGS ==================== */}
         
-        {/* Formulário de Nova Visita */}
-        <VisitFormDialog 
-          open={isFormOpen}
-          onOpenChange={handleFormOpenChange}
-          onSubmit={handleCreateVisit}
+        {/* Dialog Unificado: Criar/Editar Visita */}
+        <VisitDialog
+          mode={dialogMode}
+          open={isDialogOpen}
+          onOpenChange={handleDialogOpenChange}
+          // Props para criação
+          onCreateSubmit={handleCreateVisit}
           initialDate={initialFormDate}
           initialTime={initialFormTime}
           visits={visits}
-        />
-
-        {/* Formulário de Edição */}
-        <VisitEditDialog
-          open={isEditOpen}
-          onOpenChange={setIsEditOpen}
+          // Props para edição
           visit={selectedVisit}
           getVisitorName={getVisitorName}
-          onSubmit={handleUpdateVisit}
+          onEditSubmit={handleUpdateVisit}
         />
 
         {/* Detalhes da Visita */}
