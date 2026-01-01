@@ -699,8 +699,9 @@ export function VisitDialog({
                   sticky="always"
                 >
                   <CalendarComponent
-                    size="xs"  // base pequeno
-                    showYearNavigation={false}
+                    size="xs"
+                    showYearNavigation={true}
+                    showMonthNavigation={true}
                     mode="single"
                     selected={formData.date ? new Date(formData.date + 'T12:00:00') : undefined}
                     onSelect={(date) => {
@@ -725,14 +726,14 @@ export function VisitDialog({
                   <SelectValue placeholder="Selecione o horário">
                     {formData.time && (
                       <span className="flex items-center gap-2">
-                        <span>{formData.time}</span>
+                        <span className="flex-shrink-0">{formData.time}</span>
                         {calculatedEndTime && (
-                          <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                          <Badge variant="secondary" className="text-[10px] sm:text-xs flex-shrink-0">
                             até {calculatedEndTime}
                           </Badge>
                         )}
                         {!isEditMode && selectedTimeVisitCount > 0 && (
-                          <Badge variant="outline" className="text-[10px] sm:text-xs text-amber-600 border-amber-300">
+                          <Badge variant="outline" className="text-[10px] sm:text-xs text-amber-600 border-amber-300 flex-shrink-0 hidden sm:inline-flex">
                             {selectedTimeVisitCount} {selectedTimeVisitCount === 1 ? 'visita' : 'visitas'}
                           </Badge>
                         )}
@@ -1011,8 +1012,9 @@ export function VisitDialog({
                     sticky="always"
                   >
                     <CalendarComponent
-                      size="xs"  // base pequeno
+                      size="xs"
                       showYearNavigation={true}
+                      showMonthNavigation={true}
                       mode="single"
                       selected={formData.weddingDate ? new Date(formData.weddingDate + 'T12:00:00') : undefined}
                       onSelect={(date) => {
