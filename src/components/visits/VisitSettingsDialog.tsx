@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Loader2, RotateCcw } from "lucide-react";
 import {
   Dialog,
@@ -75,9 +74,6 @@ export function VisitSettingsDialog({ open, onOpenChange }: VisitSettingsDialogP
     { value: 30, label: "30 minutos" },
     { value: 60, label: "1 hora" },
   ];
-
-  // Opções de slots simultâneos
-  const maxSlotsOptions = [1, 2, 3, 4, 5];
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -221,56 +217,6 @@ export function VisitSettingsDialog({ open, onOpenChange }: VisitSettingsDialogP
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Regras de Agendamento */}
-          <div className="space-y-4">
-            <div>
-              <Label className="text-base font-semibold">📋 Regras de Agendamento</Label>
-              <p className="text-sm text-muted-foreground mt-1">
-                Defina como os horários podem ser preenchidos
-              </p>
-            </div>
-            
-            <div className="space-y-4">
-              {/* Permitir sobreposição */}
-              <div className="flex items-center justify-between space-x-2 p-3 rounded-lg bg-muted/30">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">Permitir Múltiplas Visitas</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Agendar mais de uma visita no mesmo horário
-                  </p>
-                </div>
-                <Switch
-                  checked={formData.allow_overlapping}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, allow_overlapping: checked }))}
-                />
-              </div>
-
-              {/* Número máximo de visitas por slot */}
-              {formData.allow_overlapping && (
-                <div className="space-y-2 pl-4 border-l-2 border-primary/20">
-                  <Label className="text-sm">Máximo por Horário</Label>
-                  <Select 
-                    value={String(formData.max_visits_per_slot)} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, max_visits_per_slot: Number(value) }))}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {maxSlotsOptions.map(num => (
-                        <SelectItem key={num} value={String(num)}>
-                          {num} {num === 1 ? 'visita' : 'visitas'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             </div>
           </div>
 
