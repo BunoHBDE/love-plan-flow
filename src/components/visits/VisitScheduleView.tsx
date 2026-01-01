@@ -94,13 +94,13 @@ export function VisitScheduleView({
   return (
     <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden h-full flex flex-col">
       <div className="grid lg:grid-cols-[380px_1fr] flex-1 overflow-hidden">
-        {/* Calendar - Centralizado horizontalmente */}
-        <div className="border-r border-border p-6 overflow-y-auto flex flex-col items-center">
+        {/* Calendar - Responsivo */}
+        <div className="border-b lg:border-b-0 lg:border-r border-border p-4 sm:p-6 overflow-y-auto flex flex-col items-center">
           <h3 className="font-semibold text-lg mb-4">Selecione uma Data</h3>
           <CalendarComponent
             selected={dateFilter}
             onSelect={onDateChange}
-            className="rounded-md border"
+            className="rounded-md border w-full [&_.rdp]:w-full [&_.rdp-months]:w-full [&_.rdp-month]:w-full [&_.rdp-table]:w-full [&_.rdp-head_th]:w-auto [&_.rdp-cell]:w-auto [&_.rdp-head_th]:p-0 [&_.rdp-cell]:p-0 [&_.rdp-button]:w-full [&_.rdp-button]:h-9 sm:[&_.rdp-button]:h-10 [&_.rdp-day]:text-sm"
             showTodayButton={false}     
             showYearNavigation={false}   
           />
@@ -118,18 +118,18 @@ export function VisitScheduleView({
 
         {/* Horários */}
         {dateFilter ? (
-          <div className="flex flex-col h-full">
-            <div className="p-6 border-b border-border bg-muted/30">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-lg">
-                  Horários - {format(dateFilter, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          <div className="flex flex-col h-full min-h-0">
+            <div className="p-4 sm:p-6 border-b border-border bg-muted/30 flex-shrink-0">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-semibold text-base sm:text-lg truncate">
+                  Horários - {format(dateFilter, "dd/MM/yyyy", { locale: ptBR })}
                 </h3>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs flex-shrink-0">
                   {allSlots.length} horários
                 </Badge>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <div className="grid gap-3">
                 {allSlots.map((horario) => {
                   const visitsInSlot = getVisitsForSlot(dateFilter, horario);
@@ -141,19 +141,19 @@ export function VisitScheduleView({
                   return (
                     <div
                       key={horario}
-                      className={`p-4 rounded-lg border transition-all duration-200 ${getSlotOccupancyColor(slotOccupancy)}`}
+                      className={`p-3 sm:p-4 rounded-lg border transition-all duration-200 ${getSlotOccupancyColor(slotOccupancy)}`}
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-xl text-foreground">{horario}</span>
+                      <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-bold text-lg sm:text-xl text-foreground">{horario}</span>
                           
                           {outOfRange && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger>
-                                  <Badge variant="outline" className="text-xs border-warning text-warning">
-                                    <AlertCircle className="h-3 w-3 mr-1" />
-                                    Fora do padrão
+                                  <Badge variant="outline" className="text-[10px] sm:text-xs border-warning text-warning">
+                                    <AlertCircle className="h-3 w-3 sm:mr-1" />
+                                    <span className="hidden sm:inline">Fora do padrão</span>
                                   </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -171,7 +171,7 @@ export function VisitScheduleView({
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-gold text-gold hover:bg-gold hover:text-primary-foreground"
+                            className="border-gold text-gold hover:bg-gold hover:text-primary-foreground text-xs sm:text-sm"
                             onClick={() => onScheduleVisit(format(dateFilter, 'yyyy-MM-dd'), horario)}
                           >
                             + Agendar
@@ -191,59 +191,61 @@ export function VisitScheduleView({
                             <button
                               key={visit.id}
                               onClick={() => onViewDetails(visit)}
-                              className="w-full text-left p-4 rounded-lg bg-gradient-to-br from-card to-muted/20 border border-border hover:shadow-md hover:border-gold/50 transition-all duration-200 group"
+                              className="w-full text-left p-3 rounded-lg bg-gradient-to-br from-card to-muted/20 border border-border hover:shadow-md hover:border-gold/50 transition-all duration-200 group"
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex items-start gap-3 flex-1 min-w-0">
-                                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/10 group-hover:bg-gold/20 transition-colors flex-shrink-0">
-                                    <User className="h-5 w-5 text-gold" />
-                                  </div>
-                                  
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-base truncate text-foreground group-hover:text-gold transition-colors">
-                                      {getVisitorName(visit)}
-                                    </p>
-                                    
-                                    <div className="flex flex-col gap-1.5 mt-2">
-                                      {visit.visit_end_time && (
-                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                          <span className="text-base">Horário:</span>
-                                          <span className="font-medium">
-                                            {visit.visit_time.substring(0, 5)} - {visit.visit_end_time.substring(0, 5)}
-                                          </span>
-                                          {visit.duration && (
-                                            <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
-                                              {visit.duration} min
-                                            </span>
-                                          )}
-                                        </div>
-                                      )}
-                                      
-                                      {visit.guest_count && (
-                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                          <span>{visit.guest_count} convidados</span>
-                                        </div>
-                                      )}
-                                      
-                                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <span className="text-base">Casamento: </span>
-                                        <span>{getWeddingDateDisplay(visit)}</span>
-                                      </div>
-                                    </div>
-                                  </div>
+                              {/* Layout compacto para mobile */}
+                              <div className="flex items-center gap-3">
+                                {/* Avatar */}
+                                <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-gold/10 group-hover:bg-gold/20 transition-colors flex-shrink-0">
+                                  <User className="h-4 w-4 sm:h-5 sm:w-5 text-gold" />
                                 </div>
                                 
-                                <Badge 
-                                  className="flex-shrink-0"
-                                  variant={
-                                    visit.status === 'confirmado' ? 'default' :
-                                    visit.status === 'agendado' ? 'secondary' :
-                                    visit.status === 'realizado' ? 'outline' :
-                                    'destructive'
-                                  }
-                                >
-                                  {visit.status}
-                                </Badge>
+                                {/* Info principal */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="font-semibold text-sm sm:text-base truncate text-foreground group-hover:text-gold transition-colors">
+                                      {getVisitorName(visit)}
+                                    </p>
+                                    <Badge 
+                                      className="flex-shrink-0 text-[10px] sm:text-xs"
+                                      variant={
+                                        visit.status === 'confirmado' ? 'default' :
+                                        visit.status === 'agendado' ? 'secondary' :
+                                        visit.status === 'realizado' ? 'outline' :
+                                        'destructive'
+                                      }
+                                    >
+                                      {visit.status}
+                                    </Badge>
+                                  </div>
+                                  
+                                  {/* Informações secundárias em linha única */}
+                                  <div className="flex items-center gap-2 mt-1 text-xs sm:text-sm text-muted-foreground flex-wrap">
+                                    {visit.visit_end_time && (
+                                      <span className="flex items-center gap-1">
+                                        {visit.visit_time.substring(0, 5)}-{visit.visit_end_time.substring(0, 5)}
+                                        {visit.duration && (
+                                          <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full hidden sm:inline">
+                                            {visit.duration}min
+                                          </span>
+                                        )}
+                                      </span>
+                                    )}
+                                    
+                                    {visit.guest_count && (
+                                      <>
+                                        <span className="text-muted-foreground/50 hidden sm:inline">•</span>
+                                        <span className="hidden sm:inline">{visit.guest_count} convidados</span>
+                                      </>
+                                    )}
+                                    
+                                    <span className="text-muted-foreground/50">•</span>
+                                    <span className="truncate">
+                                      <span className="hidden sm:inline">Casamento: </span>
+                                      {getWeddingDateDisplay(visit)}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
                             </button>
                           ))}
