@@ -50,10 +50,10 @@ interface VisitFiltersProps {
 // ==========================================
 
 const selectedButtonStyles: Record<string, string> = {
-  agendada: "bg-warning text-warning-foreground hover:bg-warning/90 border-warning",
-  confirmada: "bg-success text-success-foreground hover:bg-success/90 border-success",
-  realizada: "bg-primary text-primary-foreground hover:bg-primary/90 border-primary",
-  cancelada: "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-destructive",
+  agendada: "bg-warning text-warning-foreground border-warning [@media(hover:hover)]:hover:bg-warning/90",
+  confirmada: "bg-success text-success-foreground border-success [@media(hover:hover)]:hover:bg-success/90",
+  realizada: "bg-primary text-primary-foreground border-primary [@media(hover:hover)]:hover:bg-primary/90",
+  cancelada: "bg-destructive text-destructive-foreground border-destructive [@media(hover:hover)]:hover:bg-destructive/90",
 };
 
 // ==========================================
