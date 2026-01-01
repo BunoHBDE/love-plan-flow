@@ -287,6 +287,31 @@ export default function Visitas() {
   }, [updateVisit, toast]);
 
   /**
+   * Atualiza o status de uma visita (usado no VisitDetailsDialog)
+   * Retorna Promise<boolean> para permitir feedback visual
+   */
+  const handleUpdateVisitStatus = useCallback(async (visitId: string, status: string): Promise<boolean> => {
+    const success = await updateVisitStatus(visitId, status);
+    if (success) {
+      toast({
+        title: "Status atualizado",
+        description: `Visita marcada como "${status}"`,
+      });
+      // Atualiza o selectedVisit localmente para refletir a mudança
+      if (selectedVisit && selectedVisit.id === visitId) {
+        setSelectedVisit({ ...selectedVisit, status });
+      }
+    } else {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status.",
+        variant: "destructive",
+      });
+    }
+    return success;
+  }, [updateVisitStatus, toast, selectedVisit]);
+
+  /**
    * Abre formulário de agendamento a partir do calendário
    * Preenche data e hora automaticamente
    */
@@ -455,6 +480,7 @@ export default function Visitas() {
             setIsDetailsOpen(false);
             setDeletingVisit(selectedVisit);
           }}
+          onUpdateStatus={handleUpdateVisitStatus}
         />
 
         {/* Configurações */}
