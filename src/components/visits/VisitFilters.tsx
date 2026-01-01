@@ -50,10 +50,10 @@ interface VisitFiltersProps {
 // ==========================================
 
 const selectedButtonStyles: Record<string, string> = {
-  agendada: "bg-warning text-warning-foreground border-warning [@media(hover:hover)]:hover:bg-warning/90",
-  confirmada: "bg-success text-success-foreground border-success [@media(hover:hover)]:hover:bg-success/90",
-  realizada: "bg-primary text-primary-foreground border-primary [@media(hover:hover)]:hover:bg-primary/90",
-  cancelada: "bg-destructive text-destructive-foreground border-destructive [@media(hover:hover)]:hover:bg-destructive/90",
+  agendada: "bg-warning text-warning-foreground border-warning [@media(hover:hover)]:hover:bg-warning/90 active:bg-warning/80",
+  confirmada: "bg-success text-success-foreground border-success [@media(hover:hover)]:hover:bg-success/90 active:bg-success/80",
+  realizada: "bg-primary text-primary-foreground border-primary [@media(hover:hover)]:hover:bg-primary/90 active:bg-primary/80",
+  cancelada: "bg-destructive text-destructive-foreground border-destructive [@media(hover:hover)]:hover:bg-destructive/90 active:bg-destructive/80",
 };
 
 // ==========================================
@@ -151,10 +151,14 @@ export function VisitFilters({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "transition-all",
+                  "transition-all touch-manipulation focus-visible:ring-offset-0",
+                  "[@media(hover:hover)]:hover:bg-accent [@media(hover:none)]:hover:bg-transparent",
                   isSelected && selectedButtonStyles[option.value]
                 )}
-                onClick={() => toggleStatus(option.value)}
+                onClick={(e) => {
+                  (e.currentTarget as HTMLButtonElement).blur();
+                  toggleStatus(option.value);
+                }}
               >
                 {option.label}
               </Button>
