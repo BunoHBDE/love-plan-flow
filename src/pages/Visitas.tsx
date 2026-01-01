@@ -8,7 +8,7 @@ import {
   Settings,
   Loader2
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isWithinInterval, parseISO } from "date-fns";
 
 // Hooks
 import { useVisitsOptimized as useVisits, Visit, VisitInsert } from "@/hooks/useVisitsOptimized";
@@ -16,11 +16,11 @@ import { useClientsOptimized as useClients } from "@/hooks/useClientsOptimized";
 import { useToast } from "@/hooks/use-toast";
 
 // Componentes modulares
-import { VisitFilters } from "@/components/visits/VisitFilters";
+import { VisitFilters, DateRange } from "@/components/visits/VisitFilters";
 import { VisitTableView } from "@/components/visits/VisitTableView";
 import { VisitScheduleView } from "@/components/visits/VisitScheduleView";
 import { VisitDetailsDialog } from "@/components/visits/VisitDetailsDialog";
-import { VisitDialog } from "@/components/visits/VisitDialog"; // ← NOVO: Componente unificado
+import { VisitDialog } from "@/components/visits/VisitDialog";
 import { VisitSettingsDialog } from "@/components/visits/VisitSettingsDialog";
 import { DeleteVisitDialog } from "@/components/visits/DeleteVisitDialog";
 
@@ -51,13 +51,16 @@ export default function Visitas() {
   // Modo de visualização (tabela ou calendário)
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   
-  // Filtros - ATUALIZADO: pré-selecionar "agendada" e "confirmada"
+  // Filtros - ATUALIZADO: dateFilter agora é DateRange
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>(["agendada", "confirmada"]);
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [dateFilter, setDateFilter] = useState<DateRange>({ from: null, to: null });
   const [sortBy, setSortBy] = useState<SortOption>("date");
   
-  // Estados dos dialogs - SIMPLIFICADO
+  // Data selecionada para o modo calendário (separado do filtro de range)
+  const [calendarDate, setCalendarDate] = useState<Date | undefined>(undefined);
+  
+  // Estados dos dialogs
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -126,6 +129,25 @@ export default function Visitas() {
     return "Não definida";
   }, [formatDateLocal]);
 
+  /**
+   * Verifica se uma data está dentro do range selecionado
+   */
+  const isDateInRange = useCallback((dateString: string, range: DateRange): boolean => {
+    if (!range.from && !range.to) return true; // Sem filtro = mostra tudo
+    
+    const date = parseISO(dateString);
+    
+    if (range.from && range.to) {
+      return isWithinInterval(date, { start: range.from, end: range.to });
+    }
+    
+    if (range.from) {
+      return date >= range.from;
+    }
+    
+    return true;
+  }, []);
+
   // ==========================================
   // DADOS FILTRADOS E ORDENADOS
   // ==========================================
@@ -139,7 +161,8 @@ export default function Visitas() {
       
       const matchesStatus = statusFilter.length === 0 || statusFilter.includes(visit.status);
       
-      const matchesDate = !dateFilter || visit.visit_date === format(dateFilter, "yyyy-MM-dd");
+      // ATUALIZADO: Usa range de datas
+      const matchesDate = isDateInRange(visit.visit_date, dateFilter);
       
       return matchesSearch && matchesStatus && matchesDate;
     })
@@ -166,10 +189,10 @@ export default function Visitas() {
    * Define a data de hoje quando muda para o modo calendário
    */
   useEffect(() => {
-    if (viewMode === "calendar" && !dateFilter) {
-      setDateFilter(new Date());
+    if (viewMode === "calendar" && !calendarDate) {
+      setCalendarDate(new Date());
     }
-  }, [viewMode, dateFilter]);
+  }, [viewMode, calendarDate]);
 
   // ==========================================
   // HANDLERS
@@ -284,7 +307,6 @@ export default function Visitas() {
     if (!open) {
       setInitialFormDate(undefined);
       setInitialFormTime(undefined);
-      // Não limpa selectedVisit aqui para permitir reabrir em modo edit
     }
   }, []);
 
@@ -359,7 +381,6 @@ export default function Visitas() {
         </div>
 
         {/* ==================== FILTROS ==================== */}
-        {/* ATUALIZADO: Mostrar filtros apenas no modo tabela */}
         {viewMode === "table" && (
           <VisitFilters
             searchTerm={searchTerm}
@@ -393,8 +414,8 @@ export default function Visitas() {
         ) : (
           // Visualização em Calendário/Agenda
           <VisitScheduleView
-            dateFilter={dateFilter}
-            onDateChange={setDateFilter}
+            dateFilter={calendarDate}
+            onDateChange={setCalendarDate}
             horarios={DEFAULT_TIME_SLOTS}
             visits={visits}
             statusFilter={statusFilter}
@@ -412,12 +433,10 @@ export default function Visitas() {
           mode={dialogMode}
           open={isDialogOpen}
           onOpenChange={handleDialogOpenChange}
-          // Props para criação
           onCreateSubmit={handleCreateVisit}
           initialDate={initialFormDate}
           initialTime={initialFormTime}
           visits={visits}
-          // Props para edição
           visit={selectedVisit}
           getVisitorName={getVisitorName}
           onEditSubmit={handleUpdateVisit}

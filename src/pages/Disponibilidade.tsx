@@ -609,11 +609,11 @@ export default function Disponibilidade() {
                   )}
                   <div className="flex justify-center">
                     <CalendarComponent
-                      showNavigation={false}
                       showCaption={false}
+                      showMonthNavigation={false}
+                      showYearNavigation={false}
                       mode="single"
                       month={month}
-                      locale={ptBR}
                       onDayClick={handleDateClick}
                       modifiers={{
                         evento: eventosAceitos.map(e => e.date),

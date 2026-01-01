@@ -19,7 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { CalendarRange, DateRange } from "@/components/ui/CalendarRange";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -38,8 +38,8 @@ interface VisitFiltersProps {
   onSearchChange: (value: string) => void;
   statusFilter: string[];
   onStatusFilterChange: (statuses: string[]) => void;
-  dateFilter: Date | undefined;
-  onDateFilterChange: (date: Date | undefined) => void;
+  dateFilter: DateRange;
+  onDateFilterChange: (range: DateRange) => void;
   sortBy: SortOption;
   onSortChange: (sort: SortOption) => void;
   showDateFilter?: boolean;
@@ -88,11 +88,22 @@ export function VisitFilters({
    */
   const clearFilters = () => {
     onStatusFilterChange([]);
-    onDateFilterChange(undefined);
+    onDateFilterChange({ from: null, to: null });
   };
 
   // Verifica se há algum filtro ativo
-  const hasActiveFilters = statusFilter.length > 0 || dateFilter !== undefined;
+  const hasActiveFilters = statusFilter.length > 0 || dateFilter.from !== null || dateFilter.to !== null;
+
+  // Formata o texto do botão de data
+  const getDateButtonText = () => {
+    if (dateFilter.from && dateFilter.to) {
+      return `${format(dateFilter.from, "dd/MM/yy", { locale: ptBR })} - ${format(dateFilter.to, "dd/MM/yy", { locale: ptBR })}`;
+    }
+    if (dateFilter.from) {
+      return `A partir de ${format(dateFilter.from, "dd/MM/yy", { locale: ptBR })}`;
+    }
+    return "Selecionar período";
+  };
 
   return (
     <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up space-y-4 overflow-visible">
@@ -151,7 +162,7 @@ export function VisitFilters({
           })}
         </div>
 
-        {/* Filtro de Data com Calendar Component (condicional) */}
+        {/* Filtro de Data com CalendarRange Component (condicional) */}
         {showDateFilter && (
           <Popover modal={true}>
             <PopoverTrigger asChild>
@@ -159,16 +170,12 @@ export function VisitFilters({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "min-w-[180px] justify-start text-left font-normal",
-                  !dateFilter && "text-muted-foreground"
+                  "min-w-[200px] justify-start text-left font-normal",
+                  !dateFilter.from && "text-muted-foreground"
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateFilter ? (
-                  format(dateFilter, "dd/MM/yyyy", { locale: ptBR })
-                ) : (
-                  "Selecionar data"
-                )}
+                {getDateButtonText()}
               </Button>
             </PopoverTrigger>
             <PopoverContent 
@@ -178,23 +185,24 @@ export function VisitFilters({
               sideOffset={8}
               avoidCollisions={false}
             >
-              <Calendar
-                mode="single"
+              <CalendarRange
+                size="xs"
                 selected={dateFilter}
                 onSelect={onDateFilterChange}
-                locale={ptBR}
-                initialFocus
+                showRangeInfo={false}
+                showTodayButton={true}
+                showYearNavigation={false}
               />
-              {dateFilter && (
+              {(dateFilter.from || dateFilter.to) && (
                 <div className="p-2 border-t">
                   <Button
                     variant="ghost"
                     size="sm"
                     className="w-full"
-                    onClick={() => onDateFilterChange(undefined)}
+                    onClick={() => onDateFilterChange({ from: null, to: null })}
                   >
                     <X className="h-4 w-4 mr-2" />
-                    Limpar data
+                    Limpar período
                   </Button>
                 </div>
               )}
@@ -241,3 +249,6 @@ export function VisitFilters({
     </div>
   );
 }
+
+// Re-exporta o tipo DateRange para uso externo
+export type { DateRange };

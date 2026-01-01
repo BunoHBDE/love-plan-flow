@@ -80,11 +80,11 @@ export function VisitScheduleView({
         <div className="border-r border-border p-6 overflow-y-auto flex flex-col items-center">
           <h3 className="font-semibold text-lg mb-4">Selecione uma Data</h3>
           <CalendarComponent
-            mode="single"
             selected={dateFilter}
             onSelect={onDateChange}
-            locale={ptBR}
             className="rounded-md border"
+            showTodayButton={false}     
+            showYearNavigation={false}   
           />
           {dateFilter && (
             <Button

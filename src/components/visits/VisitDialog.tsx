@@ -649,6 +649,8 @@ export function VisitDialog({
                   sticky="always"
                 >
                   <CalendarComponent
+                    size="xs"  // base pequeno
+                    showYearNavigation={false}
                     mode="single"
                     selected={formData.date ? new Date(formData.date + 'T12:00:00') : undefined}
                     onSelect={(date) => {
@@ -656,7 +658,6 @@ export function VisitDialog({
                         updateField("date", format(date, "yyyy-MM-dd"));
                       }
                     }}
-                    locale={ptBR}
                     disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   />
                 </PopoverContent>
@@ -893,6 +894,8 @@ export function VisitDialog({
                     sticky="always"
                   >
                     <CalendarComponent
+                      size="xs"  // base pequeno
+                      showYearNavigation={false}
                       mode="single"
                       selected={formData.weddingDate ? new Date(formData.weddingDate + 'T12:00:00') : undefined}
                       onSelect={(date) => {
@@ -900,7 +903,6 @@ export function VisitDialog({
                           updateField("weddingDate", format(date, "yyyy-MM-dd"));
                         }
                       }}
-                      locale={ptBR}
                     />
                   </PopoverContent>
                 </Popover>
