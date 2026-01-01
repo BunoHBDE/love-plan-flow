@@ -723,23 +723,21 @@ export function VisitDialog({
               </Label>
               <Select value={formData.time} onValueChange={handleTimeSelect}>
                 <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Selecione o horário">
-                    {formData.time && (
-                      <span className="flex items-center gap-2">
-                        <span className="flex-shrink-0">{formData.time}</span>
-                        {calculatedEndTime && (
-                          <Badge variant="secondary" className="text-[10px] sm:text-xs flex-shrink-0">
-                            até {calculatedEndTime}
-                          </Badge>
-                        )}
-                        {!isEditMode && selectedTimeVisitCount > 0 && (
-                          <Badge variant="outline" className="text-[10px] sm:text-xs text-amber-600 border-amber-300 flex-shrink-0 hidden sm:inline-flex">
-                            {selectedTimeVisitCount} {selectedTimeVisitCount === 1 ? 'visita' : 'visitas'}
-                          </Badge>
-                        )}
-                      </span>
-                    )}
-                  </SelectValue>
+                  <div className="flex items-center justify-between w-full">
+                    <span>{formData.time ? formData.time.slice(0, 5) : "Selecione o horário"}</span>
+                    <div className="flex items-center gap-2">
+                      {formData.time && calculatedEndTime && (
+                        <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                          até {calculatedEndTime}
+                        </Badge>
+                      )}
+                      {formData.time && !isEditMode && selectedTimeVisitCount > 0 && (
+                        <Badge variant="outline" className="text-[10px] sm:text-xs text-amber-600 border-amber-300 hidden sm:inline-flex">
+                          {selectedTimeVisitCount} {selectedTimeVisitCount === 1 ? 'visita' : 'visitas'}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   {/* Header informativo */}
