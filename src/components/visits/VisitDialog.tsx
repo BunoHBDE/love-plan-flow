@@ -26,7 +26,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Calendar, User, Clock, AlertCircle, Info, Loader2, Users, Heart } from "lucide-react";
+import { Calendar, User, Clock, AlertCircle, Info, Loader2, Users, Heart, Timer } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useVisitForm, getYearsArray, months } from "@/hooks/useVisitForm";
@@ -109,6 +109,10 @@ export function VisitDialog({
   const [calculatedEndTime, setCalculatedEndTime] = useState<string>("");
   const [isTimeOutOfRange, setIsTimeOutOfRange] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Estado para duração personalizada
+  const [useCustomDuration, setUseCustomDuration] = useState(false);
+  const [customDuration, setCustomDuration] = useState<number | null>(null);
 
   // ==========================================
   // REFS PARA FUNÇÕES INSTÁVEIS (CORREÇÃO DO BUG)
@@ -247,6 +251,9 @@ export function VisitDialog({
       setCalculatedEndTime("");
       setIsTimeOutOfRange(false);
       setIsSubmitting(false);
+      // Reseta duração personalizada
+      setUseCustomDuration(false);
+      setCustomDuration(null);
     }
   }, [open, isEditMode]);
 
@@ -290,6 +297,15 @@ export function VisitDialog({
         setSelectedClientId(null);
         setClientSearch(visitorName);
       }
+      
+      // Carrega duração personalizada se diferente do padrão
+      if (visit.duration && visit.duration !== currentSettings.default_duration) {
+        setUseCustomDuration(true);
+        setCustomDuration(visit.duration);
+      } else {
+        setUseCustomDuration(false);
+        setCustomDuration(null);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visit?.id, open, isEditMode]);
@@ -311,19 +327,26 @@ export function VisitDialog({
   }, [open, initialDate, initialTime, isEditMode]);
 
   /**
-   * Calcula horário de término quando o horário muda
-   * CORRIGIDO: Usa refs para funções instáveis
+   * Calcula horário de término quando o horário ou duração muda
+   * CORRIGIDO: Usa refs para funções instáveis e considera duração personalizada
    */
   useEffect(() => {
     if (formData.time) {
-      const endTime = calculateEndTimeRef.current(formData.time);
+      // Usa duração personalizada se ativada, senão usa a configuração padrão
+      const duration = useCustomDuration && customDuration ? customDuration : undefined;
+      const endTime = calculateEndTimeRef.current(formData.time, duration);
       setCalculatedEndTime(endTime);
       setIsTimeOutOfRange(!isTimeInRangeRef.current(formData.time));
     } else {
       setCalculatedEndTime("");
       setIsTimeOutOfRange(false);
     }
-  }, [formData.time]);
+  }, [formData.time, useCustomDuration, customDuration]);
+
+  // Duração efetiva (personalizada ou padrão)
+  const effectiveDuration = useCustomDuration && customDuration 
+    ? customDuration 
+    : currentSettings.default_duration;
 
   // ==========================================
   // HANDLERS - BUSCA DE CLIENTE
@@ -434,6 +457,8 @@ export function VisitDialog({
           client_id: clientId,
           visit_date: formData.date,
           visit_time: formData.time,
+          visit_end_time: calculatedEndTime,
+          duration: effectiveDuration,
           notes: updatedNotes || null,
           guest_count: formData.guestCount ? parseInt(formData.guestCount) : null,
           wedding_date_status: formData.weddingDateStatus === "defined" 
@@ -478,7 +503,7 @@ export function VisitDialog({
           visit_date: formData.date,
           visit_time: formData.time,
           visit_end_time: calculatedEndTime,
-          duration: currentSettings.default_duration,
+          duration: effectiveDuration,
           notes: notes || null,
           guest_count: formData.guestCount ? parseInt(formData.guestCount) : null,
           wedding_date_status: formData.weddingDateStatus === "defined" ? "com_data" : "sem_data",
@@ -512,6 +537,9 @@ export function VisitDialog({
     // Estados de horário
     setCalculatedEndTime("");
     setIsTimeOutOfRange(false);
+    // Estados de duração personalizada
+    setUseCustomDuration(false);
+    setCustomDuration(null);
     // Estado de submissão
     setIsSubmitting(false);
   };
@@ -807,6 +835,73 @@ export function VisitDialog({
                   )}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* ==================== SEÇÃO: DURAÇÃO PERSONALIZADA ==================== */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
+            <div className="flex items-center gap-2 flex-1">
+              <Timer className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Duração da visita</p>
+                <p className="text-xs text-muted-foreground">
+                  Padrão: {currentSettings.default_duration} min
+                  {useCustomDuration && customDuration && (
+                    <span className="text-primary font-medium"> → Personalizada: {customDuration} min</span>
+                  )}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {!useCustomDuration ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setUseCustomDuration(true);
+                    setCustomDuration(currentSettings.default_duration);
+                  }}
+                  className="text-xs h-8"
+                >
+                  <Timer className="h-3 w-3 mr-1" />
+                  Personalizar
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={customDuration?.toString() || ""}
+                    onValueChange={(value) => setCustomDuration(parseInt(value))}
+                  >
+                    <SelectTrigger className="w-[120px] h-8 text-xs">
+                      <SelectValue placeholder="Duração" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 min</SelectItem>
+                      <SelectItem value="45">45 min</SelectItem>
+                      <SelectItem value="60">1 hora</SelectItem>
+                      <SelectItem value="90">1h 30min</SelectItem>
+                      <SelectItem value="120">2 horas</SelectItem>
+                      <SelectItem value="150">2h 30min</SelectItem>
+                      <SelectItem value="180">3 horas</SelectItem>
+                      <SelectItem value="240">4 horas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setUseCustomDuration(false);
+                      setCustomDuration(null);
+                    }}
+                    className="text-xs h-8 px-2 text-muted-foreground hover:text-foreground"
+                  >
+                    Usar padrão
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
