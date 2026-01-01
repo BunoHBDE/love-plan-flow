@@ -1,4 +1,5 @@
 import React from "react";
+import { timeToMinutes, getVisitEndMinutes } from "@/lib/timeConflictUtils";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { CalendarDays, AlertCircle, User } from "lucide-react";
@@ -45,21 +46,62 @@ export function VisitScheduleView({
   
   const allSlots = [...new Set([...configuredSlots, ...visitTimesOnDate])].sort();
 
-  const getVisitsForSlot = (day: Date, time: string) => {
+  // ==========================================
+  // FUNÇÕES DE SLOT - CORRIGIDAS
+  // ==========================================
+
+  /**
+   * Retorna visitas que COMEÇAM neste slot (para exibir o card)
+   * Cada visita só aparece UMA vez - no slot de início
+   */
+  const getVisitsStartingInSlot = (day: Date, time: string) => {
     const dateStr = format(day, 'yyyy-MM-dd');
-    return visits.filter(visit => 
-      visit.visit_date === dateStr && 
-      visit.visit_time.substring(0, 5) === time &&
-      (statusFilter.length === 0 || statusFilter.includes(visit.status))
-    );
+    
+    return visits.filter(visit => {
+      if (visit.visit_date !== dateStr) return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(visit.status)) return false;
+      
+      // Só retorna se a visita COMEÇA exatamente neste horário
+      return visit.visit_time.substring(0, 5) === time;
+    });
   };
 
-  const getAllVisitsForSlot = (day: Date, time: string) => {
+  /**
+   * Conta quantas visitas OCUPAM este slot (para o badge de ocupação)
+   * Uma visita ocupa o slot se ele está dentro do intervalo [início, fim)
+   */
+  const getOccupancyCount = (day: Date, time: string) => {
     const dateStr = format(day, 'yyyy-MM-dd');
-    return visits.filter(visit => 
-      visit.visit_date === dateStr && 
-      visit.visit_time.substring(0, 5) === time
-    );
+    const slotMinutes = timeToMinutes(time);
+    
+    return visits.filter(visit => {
+      if (visit.visit_date !== dateStr) return false;
+      
+      const visitStartMinutes = timeToMinutes(visit.visit_time.substring(0, 5));
+      const visitEndMinutes = getVisitEndMinutes(visit, currentSettings.default_duration);
+      
+      // Intervalo [início, fim) - fim é EXCLUSIVO
+      // Visita 09:00-10:00: ocupa 09:00 e 09:30, NÃO ocupa 10:00
+      return slotMinutes >= visitStartMinutes && slotMinutes < visitEndMinutes;
+    }).length;
+  };
+
+  /**
+   * Conta ocupação considerando filtro de status (para o badge colorido)
+   */
+  const getFilteredOccupancyCount = (day: Date, time: string) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const slotMinutes = timeToMinutes(time);
+    
+    return visits.filter(visit => {
+      if (visit.visit_date !== dateStr) return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(visit.status)) return false;
+      
+      const visitStartMinutes = timeToMinutes(visit.visit_time.substring(0, 5));
+      const visitEndMinutes = getVisitEndMinutes(visit, currentSettings.default_duration);
+      
+      return slotMinutes >= visitStartMinutes && slotMinutes < visitEndMinutes;
+    }).length;
   };
 
   const isSlotOutOfRange = (time: string) => {
@@ -114,16 +156,18 @@ export function VisitScheduleView({
             <div className="flex-1 overflow-y-auto p-6">
               <div className="grid gap-3">
                 {allSlots.map((horario) => {
-                  const visitsInSlot = getVisitsForSlot(dateFilter, horario);
-                  const allVisitsInSlot = getAllVisitsForSlot(dateFilter, horario);
-                  const slotOccupancy = visitsInSlot.length;
-                  const totalOccupancy = allVisitsInSlot.length;
+                  // Visitas que COMEÇAM neste slot (para mostrar o card)
+                  const visitsStarting = getVisitsStartingInSlot(dateFilter, horario);
+                  // Total de visitas que OCUPAM este slot (para o badge)
+                  const totalOccupancy = getOccupancyCount(dateFilter, horario);
+                  // Ocupação filtrada por status
+                  const filteredOccupancy = getFilteredOccupancyCount(dateFilter, horario);
                   const outOfRange = isSlotOutOfRange(horario);
 
                   return (
                     <div
                       key={horario}
-                      className={`p-4 rounded-lg border transition-all duration-200 ${getSlotOccupancyColor(slotOccupancy)}`}
+                      className={`p-4 rounded-lg border transition-all duration-200 ${getSlotOccupancyColor(filteredOccupancy)}`}
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
@@ -160,16 +204,17 @@ export function VisitScheduleView({
                           </Button>
                         )}
 
-                        {slotOccupancy > 0 && (
-                          <Badge variant={slotOccupancy === 1 ? "default" : slotOccupancy === 2 ? "secondary" : "destructive"}>
-                            {slotOccupancy} {slotOccupancy === 1 ? 'visita' : 'visitas'}
+                        {filteredOccupancy > 0 && (
+                          <Badge variant={filteredOccupancy === 1 ? "default" : filteredOccupancy === 2 ? "secondary" : "destructive"}>
+                            {filteredOccupancy} {filteredOccupancy === 1 ? 'visita' : 'visitas'}
                           </Badge>
                         )}
                       </div>
 
-                      {visitsInSlot.length > 0 && (
+                      {/* Mostra cards apenas das visitas que COMEÇAM neste slot */}
+                      {visitsStarting.length > 0 && (
                         <div className="space-y-2">
-                          {visitsInSlot.map((visit) => (
+                          {visitsStarting.map((visit) => (
                             <button
                               key={visit.id}
                               onClick={() => onViewDetails(visit)}

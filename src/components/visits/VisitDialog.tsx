@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { timeToMinutes, getVisitEndMinutes, doIntervalsOverlap } from "@/lib/timeConflictUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -140,27 +141,48 @@ export function VisitDialog({
   // ==========================================
   // FILTRO DE HORÁRIOS (modo create)
   // ==========================================
-  
-  // Mapa de horários com contagem de visitas na data selecionada
+    
+  // ✅ CORRETO - Verifica conflitos considerando duração real da visita
+  // e NÃO conta visitas que apenas "encostam" no horário
   const slotVisitCounts = useMemo(() => {
     if (!formData.date) return new Map<string, number>();
     
-    const counts = new Map<string, number>();
+    const newSlotDuration = currentSettings.default_duration;
+    const conflictMap = new Map<string, number>();
+    
+    // Coleta todos os slots a verificar
+    const allSlots = new Set(availableSlots);
     visits
-      .filter(v => {
-        // Filtra visitas da mesma data
+      .filter(v => v.visit_date === formData.date)
+      .forEach(v => allSlots.add(v.visit_time.substring(0, 5)));
+    
+    allSlots.forEach(slot => {
+      const slotStartMinutes = timeToMinutes(slot);
+      const slotEndMinutes = slotStartMinutes + newSlotDuration;
+      
+      const conflictingCount = visits.filter(v => {
         if (v.visit_date !== formData.date) return false;
-        // No modo edição, exclui a própria visita sendo editada da contagem
         if (isEditMode && visit && v.id === visit.id) return false;
-        return true;
-      })
-      .forEach(v => {
-        const time = v.visit_time.substring(0, 5);
-        counts.set(time, (counts.get(time) || 0) + 1);
-      });
-    return counts;
-  }, [visits, formData.date, isEditMode, visit]);
-
+        
+        const visitStartMinutes = timeToMinutes(v.visit_time.substring(0, 5));
+        const visitEndMinutes = getVisitEndMinutes(v, newSlotDuration);
+        
+        // Verifica sobreposição REAL (não apenas "encostes")
+        // [09:00-10:00] e [10:00-11:00] NÃO conflitam
+        return doIntervalsOverlap(
+          slotStartMinutes, slotEndMinutes,
+          visitStartMinutes, visitEndMinutes
+        );
+      }).length;
+      
+      if (conflictingCount > 0) {
+        conflictMap.set(slot, conflictingCount);
+      }
+    });
+    
+    return conflictMap;
+  }, [visits, formData.date, isEditMode, visit, currentSettings.default_duration, availableSlots]);
+  
   // Função para obter contagem de visitas em um horário
   const getVisitCount = (time: string): number => {
     return slotVisitCounts.get(time) || 0;
