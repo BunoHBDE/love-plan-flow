@@ -65,6 +65,10 @@ export function VisitSettingsDialog({ open, onOpenChange }: VisitSettingsDialogP
     { value: 60, label: "1 hora" },
     { value: 90, label: "1h 30min" },
     { value: 120, label: "2 horas" },
+    { value: 150, label: "2h 30 min" },
+    { value: 180, label: "3 horas" },
+    { value: 210, label: "3h 30 min" },
+    { value: 240, label: "4 horas" },
   ];
 
   // Opções de intervalo
@@ -114,7 +118,7 @@ export function VisitSettingsDialog({ open, onOpenChange }: VisitSettingsDialogP
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">
-            ⚙️ Configurações de Visitas
+            Configurações de Visitas
           </DialogTitle>
           <DialogDescription>
             Configure os horários e regras para agendamento de visitas ao seu espaço.
@@ -125,7 +129,7 @@ export function VisitSettingsDialog({ open, onOpenChange }: VisitSettingsDialogP
           {/* Horários de Atendimento */}
           <div className="space-y-4">
             <div>
-              <Label className="text-base font-semibold">🕐 Horários de Atendimento</Label>
+              <Label className="text-base font-semibold">Horários de Atendimento</Label>
               <p className="text-sm text-muted-foreground mt-1">
                 Defina o período em que visitas podem ser agendadas
               </p>
@@ -173,7 +177,7 @@ export function VisitSettingsDialog({ open, onOpenChange }: VisitSettingsDialogP
           {/* Duração e Intervalos */}
           <div className="space-y-4">
             <div>
-              <Label className="text-base font-semibold">⏱️ Duração e Intervalos</Label>
+              <Label className="text-base font-semibold">Duração e Intervalos</Label>
               <p className="text-sm text-muted-foreground mt-1">
                 Configure o tempo de cada visita e pausas entre elas
               </p>
@@ -219,56 +223,7 @@ export function VisitSettingsDialog({ open, onOpenChange }: VisitSettingsDialogP
               </div>
             </div>
           </div>
-
           <Separator />
-
-          {/* Preview dos horários gerados */}
-          <div className="space-y-2 p-4 rounded-lg bg-muted/20 border border-border">
-            <Label className="text-sm font-semibold">👀 Visualização</Label>
-            <p className="text-xs text-muted-foreground">
-              Com essas configurações, os horários disponíveis serão:
-            </p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {(() => {
-                const [startHour, startMin] = formData.start_time.split(':').map(Number);
-                const [endHour, endMin] = formData.end_time.split(':').map(Number);
-                const startMinutes = startHour * 60 + startMin;
-                const endMinutes = endHour * 60 + endMin;
-                const stepMinutes = formData.default_duration + formData.interval_between_visits;
-                const slots: string[] = [];
-                
-                for (let minutes = startMinutes; minutes + formData.default_duration <= endMinutes; minutes += stepMinutes) {
-                  const hours = Math.floor(minutes / 60);
-                  const mins = minutes % 60;
-                  slots.push(`${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`);
-                }
-                
-                return slots.slice(0, 10).map(slot => (
-                  <span key={slot} className="px-2 py-1 text-xs bg-primary/10 text-primary rounded">
-                    {slot}
-                  </span>
-                ));
-              })()}
-              {(() => {
-                const [startHour, startMin] = formData.start_time.split(':').map(Number);
-                const [endHour, endMin] = formData.end_time.split(':').map(Number);
-                const startMinutes = startHour * 60 + startMin;
-                const endMinutes = endHour * 60 + endMin;
-                const stepMinutes = formData.default_duration + formData.interval_between_visits;
-                let count = 0;
-                
-                for (let minutes = startMinutes; minutes + formData.default_duration <= endMinutes; minutes += stepMinutes) {
-                  count++;
-                }
-                
-                return count > 10 && (
-                  <span className="px-2 py-1 text-xs text-muted-foreground">
-                    +{count - 10} mais...
-                  </span>
-                );
-              })()}
-            </div>
-          </div>
         </div>
 
         <DialogFooter className="gap-2">

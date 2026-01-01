@@ -1012,7 +1012,7 @@ export function VisitDialog({
                   >
                     <CalendarComponent
                       size="xs"  // base pequeno
-                      showYearNavigation={false}
+                      showYearNavigation={true}
                       mode="single"
                       selected={formData.weddingDate ? new Date(formData.weddingDate + 'T12:00:00') : undefined}
                       onSelect={(date) => {
