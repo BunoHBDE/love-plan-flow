@@ -209,7 +209,7 @@ export function VisitDetailsDialog({
                     {visit.visit_time.slice(0, 5)}
                     {visit.visit_end_time && (
                       <span className="text-muted-foreground font-normal">
-                        {" "}— {visit.visit_end_time.slice(0, 5)}
+                        {" "}—{" "} {visit.visit_end_time.slice(0, 5)}
                       </span>
                     )}
                   </p>
