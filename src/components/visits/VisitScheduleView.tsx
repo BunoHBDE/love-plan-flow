@@ -76,8 +76,8 @@ export function VisitScheduleView({
   return (
     <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden h-full flex flex-col">
       <div className="grid lg:grid-cols-[380px_1fr] flex-1 overflow-hidden">
-        {/* Calendar */}
-        <div className="border-r border-border p-6 overflow-y-auto">
+        {/* Calendar - Centralizado horizontalmente */}
+        <div className="border-r border-border p-6 overflow-y-auto flex flex-col items-center">
           <h3 className="font-semibold text-lg mb-4">Selecione uma Data</h3>
           <CalendarComponent
             mode="single"
@@ -91,21 +91,11 @@ export function VisitScheduleView({
               variant="outline"
               size="sm"
               onClick={() => onDateChange(undefined)}
-              className="w-full mt-4"
+              className="mt-4"
             >
               Hoje
             </Button>
           )}
-
-          <div className="mt-6 p-3 bg-muted/30 rounded-lg text-xs space-y-1">
-            <p className="font-semibold">Horários Configurados</p>
-            <p className="text-muted-foreground">
-              {currentSettings.start_time} - {currentSettings.end_time}
-            </p>
-            <p className="text-muted-foreground">
-              Duração: {currentSettings.default_duration} min
-            </p>
-          </div>
         </div>
 
         {/* Horários */}

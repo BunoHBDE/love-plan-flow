@@ -6,7 +6,7 @@ import {
   ArrowUpDown, 
   Filter, 
   X,
-  Calendar
+  Calendar as CalendarIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -14,8 +14,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // Importa constantes centralizadas
 import { STATUS_LABELS, STATUS_OPTIONS } from "@/constants/visits";
@@ -88,7 +95,7 @@ export function VisitFilters({
   const hasActiveFilters = statusFilter.length > 0 || dateFilter !== undefined;
 
   return (
-    <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up space-y-4">
+    <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up space-y-4 overflow-visible">
       {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -144,20 +151,55 @@ export function VisitFilters({
           })}
         </div>
 
-        {/* Filtro de Data (condicional) */}
+        {/* Filtro de Data com Calendar Component (condicional) */}
         {showDateFilter && (
-          <div className="relative min-w-[180px]">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              type="date"
-              value={dateFilter ? format(dateFilter, "yyyy-MM-dd") : ""}
-              onChange={(e) => {
-                const value = e.target.value;
-                onDateFilterChange(value ? new Date(value + "T00:00:00") : undefined);
-              }}
-              className="pl-10"
-            />
-          </div>
+          <Popover modal={true}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "min-w-[180px] justify-start text-left font-normal",
+                  !dateFilter && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateFilter ? (
+                  format(dateFilter, "dd/MM/yyyy", { locale: ptBR })
+                ) : (
+                  "Selecionar data"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              className="w-auto p-0 z-50" 
+              align="start" 
+              side="bottom" 
+              sideOffset={8}
+              avoidCollisions={false}
+            >
+              <Calendar
+                mode="single"
+                selected={dateFilter}
+                onSelect={onDateFilterChange}
+                locale={ptBR}
+                initialFocus
+              />
+              {dateFilter && (
+                <div className="p-2 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => onDateFilterChange(undefined)}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Limpar data
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Dropdown de Ordenação */}

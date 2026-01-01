@@ -51,9 +51,9 @@ export default function Visitas() {
   // Modo de visualização (tabela ou calendário)
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   
-  // Filtros
+  // Filtros - ATUALIZADO: pré-selecionar "agendada" e "confirmada"
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>(["agendada", "confirmada"]);
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [sortBy, setSortBy] = useState<SortOption>("date");
   
@@ -359,17 +359,20 @@ export default function Visitas() {
         </div>
 
         {/* ==================== FILTROS ==================== */}
-        <VisitFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          dateFilter={dateFilter}
-          onDateFilterChange={setDateFilter}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          showDateFilter={viewMode === "table"}
-        />
+        {/* ATUALIZADO: Mostrar filtros apenas no modo tabela */}
+        {viewMode === "table" && (
+          <VisitFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            showDateFilter={true}
+          />
+        )}
 
         {/* ==================== CONTEÚDO PRINCIPAL ==================== */}
         {loading ? (
