@@ -564,7 +564,10 @@ export function VisitDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[700px] w-[95vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent 
+        className="sm:max-w-[700px] w-[95vw] max-h-[90vh] overflow-y-auto p-4 sm:p-6"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader className="space-y-1">
           <DialogTitle className="font-display text-xl sm:text-2xl">
             {isEditMode ? "Editar Visita" : "Agendar Nova Visita"}
