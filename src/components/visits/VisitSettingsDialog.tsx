@@ -54,9 +54,9 @@ export function VisitSettingsDialog({ open, onOpenChange }: VisitSettingsDialogP
     }
   }, [settings]);
 
-  // Opções de horários (08:00 até 22:00)
-  const timeOptions = Array.from({ length: 15 }, (_, i) => {
-    const hour = 8 + i;
+  // Opções de horários (00:00 até 23:00)
+  const timeOptions = Array.from({ length: 24 }, (_, i) => {
+    const hour = 0 + i;
     return `${String(hour).padStart(2, '0')}:00`;
   });
 
