@@ -1,126 +1,134 @@
-import { QueryClient } from '@tanstack/react-query';
+// src/lib/queryClient.ts
+// ==========================================
+// CONFIGURAÇÃO DO REACT QUERY
+// ==========================================
+//
+// Este arquivo centraliza a configuração do React Query,
+// incluindo o QueryClient e utilitários para gerenciamento de cache.
+//
 
-/**
- * Configuração do React Query
- * 
- * Este cliente gerencia o cache de todas as queries do app.
- * Com ele, evitamos buscas duplicadas ao banco de dados.
- * 
- * GANHO DE PERFORMANCE:
- * - Reduz 80% das chamadas ao Supabase
- * - Dados instantâneos ao navegar entre páginas
- * - Sincronização automática entre componentes
- */
+import { QueryClient } from "@tanstack/react-query";
+
+// ==========================================
+// QUERY CLIENT
+// ==========================================
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Cache fica "fresco" por 5 minutos
-      // Durante esse tempo, usa dados em cache (sem buscar do banco)
+      // Tempo que os dados são considerados "frescos" (não refetch automático)
       staleTime: 1000 * 60 * 5, // 5 minutos
       
-      // Dados permanecem em memória por 30 minutos
-      // Mesmo se não forem usados
-      gcTime: 1000 * 60 * 30, // 30 minutos (era cacheTime no v4)
+      // Tempo que dados ficam no cache após não serem mais usados
+      gcTime: 1000 * 60 * 30, // 30 minutos (antigo cacheTime)
       
-      // NÃO re-busca automaticamente ao focar na janela
-      // (evita buscas desnecessárias)
+      // Não refetch ao focar a janela (pode ser irritante)
       refetchOnWindowFocus: false,
       
-      // NÃO re-busca ao reconectar internet
-      refetchOnReconnect: false,
-      
-      // Tenta 1 vez se der erro
-      // (evita múltiplas tentativas que travam a UI)
+      // Retry em caso de erro
       retry: 1,
-      
-      // Delay entre tentativas: 1 segundo
-      retryDelay: 1000,
     },
     mutations: {
-      // Tentativas em caso de erro nas mutations
-      retry: 1,
-      retryDelay: 1000,
+      // Retry em mutations é geralmente indesejado
+      retry: 0,
     },
   },
 });
 
+// ==========================================
+// QUERY KEYS
+// ==========================================
 /**
- * CHAVES DE CACHE
+ * Chaves padronizadas para queries.
+ * Usar chaves consistentes permite invalidação precisa do cache.
  * 
- * Usamos strings consistentes para identificar cada tipo de dado.
- * Isso permite invalidar cache específico quando necessário.
+ * Convenção:
+ * - Arrays para permitir invalidação em cascata
+ * - Funções para chaves dinâmicas (com IDs)
  */
 export const QUERY_KEYS = {
-  // Clientes
+  // ==========================================
+  // CLIENTES
+  // ==========================================
   CLIENTS: ['clients'] as const,
   CLIENT_BY_ID: (id: string) => ['clients', id] as const,
   
-  // Orçamentos
+  // ==========================================
+  // ORÇAMENTOS
+  // ==========================================
   QUOTES: ['quotes'] as const,
   QUOTE_BY_ID: (id: string) => ['quotes', id] as const,
   QUOTE_BY_NUMBER: (number: string) => ['quotes', 'number', number] as const,
   QUOTES_BY_CLIENT: (clientId: string) => ['quotes', 'client', clientId] as const,
   
-  // Visitas
+  // ==========================================
+  // VISITAS
+  // ==========================================
   VISITS: ['visits'] as const,
   VISIT_BY_ID: (id: string) => ['visits', id] as const,
   VISITS_BY_CLIENT: (clientId: string) => ['visits', 'client', clientId] as const,
   UPCOMING_VISITS: ['visits', 'upcoming'] as const,
   
-  // Datas Bloqueadas
+  // ==========================================
+  // CONFIGURAÇÕES DE VISITAS (NOVO!)
+  // ==========================================
+  VISIT_SETTINGS: ['visit_settings'] as const,
+  
+  // ==========================================
+  // DATAS BLOQUEADAS
+  // ==========================================
   BLOCKED_DATES: ['blocked_dates'] as const,
 } as const;
 
+// ==========================================
+// UTILITÁRIOS DE INVALIDAÇÃO
+// ==========================================
 /**
- * UTILITÁRIOS DE INVALIDAÇÃO
+ * Funções helper para invalidar cache de forma consistente.
  * 
- * Funções helper para invalidar cache de forma consistente
+ * Uso:
+ * invalidateQueries.clients() - invalida todos os clientes
+ * invalidateQueries.visitSettings() - invalida configurações de visitas
  */
 export const invalidateQueries = {
-  // Invalida todos os clientes
+  // Clientes
   clients: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CLIENTS }),
-  
-  // Invalida cliente específico
   client: (id: string) => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CLIENT_BY_ID(id) }),
   
-  // Invalida todos os orçamentos
+  // Orçamentos
   quotes: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUOTES }),
-  
-  // Invalida orçamento específico
   quote: (id: string) => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.QUOTE_BY_ID(id) }),
-  
-  // Invalida orçamentos de um cliente
   quotesByClient: (clientId: string) => queryClient.invalidateQueries({ 
     queryKey: QUERY_KEYS.QUOTES_BY_CLIENT(clientId) 
   }),
   
-  // Invalida todas as visitas
+  // Visitas
   visits: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.VISITS }),
-  
-  // Invalida visita específica
   visit: (id: string) => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.VISIT_BY_ID(id) }),
-  
-  // Invalida visitas de um cliente
   visitsByClient: (clientId: string) => queryClient.invalidateQueries({ 
     queryKey: QUERY_KEYS.VISITS_BY_CLIENT(clientId) 
   }),
   
-  // Invalida datas bloqueadas
+  // Configurações de Visitas (NOVO!)
+  visitSettings: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.VISIT_SETTINGS }),
+  
+  // Datas Bloqueadas
   blockedDates: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BLOCKED_DATES }),
   
   // Invalida TUDO (use com cuidado!)
   all: () => queryClient.invalidateQueries(),
 };
 
+// ==========================================
+// UTILITÁRIOS DE PREFETCH
+// ==========================================
 /**
- * PREFETCH UTILITÁRIOS
+ * Pré-carrega dados antes de serem necessários.
+ * Útil para melhorar UX em navegações previsíveis.
  * 
- * Pré-carrega dados antes de serem necessários
  * Exemplo: Ao passar mouse em um link, já carrega os dados
  */
 export const prefetchQueries = {
-  // Pré-carrega cliente
   client: async (id: string, fetcher: () => Promise<any>) => {
     await queryClient.prefetchQuery({
       queryKey: QUERY_KEYS.CLIENT_BY_ID(id),
@@ -128,11 +136,28 @@ export const prefetchQueries = {
     });
   },
   
-  // Pré-carrega orçamento
   quote: async (id: string, fetcher: () => Promise<any>) => {
     await queryClient.prefetchQuery({
       queryKey: QUERY_KEYS.QUOTE_BY_ID(id),
       queryFn: fetcher,
     });
   },
+};
+
+// ==========================================
+// UTILITÁRIOS DE CACHE DIRETO
+// ==========================================
+/**
+ * Funções para manipular o cache diretamente.
+ * Útil para atualizações otimistas.
+ */
+export const cacheUtils = {
+  // Obtém dados do cache sem fazer fetch
+  getVisitSettings: () => queryClient.getQueryData(QUERY_KEYS.VISIT_SETTINGS),
+  
+  // Define dados diretamente no cache
+  setVisitSettings: (data: any) => queryClient.setQueryData(QUERY_KEYS.VISIT_SETTINGS, data),
+  
+  // Remove dados do cache
+  removeVisitSettings: () => queryClient.removeQueries({ queryKey: QUERY_KEYS.VISIT_SETTINGS }),
 };

@@ -26,7 +26,7 @@ function Calendar({
       className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
+        month: "space-y-4 h-[340px]",
         caption: cn(
           "flex justify-center pt-1 relative items-center",
           !showCaption && "hidden"

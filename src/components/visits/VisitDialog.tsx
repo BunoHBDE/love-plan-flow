@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,7 +90,7 @@ export function VisitDialog({
   onEditSubmit,
 }: VisitDialogProps) {
   const { formData, updateField, updatePhone, resetForm, setForm, validateForm } = useVisitForm();
-  const { searchClients } = useClients();
+  const { searchClients, createClient } = useClients();
   const { 
     settings, 
     loading: settingsLoading,
@@ -109,6 +109,24 @@ export function VisitDialog({
   const [isTimeOutOfRange, setIsTimeOutOfRange] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ==========================================
+  // REFS PARA FUNÇÕES INSTÁVEIS (CORREÇÃO DO BUG)
+  // ==========================================
+  const calculateEndTimeRef = useRef(calculateEndTime);
+  const isTimeInRangeRef = useRef(isTimeInRange);
+  const getVisitorNameRef = useRef(getVisitorName);
+  const setFormRef = useRef(setForm);
+  const updateFieldRef = useRef(updateField);
+
+  // Atualiza refs quando funções mudam
+  useEffect(() => {
+    calculateEndTimeRef.current = calculateEndTime;
+    isTimeInRangeRef.current = isTimeInRange;
+    getVisitorNameRef.current = getVisitorName;
+    setFormRef.current = setForm;
+    updateFieldRef.current = updateField;
+  });
+
   // Indica se está em modo de edição
   const isEditMode = mode === "edit";
 
@@ -125,17 +143,23 @@ export function VisitDialog({
   
   // Mapa de horários com contagem de visitas na data selecionada
   const slotVisitCounts = useMemo(() => {
-    if (!formData.date || isEditMode) return new Map<string, number>();
+    if (!formData.date) return new Map<string, number>();
     
     const counts = new Map<string, number>();
     visits
-      .filter(v => v.visit_date === formData.date)
+      .filter(v => {
+        // Filtra visitas da mesma data
+        if (v.visit_date !== formData.date) return false;
+        // No modo edição, exclui a própria visita sendo editada da contagem
+        if (isEditMode && visit && v.id === visit.id) return false;
+        return true;
+      })
       .forEach(v => {
         const time = v.visit_time.substring(0, 5);
         counts.set(time, (counts.get(time) || 0) + 1);
       });
     return counts;
-  }, [visits, formData.date, isEditMode]);
+  }, [visits, formData.date, isEditMode, visit]);
 
   // Função para obter contagem de visitas em um horário
   const getVisitCount = (time: string): number => {
@@ -185,7 +209,7 @@ export function VisitDialog({
   }, [formData.time, slotVisitCounts]);
 
   // ==========================================
-  // EFEITOS
+  // EFEITOS (CORRIGIDOS PARA EVITAR LOOPS)
   // ==========================================
 
   /**
@@ -206,10 +230,11 @@ export function VisitDialog({
 
   /**
    * Carrega dados da visita no modo edição
+   * CORRIGIDO: Usa visit?.id e refs para evitar loops infinitos
    */
   useEffect(() => {
-    if (isEditMode && visit && open && getVisitorName) {
-      const visitorName = getVisitorName(visit);
+    if (isEditMode && visit && open) {
+      const visitorName = getVisitorNameRef.current?.(visit) || "";
       
       // Extrai notas (remove prefixo VISITANTE: se existir)
       let cleanNotes = visit.notes || "";
@@ -217,7 +242,7 @@ export function VisitDialog({
         cleanNotes = cleanNotes.split('\n\n').slice(1).join('\n\n');
       }
       
-      setForm({
+      setFormRef.current({
         clientName: visitorName,
         date: visit.visit_date,
         time: visit.visit_time,
@@ -229,43 +254,54 @@ export function VisitDialog({
         weddingDate: visit.wedding_date || "",
         weddingMonthEstimate: visit.wedding_month || "",
         weddingYearEstimate: visit.wedding_year || "",
+        // Limpa email e telefone (serão preenchidos se usuário quiser cadastrar)
+        email: "",
+        phone: "",
       });
       
-      // Define cliente selecionado se existir
+      // Define cliente selecionado se existir, senão reseta
       if (visit.client_id) {
         setSelectedClientId(visit.client_id);
         setClientSearch(visitorName);
+      } else {
+        // Visita sem cliente vinculado - reseta o estado
+        setSelectedClientId(null);
+        setClientSearch(visitorName);
       }
     }
-  }, [visit, open, isEditMode, getVisitorName, setForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visit?.id, open, isEditMode]);
 
   /**
    * Preenche data e hora iniciais no modo criação
+   * CORRIGIDO: Usa refs para evitar loops infinitos
    */
   useEffect(() => {
     if (!isEditMode && open) {
       if (initialDate) {
-        updateField("date", initialDate);
+        updateFieldRef.current("date", initialDate);
       }
       if (initialTime) {
-        updateField("time", initialTime);
+        updateFieldRef.current("time", initialTime);
       }
     }
-  }, [open, initialDate, initialTime, isEditMode, updateField]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialDate, initialTime, isEditMode]);
 
   /**
    * Calcula horário de término quando o horário muda
+   * CORRIGIDO: Usa refs para funções instáveis
    */
   useEffect(() => {
     if (formData.time) {
-      const endTime = calculateEndTime(formData.time);
+      const endTime = calculateEndTimeRef.current(formData.time);
       setCalculatedEndTime(endTime);
-      setIsTimeOutOfRange(!isTimeInRange(formData.time));
+      setIsTimeOutOfRange(!isTimeInRangeRef.current(formData.time));
     } else {
       setCalculatedEndTime("");
       setIsTimeOutOfRange(false);
     }
-  }, [formData.time, calculateEndTime, isTimeInRange]);
+  }, [formData.time]);
 
   // ==========================================
   // HANDLERS - BUSCA DE CLIENTE
@@ -335,15 +371,45 @@ export function VisitDialog({
         // MODO EDIÇÃO
         // ==========================================
         
-        // Prepara as notas (adiciona prefixo se for visitante sem cliente vinculado)
+        let clientId: string | null = null;
+        
+        // Cenário 1: Selecionou um cliente existente da busca
+        if (selectedClientId) {
+          clientId = selectedClientId;
+        }
+        // Cenário 2: Não selecionou cliente mas preencheu email ou telefone -> criar novo cliente
+        else if (!selectedClientId && formData.clientName && (formData.email || formData.phone)) {
+          try {
+            const newClient = await createClient({
+              nome: formData.clientName,
+              email: formData.email || null,
+              telefone: formData.phone || null,
+            });
+            if (newClient) {
+              clientId = newClient.id;
+            }
+          } catch (error) {
+            toast({
+              title: "Erro ao criar cliente",
+              description: "Não foi possível cadastrar o cliente. A visita será salva sem vínculo.",
+              variant: "destructive",
+            });
+          }
+        }
+        // Cenário 3: Não selecionou cliente e não preencheu dados -> visitante sem cadastro
+        // clientId permanece null
+        
+        // Prepara as notas
         let updatedNotes = formData.notes;
-        if (!visit.client_id && formData.clientName) {
+        // Só adiciona prefixo VISITANTE se não vai ter client_id
+        if (!clientId && formData.clientName) {
           const existingNotes = formData.notes ? `\n\n${formData.notes}` : '';
           updatedNotes = `VISITANTE: ${formData.clientName}${existingNotes}`;
         }
 
         // Monta objeto de atualizações
         const updates: Partial<VisitInsert> = {
+          client_id: clientId,
           visit_date: formData.date,
           visit_time: formData.time,
           notes: updatedNotes || null,
@@ -463,72 +529,65 @@ export function VisitDialog({
 
         <div className="grid gap-4 sm:gap-6 py-4">
           {/* ==================== SEÇÃO: CLIENTE ==================== */}
-          {isEditMode ? (
-            // Modo edição: campo simples de nome
-            <div className="grid gap-2">
-              <Label htmlFor="clientName" className="text-sm">
-                Nome do Cliente/Visitante <span className="text-destructive">*</span>
-              </Label>
+          <div className="grid gap-2">
+            <Label className="text-sm">
+              {isEditMode ? "Nome do Cliente/Visitante" : "Cliente"} <span className="text-destructive">*</span>
+            </Label>
+            
+            {/* Campo de busca/nome - sempre editável */}
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                id="clientName"
-                value={formData.clientName}
-                onChange={(e) => updateField("clientName", e.target.value)}
-                placeholder="Nome do cliente ou visitante"
-                className="h-10"
+                placeholder="Digite o nome ou busque..."
+                value={clientSearch}
+                onChange={(e) => handleClientSearch(e.target.value)}
+                className="pl-10 h-10"
               />
-              <p className="text-xs text-muted-foreground">
-                {visit?.client_id 
-                  ? "Este visitante está vinculado a um cliente cadastrado."
-                  : "Visitante sem cadastro no sistema."}
-              </p>
             </div>
-          ) : (
-            // Modo criação: busca de cliente
-            <div className="grid gap-2">
-              <Label className="text-sm">Cliente <span className="text-destructive">*</span></Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Digite o nome ou busque..."
-                  value={clientSearch}
-                  onChange={(e) => handleClientSearch(e.target.value)}
-                  className="pl-10 h-10"
-                />
+            
+            {/* Resultados da busca */}
+            {clientSearchResults.length > 0 && (
+              <div className="border rounded-lg divide-y max-h-32 overflow-y-auto bg-card shadow-lg">
+                {clientSearchResults.map((client: any) => (
+                  <button
+                    key={client.id}
+                    onClick={() => selectClient(client)}
+                    className="w-full text-left px-3 py-2 hover:bg-secondary text-sm flex items-center gap-2"
+                  >
+                    <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{client.nome}</div>
+                      {client.telefone && (
+                        <div className="text-xs text-muted-foreground truncate">{client.telefone}</div>
+                      )}
+                    </div>
+                  </button>
+                ))}
               </div>
-              {clientSearchResults.length > 0 && (
-                <div className="border rounded-lg divide-y max-h-32 overflow-y-auto bg-card shadow-lg">
-                  {clientSearchResults.map((client: any) => (
-                    <button
-                      key={client.id}
-                      onClick={() => selectClient(client)}
-                      className="w-full text-left px-3 py-2 hover:bg-secondary text-sm flex items-center gap-2"
-                    >
-                      <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{client.nome}</div>
-                        {client.telefone && (
-                          <div className="text-xs text-muted-foreground truncate">{client.telefone}</div>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {selectedClientId ? (
-                <p className="text-sm text-green-700 flex items-center gap-1">
-                  <span className="text-lg">✓</span> Cliente cadastrado
-                </p>
-              ) : formData.clientName && (formData.email || formData.phone) ? (
-                <p className="text-sm text-blue-700 flex items-center gap-1">
-                  <Info className="h-4 w-4 flex-shrink-0" />
-                  <span>Novo cliente será criado</span>
-                </p>
-              ) : null}
-            </div>
-          )}
+            )}
+            
+            {/* Indicadores de status */}
+            {selectedClientId ? (
+              <p className="text-sm text-green-700 flex items-center gap-1">
+                <span className="text-lg">✓</span> Cliente cadastrado
+              </p>
+            ) : formData.clientName && (formData.email || formData.phone) ? (
+              <p className="text-sm text-blue-700 flex items-center gap-1">
+                <Info className="h-4 w-4 flex-shrink-0" />
+                <span>{isEditMode ? "Cliente será cadastrado ao salvar" : "Novo cliente será criado"}</span>
+              </p>
+            ) : formData.clientName ? (
+              <p className="text-xs text-muted-foreground">
+                {isEditMode 
+                  ? "Adicione e-mail ou telefone abaixo para cadastrar este visitante."
+                  : "Adicione e-mail ou telefone para cadastrar como cliente."}
+              </p>
+            ) : null}
+          </div>
 
-          {/* ==================== SEÇÃO: EMAIL E TELEFONE (apenas criação) ==================== */}
-          {!isEditMode && !selectedClientId && (
+          {/* ==================== SEÇÃO: EMAIL E TELEFONE ==================== */}
+          {/* Mostra quando não tem cliente selecionado */}
+          {!selectedClientId && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="grid gap-2">
                 <Label className="text-sm">E-mail</Label>
@@ -561,50 +620,47 @@ export function VisitDialog({
                 <Calendar className="h-4 w-4" />
                 Data da Visita <span className="text-destructive">*</span>
               </Label>
-              {isEditMode ? (
-                // Modo edição: input simples
-                <Input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => updateField("date", e.target.value)}
-                  className="h-10"
-                />
-              ) : (
-                // Modo criação: calendário popup
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-10",
-                        !formData.date && "text-muted-foreground"
+              <Popover modal={true}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal h-10",
+                      !formData.date && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">
+                      {formData.date ? (
+                        format(new Date(formData.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })
+                      ) : (
+                        "Selecione a data"
                       )}
-                    >
-                      <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
-                      <span className="truncate">
-                        {formData.date ? (
-                          format(new Date(formData.date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })
-                        ) : (
-                          "Selecione a data"
-                        )}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={formData.date ? new Date(formData.date + 'T12:00:00') : undefined}
-                      onSelect={(date) => {
-                        if (date) {
-                          updateField("date", format(date, "yyyy-MM-dd"));
-                        }
-                      }}
-                      locale={ptBR}
-                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                    />
-                  </PopoverContent>
-                </Popover>
-              )}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  className="w-auto p-0 z-[9999]" 
+                  align="start" 
+                  side="bottom" 
+                  sideOffset={4} 
+                  collisionPadding={{ top: 60, bottom: 16, left: 16, right: 16 }}
+                  avoidCollisions={true}
+                  sticky="always"
+                >
+                  <CalendarComponent
+                    mode="single"
+                    selected={formData.date ? new Date(formData.date + 'T12:00:00') : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        updateField("date", format(date, "yyyy-MM-dd"));
+                      }
+                    }}
+                    locale={ptBR}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Horário */}
@@ -613,132 +669,121 @@ export function VisitDialog({
                 <Clock className="h-4 w-4" />
                 Horário <span className="text-destructive">*</span>
               </Label>
-              {isEditMode ? (
-                // Modo edição: input simples
-                <Input
-                  type="time"
-                  value={formData.time}
-                  onChange={(e) => updateField("time", e.target.value)}
-                  className="h-10"
-                />
-              ) : (
-                // Modo criação: Select com horários
-                <Select value={formData.time} onValueChange={handleTimeSelect}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Selecione o horário">
-                      {formData.time && (
-                        <span className="flex items-center gap-2">
-                          <span>{formData.time}</span>
-                          {calculatedEndTime && (
-                            <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                              até {calculatedEndTime}
-                            </Badge>
-                          )}
-                          {selectedTimeVisitCount > 0 && (
-                            <Badge variant="outline" className="text-[10px] sm:text-xs text-amber-600 border-amber-300">
-                              {selectedTimeVisitCount} {selectedTimeVisitCount === 1 ? 'visita' : 'visitas'}
-                            </Badge>
-                          )}
-                        </span>
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Header informativo */}
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground border-b mb-1">
-                      Expediente: {currentSettings.start_time} - {currentSettings.end_time}
-                    </div>
-
-                    {/* 1. Horários disponíveis */}
-                    {availableSlotsFiltered.length > 0 && (
-                      <>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-green-600 flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                          Disponíveis ({availableSlotsFiltered.length})
-                        </div>
-                        {availableSlotsFiltered.map((time) => (
-                          <SelectItem key={`available-${time}`} value={time}>
-                            <span className="text-green-700">{time}</span>
-                          </SelectItem>
-                        ))}
-                      </>
+              <Select value={formData.time} onValueChange={handleTimeSelect}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Selecione o horário">
+                    {formData.time && (
+                      <span className="flex items-center gap-2">
+                        <span>{formData.time}</span>
+                        {calculatedEndTime && (
+                          <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                            até {calculatedEndTime}
+                          </Badge>
+                        )}
+                        {!isEditMode && selectedTimeVisitCount > 0 && (
+                          <Badge variant="outline" className="text-[10px] sm:text-xs text-amber-600 border-amber-300">
+                            {selectedTimeVisitCount} {selectedTimeVisitCount === 1 ? 'visita' : 'visitas'}
+                          </Badge>
+                        )}
+                      </span>
                     )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Header informativo */}
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground border-b mb-1">
+                    Expediente: {currentSettings.start_time} - {currentSettings.end_time}
+                  </div>
 
-                    {/* 2. Horários com visitas agendadas */}
-                    {occupiedSlotsInRange.length > 0 && (
-                      <>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-amber-600 flex items-center gap-1 border-t mt-1">
-                          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                          Com visitas ({occupiedSlotsInRange.length})
-                        </div>
-                        {occupiedSlotsInRange.map((time) => {
-                          const count = getVisitCount(time);
-                          return (
-                            <SelectItem key={`occupied-${time}`} value={time}>
-                              <span className="flex items-center gap-2 text-amber-700">
-                                <span>{time}</span>
+                  {/* 1. Horários disponíveis */}
+                  {availableSlotsFiltered.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-green-600 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                        Disponíveis ({availableSlotsFiltered.length})
+                      </div>
+                      {availableSlotsFiltered.map((time) => (
+                        <SelectItem key={`available-${time}`} value={time}>
+                          <span className="text-green-700">{time}</span>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+
+                  {/* 2. Horários com visitas agendadas */}
+                  {occupiedSlotsInRange.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-amber-600 flex items-center gap-1 border-t mt-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        Com visitas ({occupiedSlotsInRange.length})
+                      </div>
+                      {occupiedSlotsInRange.map((time) => {
+                        const count = getVisitCount(time);
+                        return (
+                          <SelectItem key={`occupied-${time}`} value={time}>
+                            <span className="flex items-center gap-2 text-amber-700">
+                              <span>{time}</span>
+                              <span className="text-[10px] text-amber-500">
+                                ({count} {count === 1 ? 'visita' : 'visitas'})
+                              </span>
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {/* 3. Outros do expediente */}
+                  {otherSlotsInRange.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-blue-600 flex items-center gap-1 border-t mt-1">
+                        <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                        Outros do Expediente ({otherSlotsInRange.length})
+                      </div>
+                      {otherSlotsInRange.map((time) => {
+                        const count = getVisitCount(time);
+                        return (
+                          <SelectItem key={`other-${time}`} value={time}>
+                            <span className="flex items-center gap-2 text-blue-700">
+                              <span>{time}</span>
+                              {count > 0 && (
                                 <span className="text-[10px] text-amber-500">
                                   ({count} {count === 1 ? 'visita' : 'visitas'})
                                 </span>
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </>
-                    )}
+                              )}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </>
+                  )}
 
-                    {/* 3. Outros do expediente */}
-                    {otherSlotsInRange.length > 0 && (
-                      <>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-blue-600 flex items-center gap-1 border-t mt-1">
-                          <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                          Outros do Expediente ({otherSlotsInRange.length})
-                        </div>
-                        {otherSlotsInRange.map((time) => {
-                          const count = getVisitCount(time);
-                          return (
-                            <SelectItem key={`other-${time}`} value={time}>
-                              <span className="flex items-center gap-2 text-blue-700">
-                                <span>{time}</span>
-                                {count > 0 && (
-                                  <span className="text-[10px] text-amber-500">
-                                    ({count} {count === 1 ? 'visita' : 'visitas'})
-                                  </span>
-                                )}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </>
-                    )}
-
-                    {/* 4. Fora do expediente */}
-                    {outOfRangeSlots.length > 0 && (
-                      <>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-1 border-t mt-1">
-                          <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                          Fora do Expediente
-                        </div>
-                        {outOfRangeSlots.map((time) => {
-                          const count = getVisitCount(time);
-                          return (
-                            <SelectItem key={`out-${time}`} value={time}>
-                              <span className="flex items-center gap-2 text-muted-foreground">
-                                <span>{time}</span>
-                                {count > 0 && (
-                                  <span className="text-[10px] text-amber-500">
-                                    ({count} {count === 1 ? 'visita' : 'visitas'})
-                                  </span>
-                                )}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-              )}
+                  {/* 4. Fora do expediente */}
+                  {outOfRangeSlots.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-1 border-t mt-1">
+                        <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                        Fora do Expediente
+                      </div>
+                      {outOfRangeSlots.map((time) => {
+                        const count = getVisitCount(time);
+                        return (
+                          <SelectItem key={`out-${time}`} value={time}>
+                            <span className="flex items-center gap-2 text-muted-foreground">
+                              <span>{time}</span>
+                              {count > 0 && (
+                                <span className="text-[10px] text-amber-500">
+                                  ({count} {count === 1 ? 'visita' : 'visitas'})
+                                </span>
+                              )}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -819,47 +864,46 @@ export function VisitDialog({
             {/* Data definida */}
             {formData.weddingDateStatus === "defined" && (
               <div className="grid gap-2">
-                {isEditMode ? (
-                  <Input
-                    type="date"
-                    value={formData.weddingDate}
-                    onChange={(e) => updateField("weddingDate", e.target.value)}
-                    className="h-10"
-                  />
-                ) : (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal h-10",
-                          !formData.weddingDate && "text-muted-foreground"
+                <Popover modal={true}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-10",
+                        !formData.weddingDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Heart className="mr-2 h-4 w-4 text-rose-500 flex-shrink-0" />
+                      <span className="truncate">
+                        {formData.weddingDate ? (
+                          format(new Date(formData.weddingDate + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })
+                        ) : (
+                          "Selecione a data do casamento"
                         )}
-                      >
-                        <Heart className="mr-2 h-4 w-4 text-rose-500 flex-shrink-0" />
-                        <span className="truncate">
-                          {formData.weddingDate ? (
-                            format(new Date(formData.weddingDate + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })
-                          ) : (
-                            "Selecione a data do casamento"
-                          )}
-                        </span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={formData.weddingDate ? new Date(formData.weddingDate + 'T12:00:00') : undefined}
-                        onSelect={(date) => {
-                          if (date) {
-                            updateField("weddingDate", format(date, "yyyy-MM-dd"));
-                          }
-                        }}
-                        locale={ptBR}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                )}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent 
+                    className="w-auto p-0 z-[9999]" 
+                    align="start" 
+                    side="bottom" 
+                    sideOffset={4} 
+                    collisionPadding={{ top: 60, bottom: 16, left: 16, right: 16 }}
+                    avoidCollisions={true}
+                    sticky="always"
+                  >
+                    <CalendarComponent
+                      mode="single"
+                      selected={formData.weddingDate ? new Date(formData.weddingDate + 'T12:00:00') : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          updateField("weddingDate", format(date, "yyyy-MM-dd"));
+                        }
+                      }}
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
 
