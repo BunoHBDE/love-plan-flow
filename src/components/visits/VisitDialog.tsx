@@ -510,7 +510,7 @@ export function VisitDialog({
           wedding_date: formData.weddingDate || null,
           wedding_month: formData.weddingMonthEstimate || null,
           wedding_year: formData.weddingYearEstimate || null,
-          status: "agendado",
+          status: "agendada",
         };
 
         await onCreateSubmit(visitData, newClientData);
