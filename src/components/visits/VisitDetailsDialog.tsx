@@ -190,9 +190,9 @@ export function VisitDetailsDialog({
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
                   <Calendar className="h-5 w-5 text-primary" />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground">Data</p>
-                  <p className="text-base font-semibold text-foreground mt-0.5">
+                  <p className="text-base font-semibold text-foreground mt-0.5 whitespace-nowrap">
                     {formatDateLocal(visit.visit_date)}
                   </p>
                 </div>
@@ -203,9 +203,9 @@ export function VisitDetailsDialog({
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10 flex-shrink-0">
                   <Clock className="h-5 w-5 text-orange-600" />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground">Horário</p>
-                  <p className="text-base font-semibold text-foreground mt-0.5">
+                  <p className="text-base font-semibold text-foreground mt-0.5 whitespace-nowrap">
                     {visit.visit_time.slice(0, 5)}
                     {visit.visit_end_time && (
                       <span className="text-muted-foreground font-normal">
