@@ -173,15 +173,15 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-6 space-y-1">
+      <nav className={cn("flex-1 py-6 space-y-1", collapsed ? "px-2" : "px-3")}>
         {navItems.map((item) => (
           item.disabled ? (
             <div
               key={item.path}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium cursor-not-allowed opacity-40",
+                "flex items-center gap-3 py-3 rounded-lg text-sm font-medium cursor-not-allowed opacity-40",
                 "text-muted-foreground",
-                collapsed && "justify-center px-3"
+                collapsed ? "justify-center px-0" : "px-4"
               )}
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -195,11 +195,11 @@ export function Sidebar() {
               to={item.path}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-3 py-3 rounded-lg text-sm font-medium transition-all duration-200",
                   isActive
                     ? "bg-sidebar-accent text-sidebar-primary shadow-soft"
                     : "text-sidebar-foreground hover:bg-sidebar-accent/50",
-                  collapsed && "justify-center px-3"
+                  collapsed ? "justify-center px-0" : "px-4"
                 )
               }
             >
