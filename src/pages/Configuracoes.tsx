@@ -845,7 +845,7 @@ export default function Configuracoes() {
         </div>
 
         {/* Toggle Principal */}
-        <div className="flex flex-wrap gap-2 p-1.5 bg-muted/50 rounded-xl border shadow-sm animate-slide-up">
+        <div className="flex flex-wrap justify-center gap-2 p-1.5 bg-muted/50 rounded-xl border shadow-sm animate-slide-up">
           {mainSections.map((section) => {
             const Icon = section.icon;
             return (
