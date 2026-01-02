@@ -239,7 +239,7 @@ export function Sidebar() {
       </nav>
 
       {/* User Profile & Logout */}
-      <div className={cn("border-t border-sidebar-border space-y-2", collapsed ? "p-2" : "p-3")}>
+      <div className={cn("border-t border-sidebar-border space-y-2", collapsed ? "px-3 py-2" : "p-3")}>
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -247,7 +247,7 @@ export function Sidebar() {
                 to="/configuracoes"
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center justify-center p-2 rounded-lg transition-all duration-200 cursor-pointer w-full",
+                    "flex items-center justify-center py-3 rounded-lg transition-all duration-200 cursor-pointer",
                     isActive
                       ? "bg-sidebar-accent shadow-soft"
                       : "hover:bg-sidebar-accent/50"
