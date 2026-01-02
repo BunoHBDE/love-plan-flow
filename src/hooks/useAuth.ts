@@ -6,6 +6,8 @@ interface Profile {
   id: string;
   email: string | null;
   full_name: string | null;
+  company_name: string | null;
+  company_logo_url: string | null;
 }
 
 interface UserRole {
