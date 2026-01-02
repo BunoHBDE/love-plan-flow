@@ -239,7 +239,7 @@ export function Sidebar() {
       </nav>
 
       {/* User Profile & Logout */}
-      <div className="p-3 border-t border-sidebar-border space-y-2">
+      <div className={cn("border-t border-sidebar-border space-y-2", collapsed ? "p-2" : "p-3")}>
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
