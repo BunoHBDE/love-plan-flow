@@ -247,14 +247,14 @@ export function Sidebar() {
                 to="/configuracoes"
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center justify-center px-2 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
+                    "flex items-center justify-center p-2 rounded-lg transition-all duration-200 cursor-pointer w-full",
                     isActive
                       ? "bg-sidebar-accent shadow-soft"
                       : "hover:bg-sidebar-accent/50"
                   )
                 }
               >
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-8 w-8 shrink-0">
                   <AvatarImage src="" alt={profile?.full_name || ""} />
                   <AvatarFallback className="bg-muted text-muted-foreground text-sm">
                     {profile?.full_name?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
