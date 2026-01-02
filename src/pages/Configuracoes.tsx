@@ -575,7 +575,13 @@ export default function Configuracoes() {
                   placeholder="••••••••"
                   value={passwordData.confirmarSenha}
                   onChange={(e) => setPasswordData(prev => ({ ...prev, confirmarSenha: e.target.value }))}
-                  className="pr-10"
+                  className={`pr-10 ${
+                    passwordData.confirmarSenha
+                      ? passwordData.confirmarSenha === passwordData.novaSenha
+                        ? "border-emerald-500 focus-visible:ring-emerald-500"
+                        : "border-destructive focus-visible:ring-destructive"
+                      : ""
+                  }`}
                 />
                 <button
                   type="button"
@@ -585,6 +591,25 @@ export default function Configuracoes() {
                   {showPasswords.confirmarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {passwordData.confirmarSenha && (
+                <p className={`text-xs flex items-center gap-1 ${
+                  passwordData.confirmarSenha === passwordData.novaSenha
+                    ? "text-emerald-500"
+                    : "text-destructive"
+                }`}>
+                  {passwordData.confirmarSenha === passwordData.novaSenha ? (
+                    <>
+                      <Check className="h-3 w-3" />
+                      As senhas conferem
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-3 w-3" />
+                      As senhas não conferem
+                    </>
+                  )}
+                </p>
+              )}
             </div>
           </div>
           <Button
