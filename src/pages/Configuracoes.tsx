@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { formatPhone, formatCNPJ } from "@/lib/masks";
 import {
   User,
   CreditCard,
@@ -230,7 +231,7 @@ export default function Configuracoes() {
               <Input
                 id="telefone"
                 value={perfilData.telefone}
-                onChange={(e) => handleInputChange("telefone", e.target.value)}
+                onChange={(e) => handleInputChange("telefone", formatPhone(e.target.value))}
                 placeholder="(00) 00000-0000"
               />
             </div>
@@ -239,7 +240,7 @@ export default function Configuracoes() {
               <Input
                 id="whatsapp"
                 value={perfilData.whatsapp}
-                onChange={(e) => handleInputChange("whatsapp", e.target.value)}
+                onChange={(e) => handleInputChange("whatsapp", formatPhone(e.target.value))}
                 placeholder="(00) 00000-0000"
               />
             </div>
@@ -328,7 +329,7 @@ export default function Configuracoes() {
               <Input
                 id="empresaCnpj"
                 value={perfilData.empresaCnpj}
-                onChange={(e) => handleInputChange("empresaCnpj", e.target.value)}
+                onChange={(e) => handleInputChange("empresaCnpj", formatCNPJ(e.target.value))}
                 placeholder="00.000.000/0000-00"
               />
             </div>
@@ -346,7 +347,7 @@ export default function Configuracoes() {
               <Input
                 id="empresaTelefone"
                 value={perfilData.empresaTelefone}
-                onChange={(e) => handleInputChange("empresaTelefone", e.target.value)}
+                onChange={(e) => handleInputChange("empresaTelefone", formatPhone(e.target.value))}
                 placeholder="(00) 0000-0000"
               />
             </div>
