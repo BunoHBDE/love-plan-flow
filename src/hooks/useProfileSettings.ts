@@ -80,18 +80,14 @@ export function useProfileSettings() {
             // Dados pessoais básicos
             nome: data.full_name || "",
             email: data.email || user?.email || "",
-            telefone: data.phone || "",
             whatsapp: data.whatsapp || "",
             avatarUrl: data.avatar_url || "",
             
             // Campos pessoais expandidos
             cpf: (data as any).cpf || "",
-            rg: (data as any).rg || "",
             birthDate: (data as any).birth_date || "",
             gender: (data as any).gender || "",
             nationality: (data as any).nationality || "Brasileiro(a)",
-            maritalStatus: (data as any).marital_status || "",
-            occupation: (data as any).occupation || "",
             
             // Endereço pessoal
             addressCep: (data as any).address_cep || "",
@@ -281,18 +277,14 @@ export function useProfileSettings() {
           // Dados pessoais básicos
           full_name: profileData.nome,
           email: profileData.email,
-          phone: profileData.telefone,
           whatsapp: profileData.whatsapp,
           avatar_url: profileData.avatarUrl,
           
           // Campos pessoais expandidos
           cpf: profileData.cpf,
-          rg: profileData.rg,
           birth_date: profileData.birthDate || null,
           gender: profileData.gender,
           nationality: profileData.nationality,
-          marital_status: profileData.maritalStatus,
-          occupation: profileData.occupation,
           
           // Endereço pessoal
           address_cep: profileData.addressCep,

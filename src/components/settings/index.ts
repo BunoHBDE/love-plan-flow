@@ -10,6 +10,7 @@ export { SettingsNavigation } from "./SettingsNavigation";
 
 // Seções principais
 export { ProfileSection } from "./ProfileSection";
+export { CompanySection } from "./CompanySection";
 export { SubscriptionSection } from "./SubscriptionSection";
 export { QuotesSettingsSection } from "./QuotesSettingsSection";
 export { PlaceholderSection } from "./PlaceholderSection";

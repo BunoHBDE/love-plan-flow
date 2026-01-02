@@ -7,6 +7,7 @@
 
 import {
   User,
+  Building2,
   CreditCard,
   FileText,
   ScrollText,
@@ -21,6 +22,7 @@ import {
 
 export type MainSection = 
   | "perfil" 
+  | "empresa"
   | "assinatura" 
   | "orcamentos" 
   | "contratos" 
@@ -54,18 +56,14 @@ export interface ProfileData {
   // Dados pessoais básicos
   nome: string;
   email: string;
-  telefone: string;
-  whatsapp: string;
+  whatsapp: string; // Renomeado de telefone para celular
   avatarUrl: string;
   
   // Campos pessoais expandidos
   cpf: string;
-  rg: string;
   birthDate: string;
   gender: string;
   nationality: string;
-  maritalStatus: string;
-  occupation: string;
   
   // Endereço pessoal
   addressCep: string;
@@ -119,18 +117,14 @@ export const INITIAL_PROFILE_DATA: ProfileData = {
   // Dados pessoais básicos
   nome: "",
   email: "",
-  telefone: "",
   whatsapp: "",
   avatarUrl: "",
   
   // Campos pessoais expandidos
   cpf: "",
-  rg: "",
   birthDate: "",
   gender: "",
   nationality: "Brasileiro(a)",
-  maritalStatus: "",
-  occupation: "",
   
   // Endereço pessoal
   addressCep: "",
@@ -168,6 +162,7 @@ export const INITIAL_PASSWORD_VISIBILITY: PasswordVisibility = {
 
 export const MAIN_SECTIONS: SectionConfig[] = [
   { id: "perfil", label: "Perfil", icon: User },
+  { id: "empresa", label: "Empresa", icon: Building2 },
   { id: "assinatura", label: "Assinatura", icon: CreditCard },
   { id: "orcamentos", label: "Orçamentos", icon: FileText },
   { id: "contratos", label: "Contratos", icon: ScrollText },
@@ -197,14 +192,6 @@ export const GENDER_OPTIONS = [
   { value: "feminino", label: "Feminino" },
   { value: "outro", label: "Outro" },
   { value: "prefiro_nao_informar", label: "Prefiro não informar" },
-];
-
-export const MARITAL_STATUS_OPTIONS = [
-  { value: "solteiro", label: "Solteiro(a)" },
-  { value: "casado", label: "Casado(a)" },
-  { value: "divorciado", label: "Divorciado(a)" },
-  { value: "viuvo", label: "Viúvo(a)" },
-  { value: "uniao_estavel", label: "União estável" },
 ];
 
 export const BRAZILIAN_STATES = [

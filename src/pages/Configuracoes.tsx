@@ -26,6 +26,7 @@ import { MAIN_SECTIONS } from "@/constants/settings";
 import {
   SettingsNavigation,
   ProfileSection,
+  CompanySection,
   SubscriptionSection,
   QuotesSettingsSection,
   PlaceholderSection,
@@ -100,12 +101,6 @@ export default function Configuracoes() {
             // CEP
             isLoadingCep={isLoadingCep}
             onCepLookup={handleCepLookup}
-            // Logo
-            logoInputRef={logoInputRef}
-            isUploadingLogo={isUploadingLogo}
-            onLogoChange={handleLogoChange}
-            onRemoveLogo={removeLogo}
-            onTriggerUpload={triggerLogoUpload}
             // Senha
             passwordData={passwordData}
             showPasswords={showPasswords}
@@ -113,6 +108,20 @@ export default function Configuracoes() {
             onPasswordChange={handlePasswordInputChange}
             onTogglePasswordVisibility={togglePasswordVisibility}
             onSubmitPassword={handlePasswordChange}
+          />
+        );
+
+      case "empresa":
+        return (
+          <CompanySection
+            profileData={profileData}
+            onProfileChange={handleInputChange}
+            // Logo
+            logoInputRef={logoInputRef}
+            isUploadingLogo={isUploadingLogo}
+            onLogoChange={handleLogoChange}
+            onRemoveLogo={removeLogo}
+            onTriggerUpload={triggerLogoUpload}
           />
         );
 
@@ -201,8 +210,8 @@ export default function Configuracoes() {
         {/* Área de Conteúdo */}
         <div className="animate-fade-in">{renderActiveSection()}</div>
 
-        {/* Botão Salvar (só aparece na seção de perfil) */}
-        {activeSection === "perfil" && (
+        {/* Botão Salvar (aparece nas seções de perfil e empresa) */}
+        {(activeSection === "perfil" || activeSection === "empresa") && (
           <div className="flex justify-end pt-4 border-t">
             <Button
               onClick={handleSave}

@@ -3,8 +3,8 @@
  * 
  * Card completo com todos os campos de cadastro do usuário:
  * - Avatar e email
- * - Dados pessoais (nome, CPF, RG, data de nascimento, gênero, etc.)
- * - Contato (telefone, WhatsApp)
+ * - Dados pessoais (nome, CPF, data de nascimento, gênero, nacionalidade)
+ * - Contato (celular)
  * - Endereço completo com busca automática de CEP
  */
 
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Mail, MapPin, Camera, Loader2, Upload, X } from "lucide-react";
 import { formatPhone, formatCPF, formatCEP } from "@/lib/masks";
 import type { ProfileData } from "@/constants/settings";
-import { GENDER_OPTIONS, MARITAL_STATUS_OPTIONS, BRAZILIAN_STATES } from "@/constants/settings";
+import { GENDER_OPTIONS, BRAZILIAN_STATES } from "@/constants/settings";
 
 interface PersonalInfoCardProps {
   data: ProfileData;
@@ -152,15 +152,6 @@ export function PersonalInfoCard({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="rg">RG</Label>
-            <Input
-              id="rg"
-              value={data.rg}
-              onChange={(e) => onChange("rg", e.target.value)}
-              placeholder="00.000.000-0"
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="birthDate">Data de nascimento</Label>
             <Input
               id="birthDate"
@@ -188,39 +179,12 @@ export function PersonalInfoCard({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="maritalStatus">Estado civil</Label>
-            <Select
-              value={data.maritalStatus}
-              onValueChange={(value) => onChange("maritalStatus", value)}
-            >
-              <SelectTrigger id="maritalStatus">
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                {MARITAL_STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="nationality">Nacionalidade</Label>
             <Input
               id="nationality"
               value={data.nationality}
               onChange={(e) => onChange("nationality", e.target.value)}
               placeholder="Brasileiro(a)"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="occupation">Profissão</Label>
-            <Input
-              id="occupation"
-              value={data.occupation}
-              onChange={(e) => onChange("occupation", e.target.value)}
-              placeholder="Sua profissão"
             />
           </div>
         </div>
@@ -230,16 +194,7 @@ export function PersonalInfoCard({
         {/* Contato */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="telefone">Telefone</Label>
-            <Input
-              id="telefone"
-              value={data.telefone}
-              onChange={(e) => onChange("telefone", formatPhone(e.target.value))}
-              placeholder="(00) 00000-0000"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="whatsapp">WhatsApp</Label>
+            <Label htmlFor="whatsapp">Celular</Label>
             <Input
               id="whatsapp"
               value={data.whatsapp}

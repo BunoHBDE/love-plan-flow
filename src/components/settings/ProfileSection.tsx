@@ -1,14 +1,12 @@
 /**
  * SEÇÃO DE PERFIL
  * 
- * Agrupa todos os cards relacionados ao perfil do usuário:
- * - Informações pessoais (expandido)
- * - Dados da empresa
+ * Agrupa os cards relacionados ao perfil pessoal do usuário:
+ * - Informações pessoais
  * - Alteração de senha
  */
 
 import { PersonalInfoCard } from "./PersonalInfoCard";
-import { CompanyInfoCard } from "./CompanyInfoCard";
 import { PasswordChangeCard } from "./PasswordChangeCard";
 import type { ProfileData, PasswordData, PasswordVisibility } from "@/constants/settings";
 
@@ -27,13 +25,6 @@ interface ProfileSectionProps {
   // CEP lookup
   isLoadingCep: boolean;
   onCepLookup: (cep: string) => void;
-
-  // Upload de logo
-  logoInputRef: React.RefObject<HTMLInputElement>;
-  isUploadingLogo: boolean;
-  onLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRemoveLogo: () => void;
-  onTriggerUpload: () => void;
 
   // Alteração de senha
   passwordData: PasswordData;
@@ -54,11 +45,6 @@ export function ProfileSection({
   onTriggerAvatarUpload,
   isLoadingCep,
   onCepLookup,
-  logoInputRef,
-  isUploadingLogo,
-  onLogoChange,
-  onRemoveLogo,
-  onTriggerUpload,
   passwordData,
   showPasswords,
   isChangingPassword,
@@ -78,16 +64,6 @@ export function ProfileSection({
         onTriggerAvatarUpload={onTriggerAvatarUpload}
         isLoadingCep={isLoadingCep}
         onCepLookup={onCepLookup}
-      />
-
-      <CompanyInfoCard
-        data={profileData}
-        onChange={onProfileChange}
-        logoInputRef={logoInputRef}
-        isUploadingLogo={isUploadingLogo}
-        onLogoChange={onLogoChange}
-        onRemoveLogo={onRemoveLogo}
-        onTriggerUpload={onTriggerUpload}
       />
 
       <PasswordChangeCard
