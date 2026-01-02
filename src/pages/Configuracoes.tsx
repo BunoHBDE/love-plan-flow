@@ -62,6 +62,23 @@ interface ProfileData {
   empresaLogoUrl: string;
 }
 
+// Password strength calculator
+const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
+  if (!password) return { score: 0, label: "", color: "" };
+  
+  let score = 0;
+  if (password.length >= 6) score++;
+  if (password.length >= 8) score++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^a-zA-Z0-9]/.test(password)) score++;
+
+  if (score <= 2) return { score, label: "Fraca", color: "bg-destructive" };
+  if (score <= 3) return { score, label: "Média", color: "bg-yellow-500" };
+  if (score <= 4) return { score, label: "Boa", color: "bg-emerald-500" };
+  return { score, label: "Forte", color: "bg-emerald-600" };
+};
+
 export default function Configuracoes() {
   const { profile, user } = useAuth();
   const [activeSection, setActiveSection] = useState<MainSection>("perfil");
@@ -487,6 +504,26 @@ export default function Configuracoes() {
                   {showPasswords.novaSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {/* Password strength indicator */}
+              {passwordData.novaSenha && (
+                <div className="space-y-1">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <div
+                        key={level}
+                        className={`h-1.5 flex-1 rounded-full transition-colors ${
+                          level <= getPasswordStrength(passwordData.novaSenha).score
+                            ? getPasswordStrength(passwordData.novaSenha).color
+                            : "bg-muted"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Força: <span className="font-medium">{getPasswordStrength(passwordData.novaSenha).label}</span>
+                  </p>
+                </div>
+              )}
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="confirmarSenha">Confirmar nova senha</Label>
