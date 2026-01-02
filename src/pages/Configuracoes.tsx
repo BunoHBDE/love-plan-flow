@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   User,
@@ -20,6 +21,9 @@ import {
   Check,
   Crown,
   Receipt,
+  Loader2,
+  Upload,
+  X,
 } from "lucide-react";
 
 type MainSection = "perfil" | "assinatura" | "orcamentos" | "contratos" | "visitas" | "disponibilidade";
@@ -43,35 +47,193 @@ const orcamentoSubSections = [
   { id: "listas" as const, label: "Listas" },
 ];
 
+interface ProfileData {
+  nome: string;
+  telefone: string;
+  whatsapp: string;
+  avatarUrl: string;
+  empresaNome: string;
+  empresaCnpj: string;
+  empresaEndereco: string;
+  empresaTelefone: string;
+  empresaEmail: string;
+  empresaLogoUrl: string;
+}
+
 export default function Configuracoes() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [activeSection, setActiveSection] = useState<MainSection>("perfil");
   const [activeOrcamentoSub, setActiveOrcamentoSub] = useState<OrcamentoSubSection>("espaco");
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Form states - Perfil
-  const [perfilData, setPerfilData] = useState({
-    nome: profile?.full_name || "",
+  const [perfilData, setPerfilData] = useState<ProfileData>({
+    nome: "",
     telefone: "",
     whatsapp: "",
+    avatarUrl: "",
     empresaNome: "",
     empresaCnpj: "",
     empresaEndereco: "",
     empresaTelefone: "",
     empresaEmail: "",
+    empresaLogoUrl: "",
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  // Load profile data on mount
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!user?.id) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (data && !error) {
+        setPerfilData({
+          nome: data.full_name || "",
+          telefone: (data as any).phone || "",
+          whatsapp: (data as any).whatsapp || "",
+          avatarUrl: (data as any).avatar_url || "",
+          empresaNome: (data as any).company_name || "",
+          empresaCnpj: (data as any).company_cnpj || "",
+          empresaEndereco: (data as any).company_address || "",
+          empresaTelefone: (data as any).company_phone || "",
+          empresaEmail: (data as any).company_email || "",
+          empresaLogoUrl: (data as any).company_logo_url || "",
+        });
+      }
+    };
+
+    loadProfileData();
+  }, [user?.id]);
+
+  const handleInputChange = (field: keyof ProfileData, value: string) => {
     setPerfilData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
 
+  const uploadFile = async (file: File, type: "avatar" | "logo"): Promise<string | null> => {
+    if (!user?.id) return null;
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${type}-${Date.now()}.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("user-uploads")
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      toast.error("Erro ao fazer upload da imagem");
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("user-uploads")
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione uma imagem");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    const url = await uploadFile(file, "avatar");
+    setIsUploadingAvatar(false);
+
+    if (url) {
+      setPerfilData(prev => ({ ...prev, avatarUrl: url }));
+      setHasChanges(true);
+      toast.success("Foto de perfil atualizada!");
+    }
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione uma imagem");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    const url = await uploadFile(file, "logo");
+    setIsUploadingLogo(false);
+
+    if (url) {
+      setPerfilData(prev => ({ ...prev, empresaLogoUrl: url }));
+      setHasChanges(true);
+      toast.success("Logo da empresa atualizada!");
+    }
+  };
+
+  const removeAvatar = () => {
+    setPerfilData(prev => ({ ...prev, avatarUrl: "" }));
+    setHasChanges(true);
+  };
+
+  const removeLogo = () => {
+    setPerfilData(prev => ({ ...prev, empresaLogoUrl: "" }));
+    setHasChanges(true);
+  };
+
   const handleSave = async () => {
+    if (!user?.id) return;
+
     setIsSaving(true);
-    // Simular salvamento
-    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: perfilData.nome,
+        phone: perfilData.telefone,
+        whatsapp: perfilData.whatsapp,
+        avatar_url: perfilData.avatarUrl,
+        company_name: perfilData.empresaNome,
+        company_cnpj: perfilData.empresaCnpj,
+        company_address: perfilData.empresaEndereco,
+        company_phone: perfilData.empresaTelefone,
+        company_email: perfilData.empresaEmail,
+        company_logo_url: perfilData.empresaLogoUrl,
+      } as any)
+      .eq("id", user.id);
+
     setIsSaving(false);
+
+    if (error) {
+      console.error("Save error:", error);
+      toast.error("Erro ao salvar configurações");
+      return;
+    }
+
     setHasChanges(false);
     toast.success("Configurações salvas com sucesso!");
   };
@@ -89,10 +251,59 @@ export default function Configuracoes() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
-              <Camera className="h-8 w-8 text-muted-foreground/50" />
+            <div className="relative">
+              {perfilData.avatarUrl ? (
+                <div className="relative h-20 w-20">
+                  <img
+                    src={perfilData.avatarUrl}
+                    alt="Avatar"
+                    className="h-20 w-20 rounded-full object-cover border-2 border-primary/20"
+                  />
+                  <button
+                    onClick={removeAvatar}
+                    className="absolute -top-1 -right-1 h-6 w-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
+                  {isUploadingAvatar ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Camera className="h-8 w-8 text-muted-foreground/50" />
+                  )}
+                </div>
+              )}
             </div>
-            <Button variant="outline" size="sm">Alterar foto</Button>
+            <div className="space-y-2">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+              >
+                {isUploadingAvatar ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    {perfilData.avatarUrl ? "Alterar foto" : "Enviar foto"}
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground">JPG, PNG ou WEBP. Máx 5MB.</p>
+            </div>
           </div>
           <Separator />
           <div className="grid gap-4 sm:grid-cols-2">
@@ -138,10 +349,59 @@ export default function Configuracoes() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            <div className="h-20 w-20 rounded-lg bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
-              <Building2 className="h-8 w-8 text-muted-foreground/50" />
+            <div className="relative">
+              {perfilData.empresaLogoUrl ? (
+                <div className="relative h-20 w-20">
+                  <img
+                    src={perfilData.empresaLogoUrl}
+                    alt="Logo da empresa"
+                    className="h-20 w-20 rounded-lg object-cover border-2 border-primary/20"
+                  />
+                  <button
+                    onClick={removeLogo}
+                    className="absolute -top-1 -right-1 h-6 w-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="h-20 w-20 rounded-lg bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
+                  {isUploadingLogo ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Building2 className="h-8 w-8 text-muted-foreground/50" />
+                  )}
+                </div>
+              )}
             </div>
-            <Button variant="outline" size="sm">Alterar logo</Button>
+            <div className="space-y-2">
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={isUploadingLogo}
+              >
+                {isUploadingLogo ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    {perfilData.empresaLogoUrl ? "Alterar logo" : "Enviar logo"}
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground">JPG, PNG ou WEBP. Máx 5MB.</p>
+            </div>
           </div>
           <Separator />
           <div className="grid gap-4 sm:grid-cols-2">
@@ -443,7 +703,14 @@ export default function Configuracoes() {
             disabled={!hasChanges || isSaving}
             className="min-w-[180px]"
           >
-            {isSaving ? "Salvando..." : "Salvar Configurações"}
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              "Salvar Configurações"
+            )}
           </Button>
         </div>
       </div>
