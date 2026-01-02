@@ -46,10 +46,37 @@ export interface SubSectionConfig {
   label: string;
 }
 
+/**
+ * Dados do perfil do usuário
+ * Expandido para incluir todos os campos de cadastro
+ */
 export interface ProfileData {
+  // Dados pessoais básicos
   nome: string;
+  email: string;
   telefone: string;
   whatsapp: string;
+  avatarUrl: string;
+  
+  // Campos pessoais expandidos
+  cpf: string;
+  rg: string;
+  birthDate: string;
+  gender: string;
+  nationality: string;
+  maritalStatus: string;
+  occupation: string;
+  
+  // Endereço pessoal
+  addressCep: string;
+  addressStreet: string;
+  addressNumber: string;
+  addressComplement: string;
+  addressNeighborhood: string;
+  addressCity: string;
+  addressState: string;
+  
+  // Dados da empresa
   empresaNome: string;
   empresaCnpj: string;
   empresaEndereco: string;
@@ -89,9 +116,32 @@ export interface PasswordStrength {
 // ==========================================
 
 export const INITIAL_PROFILE_DATA: ProfileData = {
+  // Dados pessoais básicos
   nome: "",
+  email: "",
   telefone: "",
   whatsapp: "",
+  avatarUrl: "",
+  
+  // Campos pessoais expandidos
+  cpf: "",
+  rg: "",
+  birthDate: "",
+  gender: "",
+  nationality: "Brasileiro(a)",
+  maritalStatus: "",
+  occupation: "",
+  
+  // Endereço pessoal
+  addressCep: "",
+  addressStreet: "",
+  addressNumber: "",
+  addressComplement: "",
+  addressNeighborhood: "",
+  addressCity: "",
+  addressState: "",
+  
+  // Dados da empresa
   empresaNome: "",
   empresaCnpj: "",
   empresaEndereco: "",
@@ -139,28 +189,28 @@ export const ORCAMENTO_SUB_SECTIONS: SubSectionConfig[] = [
 ];
 
 // ==========================================
-// RECURSOS DO PLANO PRO (mock)
+// OPÇÕES DE SELECTS
 // ==========================================
 
-export const PLAN_FEATURES = [
-  "Orçamentos ilimitados",
-  "Gestão de clientes",
-  "Controle de visitas",
-  "Calendário de disponibilidade",
-  "Geração de contratos",
-  "Relatórios avançados",
-  "Suporte prioritário",
-  "Backup automático",
+export const GENDER_OPTIONS = [
+  { value: "masculino", label: "Masculino" },
+  { value: "feminino", label: "Feminino" },
+  { value: "outro", label: "Outro" },
+  { value: "prefiro_nao_informar", label: "Prefiro não informar" },
 ];
 
-// ==========================================
-// HISTÓRICO DE FATURAS (mock)
-// ==========================================
+export const MARITAL_STATUS_OPTIONS = [
+  { value: "solteiro", label: "Solteiro(a)" },
+  { value: "casado", label: "Casado(a)" },
+  { value: "divorciado", label: "Divorciado(a)" },
+  { value: "viuvo", label: "Viúvo(a)" },
+  { value: "uniao_estavel", label: "União estável" },
+];
 
-export const MOCK_INVOICES = [
-  { data: "15/12/2025", valor: "R$ 99,90", status: "Pago" },
-  { data: "15/11/2025", valor: "R$ 99,90", status: "Pago" },
-  { data: "15/10/2025", valor: "R$ 99,90", status: "Pago" },
+export const BRAZILIAN_STATES = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO",
 ];
 
 // ==========================================
@@ -173,4 +223,29 @@ export const PASSWORD_REQUIREMENTS_LIST = [
   { key: "hasLowercase", label: "Uma letra minúscula" },
   { key: "hasNumber", label: "Um número" },
   { key: "hasSpecial", label: "Um caractere especial" },
-] as const;
+];
+
+// ==========================================
+// ASSINATURA - RECURSOS DO PLANO
+// ==========================================
+
+export const PLAN_FEATURES = [
+  "Orçamentos ilimitados",
+  "Contratos personalizados",
+  "Agenda de visitas",
+  "Gestão de clientes",
+  "Relatórios completos",
+  "Suporte prioritário",
+  "Exportação em PDF",
+  "Múltiplos usuários",
+];
+
+// ==========================================
+// ASSINATURA - FATURAS MOCK
+// ==========================================
+
+export const MOCK_INVOICES = [
+  { data: "15 Dez 2025", valor: "R$ 49,90", status: "Pago" },
+  { data: "15 Nov 2025", valor: "R$ 49,90", status: "Pago" },
+  { data: "15 Out 2025", valor: "R$ 49,90", status: "Pago" },
+];

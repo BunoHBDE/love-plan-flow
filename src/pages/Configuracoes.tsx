@@ -51,6 +51,17 @@ export default function Configuracoes() {
     isSaving,
     handleSave,
 
+    // CEP lookup
+    isLoadingCep,
+    handleCepLookup,
+
+    // Upload de avatar
+    avatarInputRef,
+    isUploadingAvatar,
+    handleAvatarChange,
+    removeAvatar,
+    triggerAvatarUpload,
+
     // Upload de logo
     logoInputRef,
     isUploadingLogo,
@@ -80,11 +91,22 @@ export default function Configuracoes() {
           <ProfileSection
             profileData={profileData}
             onProfileChange={handleInputChange}
+            // Avatar
+            avatarInputRef={avatarInputRef}
+            isUploadingAvatar={isUploadingAvatar}
+            onAvatarChange={handleAvatarChange}
+            onRemoveAvatar={removeAvatar}
+            onTriggerAvatarUpload={triggerAvatarUpload}
+            // CEP
+            isLoadingCep={isLoadingCep}
+            onCepLookup={handleCepLookup}
+            // Logo
             logoInputRef={logoInputRef}
             isUploadingLogo={isUploadingLogo}
             onLogoChange={handleLogoChange}
             onRemoveLogo={removeLogo}
             onTriggerUpload={triggerLogoUpload}
+            // Senha
             passwordData={passwordData}
             showPasswords={showPasswords}
             isChangingPassword={isChangingPassword}

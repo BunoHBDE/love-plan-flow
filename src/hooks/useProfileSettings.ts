@@ -2,7 +2,7 @@
  * HOOK DE CONFIGURAÇÕES DO PERFIL
  * 
  * Gerencia todo o estado e lógica relacionados às configurações do perfil do usuário.
- * Inclui: dados pessoais, dados da empresa, upload de logo e alteração de senha.
+ * Inclui: dados pessoais, dados da empresa, upload de logo/avatar e alteração de senha.
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { formatCEP } from "@/lib/masks";
 import {
   ProfileData,
   PasswordData,
@@ -36,9 +37,14 @@ export function useProfileSettings() {
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Upload de logo
+  // Upload de logo e avatar
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // CEP lookup
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
 
   // Alteração de senha
   const [passwordData, setPasswordData] = useState<PasswordData>(INITIAL_PASSWORD_DATA);
@@ -71,9 +77,32 @@ export function useProfileSettings() {
 
         if (data) {
           setProfileData({
+            // Dados pessoais básicos
             nome: data.full_name || "",
+            email: data.email || user?.email || "",
             telefone: data.phone || "",
             whatsapp: data.whatsapp || "",
+            avatarUrl: data.avatar_url || "",
+            
+            // Campos pessoais expandidos
+            cpf: (data as any).cpf || "",
+            rg: (data as any).rg || "",
+            birthDate: (data as any).birth_date || "",
+            gender: (data as any).gender || "",
+            nationality: (data as any).nationality || "Brasileiro(a)",
+            maritalStatus: (data as any).marital_status || "",
+            occupation: (data as any).occupation || "",
+            
+            // Endereço pessoal
+            addressCep: (data as any).address_cep || "",
+            addressStreet: (data as any).address_street || "",
+            addressNumber: (data as any).address_number || "",
+            addressComplement: (data as any).address_complement || "",
+            addressNeighborhood: (data as any).address_neighborhood || "",
+            addressCity: (data as any).address_city || "",
+            addressState: (data as any).address_state || "",
+            
+            // Dados da empresa
             empresaNome: data.company_name || "",
             empresaCnpj: data.company_cnpj || "",
             empresaEndereco: data.company_address || "",
@@ -103,14 +132,50 @@ export function useProfileSettings() {
   }, []);
 
   // ==========================================
-  // HANDLERS - UPLOAD DE LOGO
+  // HANDLERS - CEP LOOKUP
   // ==========================================
 
-  const uploadFile = async (file: File): Promise<string | null> => {
+  const handleCepLookup = useCallback(async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length !== 8) return;
+
+    setIsLoadingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        toast.error("CEP não encontrado. Verifique o CEP informado.");
+        return;
+      }
+
+      setProfileData(prev => ({
+        ...prev,
+        addressCep: formatCEP(cleanCep),
+        addressStreet: data.logradouro || "",
+        addressNeighborhood: data.bairro || "",
+        addressCity: data.localidade || "",
+        addressState: data.uf || "",
+      }));
+      setHasChanges(true);
+
+      toast.success("Endereço encontrado!");
+    } catch {
+      toast.error("Erro ao buscar CEP. Tente novamente.");
+    } finally {
+      setIsLoadingCep(false);
+    }
+  }, []);
+
+  // ==========================================
+  // HANDLERS - UPLOAD DE ARQUIVOS
+  // ==========================================
+
+  const uploadFile = async (file: File, type: "avatar" | "logo"): Promise<string | null> => {
     if (!user?.id) return null;
 
     const fileExt = file.name.split(".").pop();
-    const fileName = `logo-${Date.now()}.${fileExt}`;
+    const fileName = `${type}-${Date.now()}.${fileExt}`;
     const filePath = `${user.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -130,35 +195,64 @@ export function useProfileSettings() {
     return publicUrl;
   };
 
-  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Avatar handlers
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tipo
     if (!file.type.startsWith("image/")) {
       toast.error("Por favor, selecione uma imagem");
       return;
     }
 
-    // Validar tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    const url = await uploadFile(file, "avatar");
+    setIsUploadingAvatar(false);
+
+    if (url) {
+      setProfileData((prev) => ({ ...prev, avatarUrl: url }));
+      setHasChanges(true);
+      toast.success("Foto de perfil atualizada!");
+    }
+  };
+
+  const removeAvatar = useCallback(() => {
+    setProfileData((prev) => ({ ...prev, avatarUrl: "" }));
+    setHasChanges(true);
+  }, []);
+
+  const triggerAvatarUpload = useCallback(() => {
+    avatarInputRef.current?.click();
+  }, []);
+
+  // Logo handlers
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione uma imagem");
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       toast.error("A imagem deve ter no máximo 5MB");
       return;
     }
 
     setIsUploadingLogo(true);
-    const url = await uploadFile(file);
+    const url = await uploadFile(file, "logo");
     setIsUploadingLogo(false);
 
     if (url) {
       setProfileData((prev) => ({ ...prev, empresaLogoUrl: url }));
       setHasChanges(true);
       toast.success("Logo da empresa atualizada!");
-    }
-
-    // Limpar input para permitir reupload do mesmo arquivo
-    if (logoInputRef.current) {
-      logoInputRef.current.value = "";
     }
   };
 
@@ -172,7 +266,7 @@ export function useProfileSettings() {
   }, []);
 
   // ==========================================
-  // HANDLERS - SALVAR PERFIL
+  // HANDLERS - SALVAR DADOS
   // ==========================================
 
   const handleSave = async () => {
@@ -180,43 +274,68 @@ export function useProfileSettings() {
 
     setIsSaving(true);
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: profileData.nome,
-        phone: profileData.telefone,
-        whatsapp: profileData.whatsapp,
-        company_name: profileData.empresaNome,
-        company_cnpj: profileData.empresaCnpj,
-        company_address: profileData.empresaEndereco,
-        company_phone: profileData.empresaTelefone,
-        company_email: profileData.empresaEmail,
-        company_logo_url: profileData.empresaLogoUrl,
-      })
-      .eq("id", user.id);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          // Dados pessoais básicos
+          full_name: profileData.nome,
+          email: profileData.email,
+          phone: profileData.telefone,
+          whatsapp: profileData.whatsapp,
+          avatar_url: profileData.avatarUrl,
+          
+          // Campos pessoais expandidos
+          cpf: profileData.cpf,
+          rg: profileData.rg,
+          birth_date: profileData.birthDate || null,
+          gender: profileData.gender,
+          nationality: profileData.nationality,
+          marital_status: profileData.maritalStatus,
+          occupation: profileData.occupation,
+          
+          // Endereço pessoal
+          address_cep: profileData.addressCep,
+          address_street: profileData.addressStreet,
+          address_number: profileData.addressNumber,
+          address_complement: profileData.addressComplement,
+          address_neighborhood: profileData.addressNeighborhood,
+          address_city: profileData.addressCity,
+          address_state: profileData.addressState,
+          
+          // Dados da empresa
+          company_name: profileData.empresaNome,
+          company_cnpj: profileData.empresaCnpj,
+          company_address: profileData.empresaEndereco,
+          company_phone: profileData.empresaTelefone,
+          company_email: profileData.empresaEmail,
+          company_logo_url: profileData.empresaLogoUrl,
+        } as any)
+        .eq("id", user.id);
 
-    setIsSaving(false);
+      if (error) {
+        console.error("Save error:", error);
+        toast.error("Erro ao salvar configurações");
+        return;
+      }
 
-    if (error) {
+      setHasChanges(false);
+      toast.success("Configurações salvas com sucesso!");
+    } catch (error) {
       console.error("Save error:", error);
       toast.error("Erro ao salvar configurações");
-      return;
+    } finally {
+      setIsSaving(false);
     }
-
-    setHasChanges(false);
-    toast.success("Configurações salvas com sucesso!");
   };
 
   // ==========================================
   // HANDLERS - ALTERAÇÃO DE SENHA
   // ==========================================
 
-  const handlePasswordInputChange = useCallback(
-    (field: keyof PasswordData, value: string) => {
-      setPasswordData((prev) => ({ ...prev, [field]: value }));
-    },
-    []
-  );
+  const handlePasswordInputChange = useCallback((field: keyof PasswordData, value: string) => {
+    setPasswordData((prev) => ({ ...prev, [field]: value }));
+  }, []);
 
   const togglePasswordVisibility = useCallback((field: keyof PasswordVisibility) => {
     setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
@@ -225,7 +344,6 @@ export function useProfileSettings() {
   const handlePasswordChange = async () => {
     const { senhaAtual, novaSenha, confirmarSenha } = passwordData;
 
-    // Validações
     if (!senhaAtual || !novaSenha || !confirmarSenha) {
       toast.error("Preencha todos os campos de senha");
       return;
@@ -243,34 +361,38 @@ export function useProfileSettings() {
 
     setIsChangingPassword(true);
 
-    // Verificar senha atual fazendo login
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: user?.email || "",
-      password: senhaAtual,
-    });
+    try {
+      // Verificar senha atual
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || "",
+        password: senhaAtual,
+      });
 
-    if (signInError) {
+      if (signInError) {
+        toast.error("Senha atual incorreta");
+        return;
+      }
+
+      // Atualizar para nova senha
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: novaSenha,
+      });
+
+      if (updateError) {
+        console.error("Password update error:", updateError);
+        toast.error("Erro ao alterar senha. Tente novamente.");
+        return;
+      }
+
+      // Limpar campos
+      setPasswordData(INITIAL_PASSWORD_DATA);
+      toast.success("Senha alterada com sucesso!");
+    } catch (error) {
+      console.error("Password change error:", error);
+      toast.error("Erro ao alterar senha");
+    } finally {
       setIsChangingPassword(false);
-      toast.error("Senha atual incorreta");
-      return;
     }
-
-    // Atualizar para nova senha
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: novaSenha,
-    });
-
-    setIsChangingPassword(false);
-
-    if (updateError) {
-      console.error("Password update error:", updateError);
-      toast.error("Erro ao alterar senha. Tente novamente.");
-      return;
-    }
-
-    // Limpar campos
-    setPasswordData(INITIAL_PASSWORD_DATA);
-    toast.success("Senha alterada com sucesso!");
   };
 
   // ==========================================
@@ -297,6 +419,17 @@ export function useProfileSettings() {
     isSaving,
     handleSave,
 
+    // CEP lookup
+    isLoadingCep,
+    handleCepLookup,
+
+    // Upload de avatar
+    avatarInputRef,
+    isUploadingAvatar,
+    handleAvatarChange,
+    removeAvatar,
+    triggerAvatarUpload,
+
     // Upload de logo
     logoInputRef,
     isUploadingLogo,
@@ -314,8 +447,5 @@ export function useProfileSettings() {
 
     // Logout
     handleSignOut,
-
-    // User info
-    user,
   };
 }

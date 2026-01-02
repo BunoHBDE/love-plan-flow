@@ -2,7 +2,7 @@
  * SEÇÃO DE PERFIL
  * 
  * Agrupa todos os cards relacionados ao perfil do usuário:
- * - Informações pessoais
+ * - Informações pessoais (expandido)
  * - Dados da empresa
  * - Alteração de senha
  */
@@ -16,6 +16,17 @@ interface ProfileSectionProps {
   // Dados do perfil
   profileData: ProfileData;
   onProfileChange: (field: keyof ProfileData, value: string) => void;
+
+  // Upload de avatar
+  avatarInputRef: React.RefObject<HTMLInputElement>;
+  isUploadingAvatar: boolean;
+  onAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveAvatar: () => void;
+  onTriggerAvatarUpload: () => void;
+
+  // CEP lookup
+  isLoadingCep: boolean;
+  onCepLookup: (cep: string) => void;
 
   // Upload de logo
   logoInputRef: React.RefObject<HTMLInputElement>;
@@ -36,6 +47,13 @@ interface ProfileSectionProps {
 export function ProfileSection({
   profileData,
   onProfileChange,
+  avatarInputRef,
+  isUploadingAvatar,
+  onAvatarChange,
+  onRemoveAvatar,
+  onTriggerAvatarUpload,
+  isLoadingCep,
+  onCepLookup,
   logoInputRef,
   isUploadingLogo,
   onLogoChange,
@@ -50,7 +68,17 @@ export function ProfileSection({
 }: ProfileSectionProps) {
   return (
     <div className="space-y-6">
-      <PersonalInfoCard data={profileData} onChange={onProfileChange} />
+      <PersonalInfoCard
+        data={profileData}
+        onChange={onProfileChange}
+        avatarInputRef={avatarInputRef}
+        isUploadingAvatar={isUploadingAvatar}
+        onAvatarChange={onAvatarChange}
+        onRemoveAvatar={onRemoveAvatar}
+        onTriggerAvatarUpload={onTriggerAvatarUpload}
+        isLoadingCep={isLoadingCep}
+        onCepLookup={onCepLookup}
+      />
 
       <CompanyInfoCard
         data={profileData}
