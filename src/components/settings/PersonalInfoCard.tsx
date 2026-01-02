@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Mail, MapPin, Camera, Loader2, Upload, X } from "lucide-react";
 import { formatPhone, formatCPF, formatCEP } from "@/lib/masks";
 import type { ProfileData } from "@/constants/settings";
-import { GENDER_OPTIONS, BRAZILIAN_STATES } from "@/constants/settings";
+import { NATIONALITIES, BRAZILIAN_STATES } from "@/constants/settings";
 
 interface PersonalInfoCardProps {
   data: ProfileData;
@@ -155,36 +155,29 @@ export function PersonalInfoCard({
             <Label htmlFor="birthDate">Data de nascimento</Label>
             <Input
               id="birthDate"
-              type="date"
+              type="text"
               value={data.birthDate}
-              onChange={(e) => onChange("birthDate", e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gênero</Label>
-            <Select
-              value={data.gender}
-              onValueChange={(value) => onChange("gender", value)}
-            >
-              <SelectTrigger id="gender">
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                {GENDER_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="nationality">Nacionalidade</Label>
-            <Input
-              id="nationality"
-              value={data.nationality}
-              onChange={(e) => onChange("nationality", e.target.value)}
-              placeholder="Brasileiro(a)"
+              onChange={(e) => {
+                const value = e.target.value;
+                // Remover tudo exceto números
+                const numbers = value.replace(/\D/g, "");
+                
+                // Formatar: dd/mm/aaaa
+                let formatted = numbers;
+                if (numbers.length >= 2) {
+                  formatted = numbers.slice(0, 2);
+                  if (numbers.length >= 3) {
+                    formatted += "/" + numbers.slice(2, 4);
+                  }
+                  if (numbers.length >= 5) {
+                    formatted += "/" + numbers.slice(4, 8);
+                  }
+                }
+                
+                onChange("birthDate", formatted);
+              }}
+              placeholder="dd/mm/aaaa"
+              maxLength={10}
             />
           </div>
         </div>

@@ -62,8 +62,6 @@ export interface ProfileData {
   // Campos pessoais expandidos
   cpf: string;
   birthDate: string;
-  gender: string;
-  nationality: string;
   
   // Endereço pessoal
   addressCep: string;
@@ -131,8 +129,6 @@ export const INITIAL_PROFILE_DATA: ProfileData = {
   // Campos pessoais expandidos
   cpf: "",
   birthDate: "",
-  gender: "",
-  nationality: "Brasileiro(a)",
   
   // Endereço pessoal
   addressCep: "",
@@ -203,11 +199,44 @@ export const ORCAMENTO_SUB_SECTIONS: SubSectionConfig[] = [
 // OPÇÕES DE SELECTS
 // ==========================================
 
-export const GENDER_OPTIONS = [
-  { value: "masculino", label: "Masculino" },
-  { value: "feminino", label: "Feminino" },
-  { value: "outro", label: "Outro" },
-  { value: "prefiro_nao_informar", label: "Prefiro não informar" },
+export const NATIONALITIES = [
+  "Brasileiro(a)",
+  "Argentino(a)",
+  "Americano(a)",
+  "Alemão/Alemã",
+  "Angolano(a)",
+  "Australiano(a)",
+  "Austríaco(a)",
+  "Belga",
+  "Boliviano(a)",
+  "Canadense",
+  "Chileno(a)",
+  "Chinês/Chinesa",
+  "Colombiano(a)",
+  "Coreano(a)",
+  "Cubano(a)",
+  "Equatoriano(a)",
+  "Espanhol/Espanhola",
+  "Francês/Francesa",
+  "Haitiano(a)",
+  "Indiano(a)",
+  "Inglês/Inglesa",
+  "Italiano(a)",
+  "Japonês/Japonesa",
+  "Mexicano(a)",
+  "Moçambicano(a)",
+  "Norueguês/Norueguesa",
+  "Paraguaio(a)",
+  "Peruano(a)",
+  "Polonês/Polonesa",
+  "Português/Portuguesa",
+  "Russo(a)",
+  "Sueco(a)",
+  "Suíço(a)",
+  "Turco(a)",
+  "Ucraniano(a)",
+  "Uruguaio(a)",
+  "Venezuelano(a)",
 ];
 
 export const BRAZILIAN_STATES = [

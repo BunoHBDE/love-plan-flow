@@ -86,8 +86,6 @@ export function useProfileSettings() {
             // Campos pessoais expandidos
             cpf: (data as any).cpf || "",
             birthDate: (data as any).birth_date || "",
-            gender: (data as any).gender || "",
-            nationality: (data as any).nationality || "Brasileiro(a)",
             
             // Endereço pessoal
             addressCep: (data as any).address_cep || "",
@@ -308,8 +306,6 @@ export function useProfileSettings() {
           // Campos pessoais expandidos
           cpf: profileData.cpf,
           birth_date: profileData.birthDate || null,
-          gender: profileData.gender,
-          nationality: profileData.nationality,
           
           // Endereço pessoal
           address_cep: profileData.addressCep,
