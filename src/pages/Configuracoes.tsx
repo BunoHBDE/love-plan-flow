@@ -62,16 +62,31 @@ interface ProfileData {
   empresaLogoUrl: string;
 }
 
+// Password requirements checker
+const getPasswordRequirements = (password: string) => ({
+  minLength: password.length >= 8,
+  hasUppercase: /[A-Z]/.test(password),
+  hasLowercase: /[a-z]/.test(password),
+  hasNumber: /\d/.test(password),
+  hasSpecial: /[^a-zA-Z0-9]/.test(password),
+});
+
+const isPasswordValid = (password: string): boolean => {
+  const req = getPasswordRequirements(password);
+  return req.minLength && req.hasUppercase && req.hasLowercase && req.hasNumber && req.hasSpecial;
+};
+
 // Password strength calculator
 const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
   if (!password) return { score: 0, label: "", color: "" };
   
+  const req = getPasswordRequirements(password);
   let score = 0;
-  if (password.length >= 6) score++;
-  if (password.length >= 8) score++;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[^a-zA-Z0-9]/.test(password)) score++;
+  if (req.minLength) score++;
+  if (req.hasLowercase) score++;
+  if (req.hasUppercase) score++;
+  if (req.hasNumber) score++;
+  if (req.hasSpecial) score++;
 
   if (score <= 2) return { score, label: "Fraca", color: "bg-destructive" };
   if (score <= 3) return { score, label: "Média", color: "bg-yellow-500" };
@@ -247,8 +262,8 @@ export default function Configuracoes() {
       return;
     }
 
-    if (novaSenha.length < 6) {
-      toast.error("A nova senha deve ter no mínimo 6 caracteres");
+    if (!isPasswordValid(novaSenha)) {
+      toast.error("A senha não atende todos os requisitos");
       return;
     }
 
@@ -506,7 +521,7 @@ export default function Configuracoes() {
               </div>
               {/* Password strength indicator */}
               {passwordData.novaSenha && (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <div className="flex gap-1">
                     {[1, 2, 3, 4, 5].map((level) => (
                       <div
@@ -525,6 +540,32 @@ export default function Configuracoes() {
                 </div>
               )}
             </div>
+            {/* Password requirements checklist */}
+            {passwordData.novaSenha && (
+              <div className="space-y-2 sm:col-span-2 p-3 bg-muted/50 rounded-lg">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Requisitos da senha:</p>
+                <div className="grid gap-1.5 sm:grid-cols-2">
+                  {[
+                    { key: 'minLength', label: 'Mínimo 8 caracteres' },
+                    { key: 'hasUppercase', label: 'Uma letra maiúscula' },
+                    { key: 'hasLowercase', label: 'Uma letra minúscula' },
+                    { key: 'hasNumber', label: 'Um número' },
+                    { key: 'hasSpecial', label: 'Um caractere especial' },
+                  ].map(({ key, label }) => {
+                    const requirements = getPasswordRequirements(passwordData.novaSenha);
+                    const isMet = requirements[key as keyof typeof requirements];
+                    return (
+                      <div key={key} className="flex items-center gap-2 text-xs">
+                        <div className={`h-4 w-4 rounded-full flex items-center justify-center ${isMet ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`}>
+                          {isMet && <Check className="h-2.5 w-2.5 text-white" />}
+                        </div>
+                        <span className={isMet ? 'text-foreground' : 'text-muted-foreground'}>{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="confirmarSenha">Confirmar nova senha</Label>
               <div className="relative">
@@ -548,7 +589,14 @@ export default function Configuracoes() {
           </div>
           <Button
             onClick={handlePasswordChange}
-            disabled={isChangingPassword || !passwordData.senhaAtual || !passwordData.novaSenha || !passwordData.confirmarSenha}
+            disabled={
+              isChangingPassword || 
+              !passwordData.senhaAtual || 
+              !passwordData.novaSenha || 
+              !passwordData.confirmarSenha ||
+              !isPasswordValid(passwordData.novaSenha) ||
+              passwordData.novaSenha !== passwordData.confirmarSenha
+            }
             className="w-full sm:w-auto"
           >
             {isChangingPassword ? (
