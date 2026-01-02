@@ -399,7 +399,7 @@ export default function Configuracoes() {
 
   return (
     <MainLayout>
-      <div className="space-y-8 pb-24">
+      <div className="space-y-8">
         {/* Header */}
         <div className="animate-fade-in">
           <h1 className="text-3xl font-display font-bold text-foreground">
@@ -436,17 +436,15 @@ export default function Configuracoes() {
           {renderActiveSection()}
         </div>
 
-        {/* Botão Salvar Fixo */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t shadow-lg z-40">
-          <div className="max-w-4xl mx-auto flex justify-end">
-            <Button
-              onClick={handleSave}
-              disabled={!hasChanges || isSaving}
-              className="min-w-[180px]"
-            >
-              {isSaving ? "Salvando..." : "Salvar Configurações"}
-            </Button>
-          </div>
+        {/* Botão Salvar */}
+        <div className="flex justify-end pt-4 border-t">
+          <Button
+            onClick={handleSave}
+            disabled={!hasChanges || isSaving}
+            className="min-w-[180px]"
+          >
+            {isSaving ? "Salvando..." : "Salvar Configurações"}
+          </Button>
         </div>
       </div>
     </MainLayout>
