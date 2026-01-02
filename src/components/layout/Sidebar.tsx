@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Calendar,
@@ -8,14 +8,12 @@ import {
   LayoutDashboard,
   ChevronLeft,
   ChevronRight,
-  LogOut,
   CalendarCheck,
   X,
   User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { useSidebarContext } from "@/contexts/SidebarContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -32,22 +30,7 @@ const navItems = [
 
 export function Sidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen, isMobile } = useSidebarContext();
-  const { signOut, profile } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const handleSignOut = async () => {
-    const { error } = await signOut();
-    if (error) {
-      toast({
-        title: 'Erro',
-        description: 'Erro ao sair da conta',
-        variant: 'destructive',
-      });
-    } else {
-      navigate('/auth');
-    }
-  };
+  const { profile } = useAuth();
 
   const handleNavClick = () => {
     if (isMobile) {
@@ -124,8 +107,8 @@ export function Sidebar() {
             ))}
           </nav>
 
-          {/* User Profile & Logout */}
-          <div className="p-3 border-t border-sidebar-border space-y-2">
+          {/* User Profile */}
+          <div className="p-3 border-t border-sidebar-border">
             <NavLink
               to="/configuracoes"
               onClick={handleNavClick}
@@ -153,15 +136,6 @@ export function Sidebar() {
                 </p>
               </div>
             </NavLink>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSignOut}
-              className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="ml-2">Sair</span>
-            </Button>
           </div>
         </aside>
       </>
@@ -238,8 +212,8 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* User Profile & Logout */}
-      <div className={cn("border-t border-sidebar-border space-y-2", collapsed ? "px-3 py-2" : "p-3")}>
+      {/* User Profile */}
+      <div className={cn("border-t border-sidebar-border", collapsed ? "px-3 py-2" : "p-3")}>
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -295,15 +269,6 @@ export function Sidebar() {
             </div>
           </NavLink>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleSignOut}
-          className={cn("w-full text-destructive hover:text-destructive hover:bg-destructive/10", collapsed && "justify-center")}
-        >
-          <LogOut className="h-4 w-4" />
-          {!collapsed && <span className="ml-2">Sair</span>}
-        </Button>
       </div>
     </aside>
   );

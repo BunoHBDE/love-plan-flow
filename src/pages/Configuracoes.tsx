@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,7 @@ import {
   X,
   Eye,
   EyeOff,
+  LogOut,
 } from "lucide-react";
 
 type MainSection = "perfil" | "assinatura" | "orcamentos" | "contratos" | "visitas" | "disponibilidade";
@@ -95,7 +97,8 @@ const getPasswordStrength = (password: string): { score: number; label: string; 
 };
 
 export default function Configuracoes() {
-  const { profile, user } = useAuth();
+  const { profile, user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<MainSection>("perfil");
   const [activeOrcamentoSub, setActiveOrcamentoSub] = useState<OrcamentoSubSection>("espaco");
   const [hasChanges, setHasChanges] = useState(false);
@@ -160,6 +163,11 @@ export default function Configuracoes() {
 
     loadProfileData();
   }, [user?.id]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   const handleInputChange = (field: keyof ProfileData, value: string) => {
     setPerfilData(prev => ({ ...prev, [field]: value }));
@@ -816,13 +824,24 @@ export default function Configuracoes() {
     <MainLayout>
       <div className="space-y-8">
         {/* Header */}
-        <div className="animate-fade-in">
-          <h1 className="text-3xl font-display font-bold text-foreground">
-            Configurações
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie sua conta e personalize o sistema
-          </p>
+        <div className="flex items-start justify-between animate-fade-in">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-foreground">
+              Configurações
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Gerencie sua conta e personalize o sistema
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSignOut}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sair
+          </Button>
         </div>
 
         {/* Toggle Principal */}
