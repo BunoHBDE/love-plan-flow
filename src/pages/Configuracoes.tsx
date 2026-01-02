@@ -51,7 +51,6 @@ interface ProfileData {
   nome: string;
   telefone: string;
   whatsapp: string;
-  avatarUrl: string;
   empresaNome: string;
   empresaCnpj: string;
   empresaEndereco: string;
@@ -66,10 +65,8 @@ export default function Configuracoes() {
   const [activeOrcamentoSub, setActiveOrcamentoSub] = useState<OrcamentoSubSection>("espaco");
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   
-  const avatarInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Form states - Perfil
@@ -77,7 +74,6 @@ export default function Configuracoes() {
     nome: "",
     telefone: "",
     whatsapp: "",
-    avatarUrl: "",
     empresaNome: "",
     empresaCnpj: "",
     empresaEndereco: "",
@@ -102,7 +98,6 @@ export default function Configuracoes() {
           nome: data.full_name || "",
           telefone: (data as any).phone || "",
           whatsapp: (data as any).whatsapp || "",
-          avatarUrl: (data as any).avatar_url || "",
           empresaNome: (data as any).company_name || "",
           empresaCnpj: (data as any).company_cnpj || "",
           empresaEndereco: (data as any).company_address || "",
@@ -145,31 +140,6 @@ export default function Configuracoes() {
     return publicUrl;
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file
-    if (!file.type.startsWith("image/")) {
-      toast.error("Por favor, selecione uma imagem");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("A imagem deve ter no máximo 5MB");
-      return;
-    }
-
-    setIsUploadingAvatar(true);
-    const url = await uploadFile(file, "avatar");
-    setIsUploadingAvatar(false);
-
-    if (url) {
-      setPerfilData(prev => ({ ...prev, avatarUrl: url }));
-      setHasChanges(true);
-      toast.success("Foto de perfil atualizada!");
-    }
-  };
-
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -195,10 +165,6 @@ export default function Configuracoes() {
     }
   };
 
-  const removeAvatar = () => {
-    setPerfilData(prev => ({ ...prev, avatarUrl: "" }));
-    setHasChanges(true);
-  };
 
   const removeLogo = () => {
     setPerfilData(prev => ({ ...prev, empresaLogoUrl: "" }));
@@ -216,7 +182,6 @@ export default function Configuracoes() {
         full_name: perfilData.nome,
         phone: perfilData.telefone,
         whatsapp: perfilData.whatsapp,
-        avatar_url: perfilData.avatarUrl,
         company_name: perfilData.empresaNome,
         company_cnpj: perfilData.empresaCnpj,
         company_address: perfilData.empresaEndereco,
@@ -244,68 +209,12 @@ export default function Configuracoes() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Camera className="h-5 w-5 text-primary" />
+            <User className="h-5 w-5 text-primary" />
             Informações Pessoais
           </CardTitle>
-          <CardDescription>Seus dados de contato e foto de perfil</CardDescription>
+          <CardDescription>Seus dados de contato</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              {perfilData.avatarUrl ? (
-                <div className="relative h-20 w-20">
-                  <img
-                    src={perfilData.avatarUrl}
-                    alt="Avatar"
-                    className="h-20 w-20 rounded-full object-cover border-2 border-primary/20"
-                  />
-                  <button
-                    onClick={removeAvatar}
-                    className="absolute -top-1 -right-1 h-6 w-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90 transition-colors"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ) : (
-                <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
-                  {isUploadingAvatar ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  ) : (
-                    <Camera className="h-8 w-8 text-muted-foreground/50" />
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={isUploadingAvatar}
-              >
-                {isUploadingAvatar ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    {perfilData.avatarUrl ? "Alterar foto" : "Enviar foto"}
-                  </>
-                )}
-              </Button>
-              <p className="text-xs text-muted-foreground">JPG, PNG ou WEBP. Máx 5MB.</p>
-            </div>
-          </div>
-          <Separator />
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="nome">Nome completo</Label>
