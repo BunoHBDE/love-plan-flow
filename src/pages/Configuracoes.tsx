@@ -25,6 +25,8 @@ import {
   Loader2,
   Upload,
   X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 type MainSection = "perfil" | "assinatura" | "orcamentos" | "contratos" | "visitas" | "disponibilidade";
@@ -89,6 +91,13 @@ export default function Configuracoes() {
     senhaAtual: "",
     novaSenha: "",
     confirmarSenha: "",
+  });
+
+  // Password visibility state
+  const [showPasswords, setShowPasswords] = useState({
+    senhaAtual: false,
+    novaSenha: false,
+    confirmarSenha: false,
   });
 
   // Load profile data on mount
@@ -441,33 +450,63 @@ export default function Configuracoes() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="senhaAtual">Senha atual</Label>
-              <Input
-                id="senhaAtual"
-                type="password"
-                placeholder="••••••••"
-                value={passwordData.senhaAtual}
-                onChange={(e) => setPasswordData(prev => ({ ...prev, senhaAtual: e.target.value }))}
-              />
+              <div className="relative">
+                <Input
+                  id="senhaAtual"
+                  type={showPasswords.senhaAtual ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={passwordData.senhaAtual}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, senhaAtual: e.target.value }))}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(prev => ({ ...prev, senhaAtual: !prev.senhaAtual }))}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPasswords.senhaAtual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="novaSenha">Nova senha</Label>
-              <Input
-                id="novaSenha"
-                type="password"
-                placeholder="••••••••"
-                value={passwordData.novaSenha}
-                onChange={(e) => setPasswordData(prev => ({ ...prev, novaSenha: e.target.value }))}
-              />
+              <div className="relative">
+                <Input
+                  id="novaSenha"
+                  type={showPasswords.novaSenha ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={passwordData.novaSenha}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, novaSenha: e.target.value }))}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(prev => ({ ...prev, novaSenha: !prev.novaSenha }))}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPasswords.novaSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="confirmarSenha">Confirmar nova senha</Label>
-              <Input
-                id="confirmarSenha"
-                type="password"
-                placeholder="••••••••"
-                value={passwordData.confirmarSenha}
-                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmarSenha: e.target.value }))}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmarSenha"
+                  type={showPasswords.confirmarSenha ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={passwordData.confirmarSenha}
+                  onChange={(e) => setPasswordData(prev => ({ ...prev, confirmarSenha: e.target.value }))}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(prev => ({ ...prev, confirmarSenha: !prev.confirmarSenha }))}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPasswords.confirmarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           </div>
           <Button
