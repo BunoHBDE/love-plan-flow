@@ -11,12 +11,13 @@ import {
   LogOut,
   CalendarCheck,
   X,
-  Settings,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useSidebarContext } from "@/contexts/SidebarContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/", disabled: false },
@@ -26,7 +27,6 @@ const navItems = [
   { icon: Users, label: "Clientes", path: "/clientes", disabled: false },
   { icon: FileText, label: "Contratos", path: "/contratos", disabled: true },
   { icon: CreditCard, label: "Pagamentos", path: "/pagamentos", disabled: true },
-  { icon: Settings, label: "Configurações", path: "/configuracoes", disabled: false },
 ];
 
 export function Sidebar() {
@@ -123,13 +123,35 @@ export function Sidebar() {
             ))}
           </nav>
 
-          {/* User & Logout */}
+          {/* User Profile & Logout */}
           <div className="p-3 border-t border-sidebar-border space-y-2">
-            {profile && (
-              <div className="px-3 py-2 text-sm text-muted-foreground">
-                {profile.full_name || profile.email}
+            <NavLink
+              to="/configuracoes"
+              onClick={handleNavClick}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
+                  isActive
+                    ? "bg-sidebar-accent shadow-soft"
+                    : "hover:bg-sidebar-accent/50"
+                )
+              }
+            >
+              <Avatar className="h-9 w-9 border-2 border-primary/20">
+                <AvatarImage src="" alt={profile?.full_name || ""} />
+                <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                  {profile?.full_name?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {profile?.full_name || "Usuário"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {profile?.email}
+                </p>
               </div>
-            )}
+            </NavLink>
             <Button
               variant="ghost"
               size="sm"
@@ -215,13 +237,37 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* User & Logout */}
+      {/* User Profile & Logout */}
       <div className="p-3 border-t border-sidebar-border space-y-2">
-        {!collapsed && profile && (
-          <div className="px-3 py-2 text-sm text-muted-foreground animate-fade-in">
-            {profile.full_name || profile.email}
-          </div>
-        )}
+        <NavLink
+          to="/configuracoes"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
+              isActive
+                ? "bg-sidebar-accent shadow-soft"
+                : "hover:bg-sidebar-accent/50",
+              collapsed && "justify-center px-2"
+            )
+          }
+        >
+          <Avatar className={cn("border-2 border-primary/20", collapsed ? "h-8 w-8" : "h-9 w-9")}>
+            <AvatarImage src="" alt={profile?.full_name || ""} />
+            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+              {profile?.full_name?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
+            </AvatarFallback>
+          </Avatar>
+          {!collapsed && (
+            <div className="flex-1 min-w-0 animate-fade-in">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {profile?.full_name || "Usuário"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {profile?.email}
+              </p>
+            </div>
+          )}
+        </NavLink>
         <Button
           variant="ghost"
           size="sm"
