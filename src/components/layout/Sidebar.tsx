@@ -60,13 +60,7 @@ export function Sidebar() {
           {/* Header with close button */}
           <div className="flex items-center justify-between px-4 py-5 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
-              {profile?.company_logo_url ? (
-                <img 
-                  src={profile.company_logo_url} 
-                  alt={profile.company_name || "Logo"} 
-                  className="h-10 w-10 rounded-lg object-cover"
-                />
-              ) : null}
+
               <div>
                 <h1 className="font-display text-2xl font-bold text-gold tracking-wide">
                   {profile?.company_name || "Ayllah"}
@@ -166,26 +160,12 @@ export function Sidebar() {
       >
         {collapsed ? (
           <div className="w-full flex justify-center">
-            {profile?.company_logo_url ? (
-              <img 
-                src={profile.company_logo_url} 
-                alt={profile.company_name || "Logo"} 
-                className="h-8 w-8 rounded-lg object-cover"
-              />
-            ) : (
-              <ChevronRight className="h-5 w-5 text-gold" />
-            )}
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </div>
         ) : (
           <>
             <div className="flex items-center gap-3">
-              {profile?.company_logo_url ? (
-                <img 
-                  src={profile.company_logo_url} 
-                  alt={profile.company_name || "Logo"} 
-                  className="h-10 w-10 rounded-lg object-cover"
-                />
-              ) : null}
+              
               <div>
                 <h1 className="font-display text-2xl font-bold text-gold tracking-wide">
                   {profile?.company_name || "Ayllah"}

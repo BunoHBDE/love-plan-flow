@@ -27,7 +27,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             <Menu className="h-5 w-5" />
           </Button>
           <h1 className="font-display text-lg font-semibold text-sidebar-foreground">
-            Espaço Noiva
+            Ayllah
           </h1>
         </header>
       )}
