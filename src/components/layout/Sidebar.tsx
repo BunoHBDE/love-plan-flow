@@ -11,6 +11,7 @@ import {
   LogOut,
   CalendarCheck,
   X,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +26,7 @@ const navItems = [
   { icon: Users, label: "Clientes", path: "/clientes", disabled: false },
   { icon: FileText, label: "Contratos", path: "/contratos", disabled: true },
   { icon: CreditCard, label: "Pagamentos", path: "/pagamentos", disabled: true },
+  { icon: Settings, label: "Configurações", path: "/configuracoes", disabled: false },
 ];
 
 export function Sidebar() {

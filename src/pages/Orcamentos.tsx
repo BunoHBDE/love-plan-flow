@@ -247,7 +247,6 @@ export default function Orcamentos() {
                   mode="single"
                   selected={dateFilter}
                   onSelect={setDateFilter}
-                  initialFocus
                   className="pointer-events-auto"
                 />
               </PopoverContent>
