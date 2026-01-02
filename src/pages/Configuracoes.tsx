@@ -67,6 +67,7 @@ export default function Configuracoes() {
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -81,6 +82,13 @@ export default function Configuracoes() {
     empresaTelefone: "",
     empresaEmail: "",
     empresaLogoUrl: "",
+  });
+
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    senhaAtual: "",
+    novaSenha: "",
+    confirmarSenha: "",
   });
 
   // Load profile data on mount
@@ -202,6 +210,62 @@ export default function Configuracoes() {
 
     setHasChanges(false);
     toast.success("Configurações salvas com sucesso!");
+  };
+
+  const handlePasswordChange = async () => {
+    const { senhaAtual, novaSenha, confirmarSenha } = passwordData;
+
+    // Validations
+    if (!senhaAtual || !novaSenha || !confirmarSenha) {
+      toast.error("Preencha todos os campos de senha");
+      return;
+    }
+
+    if (novaSenha.length < 6) {
+      toast.error("A nova senha deve ter no mínimo 6 caracteres");
+      return;
+    }
+
+    if (novaSenha !== confirmarSenha) {
+      toast.error("As senhas não conferem");
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    // First verify current password by attempting to sign in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user?.email || "",
+      password: senhaAtual,
+    });
+
+    if (signInError) {
+      setIsChangingPassword(false);
+      toast.error("Senha atual incorreta");
+      return;
+    }
+
+    // Update to new password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: novaSenha,
+    });
+
+    setIsChangingPassword(false);
+
+    if (updateError) {
+      console.error("Password update error:", updateError);
+      toast.error("Erro ao alterar senha. Tente novamente.");
+      return;
+    }
+
+    // Clear password fields
+    setPasswordData({
+      senhaAtual: "",
+      novaSenha: "",
+      confirmarSenha: "",
+    });
+
+    toast.success("Senha alterada com sucesso!");
   };
 
   const renderPerfilSection = () => (
@@ -377,17 +441,49 @@ export default function Configuracoes() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="senhaAtual">Senha atual</Label>
-              <Input id="senhaAtual" type="password" placeholder="••••••••" />
+              <Input
+                id="senhaAtual"
+                type="password"
+                placeholder="••••••••"
+                value={passwordData.senhaAtual}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, senhaAtual: e.target.value }))}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="novaSenha">Nova senha</Label>
-              <Input id="novaSenha" type="password" placeholder="••••••••" />
+              <Input
+                id="novaSenha"
+                type="password"
+                placeholder="••••••••"
+                value={passwordData.novaSenha}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, novaSenha: e.target.value }))}
+              />
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="confirmarSenha">Confirmar nova senha</Label>
-              <Input id="confirmarSenha" type="password" placeholder="••••••••" />
+              <Input
+                id="confirmarSenha"
+                type="password"
+                placeholder="••••••••"
+                value={passwordData.confirmarSenha}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmarSenha: e.target.value }))}
+              />
             </div>
           </div>
+          <Button
+            onClick={handlePasswordChange}
+            disabled={isChangingPassword || !passwordData.senhaAtual || !passwordData.novaSenha || !passwordData.confirmarSenha}
+            className="w-full sm:w-auto"
+          >
+            {isChangingPassword ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Alterando...
+              </>
+            ) : (
+              "Alterar senha"
+            )}
+          </Button>
         </CardContent>
       </Card>
     </div>
