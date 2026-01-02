@@ -213,7 +213,7 @@ export function Sidebar() {
       </nav>
 
       {/* User Profile */}
-      <div className={cn("border-t border-sidebar-border", collapsed ? "px-2 py-2" : "p-3")}>
+      <div className={cn("border-t border-sidebar-border", collapsed ? "px-2 py-2 flex justify-center" : "p-3")}>
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
