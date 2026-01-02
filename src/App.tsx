@@ -19,6 +19,7 @@ import EditarOrcamento from "./pages/EditarOrcamento";
 import Disponibilidade from "./pages/Disponibilidade";
 import Contratos from "./pages/Contratos";
 import Pagamentos from "./pages/Pagamentos";
+import Configuracoes from "./pages/Configuracoes";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -102,6 +103,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Pagamentos />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/configuracoes" 
+              element={
+                <ProtectedRoute>
+                  <Configuracoes />
                 </ProtectedRoute>
               } 
             />
