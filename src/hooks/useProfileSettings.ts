@@ -101,10 +101,18 @@ export function useProfileSettings() {
             // Dados da empresa
             empresaNome: data.company_name || "",
             empresaCnpj: data.company_cnpj || "",
-            empresaEndereco: data.company_address || "",
             empresaTelefone: data.company_phone || "",
             empresaEmail: data.company_email || "",
             empresaLogoUrl: data.company_logo_url || "",
+            
+            // Endereço da empresa
+            empresaCep: (data as any).company_cep || "",
+            empresaRua: (data as any).company_street || "",
+            empresaNumero: (data as any).company_number || "",
+            empresaComplemento: (data as any).company_complement || "",
+            empresaBairro: (data as any).company_neighborhood || "",
+            empresaCidade: (data as any).company_city || "",
+            empresaEstado: (data as any).company_state || "",
           });
         }
       } catch (error) {
@@ -145,23 +153,40 @@ export function useProfileSettings() {
         return;
       }
 
-      setProfileData(prev => ({
-        ...prev,
-        addressCep: formatCEP(cleanCep),
-        addressStreet: data.logradouro || "",
-        addressNeighborhood: data.bairro || "",
-        addressCity: data.localidade || "",
-        addressState: data.uf || "",
-      }));
-      setHasChanges(true);
+      // Detectar se é CEP pessoal ou da empresa baseado no valor atual
+      const isCompanyCep = profileData.empresaCep === formatCEP(cleanCep) || 
+                           profileData.empresaCep === cep;
 
+      if (isCompanyCep) {
+        // Atualizar endereço da empresa
+        setProfileData(prev => ({
+          ...prev,
+          empresaCep: formatCEP(cleanCep),
+          empresaRua: data.logradouro || "",
+          empresaBairro: data.bairro || "",
+          empresaCidade: data.localidade || "",
+          empresaEstado: data.uf || "",
+        }));
+      } else {
+        // Atualizar endereço pessoal
+        setProfileData(prev => ({
+          ...prev,
+          addressCep: formatCEP(cleanCep),
+          addressStreet: data.logradouro || "",
+          addressNeighborhood: data.bairro || "",
+          addressCity: data.localidade || "",
+          addressState: data.uf || "",
+        }));
+      }
+      
+      setHasChanges(true);
       toast.success("Endereço encontrado!");
     } catch {
       toast.error("Erro ao buscar CEP. Tente novamente.");
     } finally {
       setIsLoadingCep(false);
     }
-  }, []);
+  }, [profileData.empresaCep]);
 
   // ==========================================
   // HANDLERS - UPLOAD DE ARQUIVOS
@@ -298,10 +323,18 @@ export function useProfileSettings() {
           // Dados da empresa
           company_name: profileData.empresaNome,
           company_cnpj: profileData.empresaCnpj,
-          company_address: profileData.empresaEndereco,
           company_phone: profileData.empresaTelefone,
           company_email: profileData.empresaEmail,
           company_logo_url: profileData.empresaLogoUrl,
+          
+          // Endereço da empresa
+          company_cep: profileData.empresaCep,
+          company_street: profileData.empresaRua,
+          company_number: profileData.empresaNumero,
+          company_complement: profileData.empresaComplemento,
+          company_neighborhood: profileData.empresaBairro,
+          company_city: profileData.empresaCidade,
+          company_state: profileData.empresaEstado,
         } as any)
         .eq("id", user.id);
 

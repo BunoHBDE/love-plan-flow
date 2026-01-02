@@ -19,6 +19,10 @@ interface CompanySectionProps {
   onLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveLogo: () => void;
   onTriggerUpload: () => void;
+
+  // CEP lookup
+  isLoadingCep: boolean;
+  onCepLookup: (cep: string) => void;
 }
 
 export function CompanySection({
@@ -29,6 +33,8 @@ export function CompanySection({
   onLogoChange,
   onRemoveLogo,
   onTriggerUpload,
+  isLoadingCep,
+  onCepLookup,
 }: CompanySectionProps) {
   return (
     <div className="space-y-6">
@@ -40,6 +46,8 @@ export function CompanySection({
         onLogoChange={onLogoChange}
         onRemoveLogo={onRemoveLogo}
         onTriggerUpload={onTriggerUpload}
+        isLoadingCep={isLoadingCep}
+        onCepLookup={onCepLookup}
       />
     </div>
   );

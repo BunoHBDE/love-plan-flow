@@ -77,10 +77,18 @@ export interface ProfileData {
   // Dados da empresa
   empresaNome: string;
   empresaCnpj: string;
-  empresaEndereco: string;
   empresaTelefone: string;
   empresaEmail: string;
   empresaLogoUrl: string;
+  
+  // Endereço da empresa
+  empresaCep: string;
+  empresaRua: string;
+  empresaNumero: string;
+  empresaComplemento: string;
+  empresaBairro: string;
+  empresaCidade: string;
+  empresaEstado: string;
 }
 
 export interface PasswordData {
@@ -138,10 +146,18 @@ export const INITIAL_PROFILE_DATA: ProfileData = {
   // Dados da empresa
   empresaNome: "",
   empresaCnpj: "",
-  empresaEndereco: "",
   empresaTelefone: "",
   empresaEmail: "",
   empresaLogoUrl: "",
+  
+  // Endereço da empresa
+  empresaCep: "",
+  empresaRua: "",
+  empresaNumero: "",
+  empresaComplemento: "",
+  empresaBairro: "",
+  empresaCidade: "",
+  empresaEstado: "",
 };
 
 export const INITIAL_PASSWORD_DATA: PasswordData = {

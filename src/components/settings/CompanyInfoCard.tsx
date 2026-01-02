@@ -2,6 +2,7 @@
  * COMPONENTE DE DADOS DA EMPRESA
  * 
  * Card com campos para informações da empresa e upload de logo.
+ * Inclui endereço completo com busca automática de CEP.
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Camera, Loader2, Upload, X } from "lucide-react";
-import { formatPhone, formatCNPJ } from "@/lib/masks";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Building2, Camera, Loader2, Upload, X, MapPin } from "lucide-react";
+import { formatPhone, formatCNPJ, formatCEP } from "@/lib/masks";
 import type { ProfileData } from "@/constants/settings";
+import { BRAZILIAN_STATES } from "@/constants/settings";
 
 interface CompanyInfoCardProps {
   data: ProfileData;
@@ -21,6 +24,8 @@ interface CompanyInfoCardProps {
   onLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveLogo: () => void;
   onTriggerUpload: () => void;
+  isLoadingCep: boolean;
+  onCepLookup: (cep: string) => void;
 }
 
 export function CompanyInfoCard({
@@ -31,6 +36,8 @@ export function CompanyInfoCard({
   onLogoChange,
   onRemoveLogo,
   onTriggerUpload,
+  isLoadingCep,
+  onCepLookup,
 }: CompanyInfoCardProps) {
   return (
     <Card>
@@ -41,7 +48,7 @@ export function CompanyInfoCard({
         </CardTitle>
         <CardDescription>Informações do seu espaço de eventos</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {/* Logo Upload */}
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -101,7 +108,7 @@ export function CompanyInfoCard({
 
         <Separator />
 
-        {/* Campos da empresa */}
+        {/* Dados Básicos da Empresa */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="empresaNome">Nome da empresa</Label>
@@ -121,22 +128,13 @@ export function CompanyInfoCard({
               placeholder="00.000.000/0000-00"
             />
           </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="empresaEndereco">Endereço</Label>
-            <Input
-              id="empresaEndereco"
-              value={data.empresaEndereco}
-              onChange={(e) => onChange("empresaEndereco", e.target.value)}
-              placeholder="Endereço completo"
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="empresaTelefone">Telefone comercial</Label>
             <Input
               id="empresaTelefone"
               value={data.empresaTelefone}
               onChange={(e) => onChange("empresaTelefone", formatPhone(e.target.value))}
-              placeholder="(00) 0000-0000"
+              placeholder="(00) 00000-0000"
             />
           </div>
           <div className="space-y-2">
@@ -148,6 +146,104 @@ export function CompanyInfoCard({
               onChange={(e) => onChange("empresaEmail", e.target.value)}
               placeholder="contato@empresa.com"
             />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Endereço da Empresa */}
+        <div className="space-y-4">
+          <Label className="flex items-center gap-2 text-base font-medium">
+            <MapPin className="h-4 w-4 text-primary" />
+            Endereço
+          </Label>
+          
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="empresaCep">CEP</Label>
+              <div className="relative">
+                <Input
+                  id="empresaCep"
+                  value={data.empresaCep}
+                  onChange={(e) => onChange("empresaCep", formatCEP(e.target.value))}
+                  onBlur={(e) => onCepLookup(e.target.value)}
+                  placeholder="00000-000"
+                  disabled={isLoadingCep}
+                />
+                {isLoadingCep && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="empresaRua">Rua</Label>
+              <Input
+                id="empresaRua"
+                value={data.empresaRua}
+                onChange={(e) => onChange("empresaRua", e.target.value)}
+                placeholder="Nome da rua"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div className="space-y-2">
+              <Label htmlFor="empresaNumero">Número</Label>
+              <Input
+                id="empresaNumero"
+                value={data.empresaNumero}
+                onChange={(e) => onChange("empresaNumero", e.target.value)}
+                placeholder="Nº"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="empresaComplemento">Complemento</Label>
+              <Input
+                id="empresaComplemento"
+                value={data.empresaComplemento}
+                onChange={(e) => onChange("empresaComplemento", e.target.value)}
+                placeholder="Sala, Andar..."
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="empresaBairro">Bairro</Label>
+              <Input
+                id="empresaBairro"
+                value={data.empresaBairro}
+                onChange={(e) => onChange("empresaBairro", e.target.value)}
+                placeholder="Bairro"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="empresaCidade">Cidade</Label>
+              <Input
+                id="empresaCidade"
+                value={data.empresaCidade}
+                onChange={(e) => onChange("empresaCidade", e.target.value)}
+                placeholder="Cidade"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="empresaEstado">Estado</Label>
+              <Select
+                value={data.empresaEstado}
+                onValueChange={(value) => onChange("empresaEstado", value)}
+              >
+                <SelectTrigger id="empresaEstado">
+                  <SelectValue placeholder="UF" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRAZILIAN_STATES.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </CardContent>

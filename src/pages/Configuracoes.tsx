@@ -122,6 +122,9 @@ export default function Configuracoes() {
             onLogoChange={handleLogoChange}
             onRemoveLogo={removeLogo}
             onTriggerUpload={triggerLogoUpload}
+            // CEP
+            isLoadingCep={isLoadingCep}
+            onCepLookup={handleCepLookup}
           />
         );
 
