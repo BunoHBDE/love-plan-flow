@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useSidebarContext } from "@/contexts/SidebarContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/", disabled: false },
@@ -137,9 +138,9 @@ export function Sidebar() {
                 )
               }
             >
-              <Avatar className="h-9 w-9 border-2 border-primary/20">
+              <Avatar className="h-9 w-9">
                 <AvatarImage src="" alt={profile?.full_name || ""} />
-                <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                <AvatarFallback className="bg-muted text-muted-foreground text-sm">
                   {profile?.full_name?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
                 </AvatarFallback>
               </Avatar>
@@ -239,25 +240,51 @@ export function Sidebar() {
 
       {/* User Profile & Logout */}
       <div className="p-3 border-t border-sidebar-border space-y-2">
-        <NavLink
-          to="/configuracoes"
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
-              isActive
-                ? "bg-sidebar-accent shadow-soft"
-                : "hover:bg-sidebar-accent/50",
-              collapsed && "justify-center px-2"
-            )
-          }
-        >
-          <Avatar className={cn("border-2 border-primary/20", collapsed ? "h-8 w-8" : "h-9 w-9")}>
-            <AvatarImage src="" alt={profile?.full_name || ""} />
-            <AvatarFallback className="bg-primary/10 text-primary text-sm">
-              {profile?.full_name?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
-            </AvatarFallback>
-          </Avatar>
-          {!collapsed && (
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <NavLink
+                to="/configuracoes"
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center justify-center px-2 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
+                    isActive
+                      ? "bg-sidebar-accent shadow-soft"
+                      : "hover:bg-sidebar-accent/50"
+                  )
+                }
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src="" alt={profile?.full_name || ""} />
+                  <AvatarFallback className="bg-muted text-muted-foreground text-sm">
+                    {profile?.full_name?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
+                  </AvatarFallback>
+                </Avatar>
+              </NavLink>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p className="font-medium">{profile?.full_name || "Usuário"}</p>
+              <p className="text-xs text-muted-foreground">{profile?.email}</p>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <NavLink
+            to="/configuracoes"
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer",
+                isActive
+                  ? "bg-sidebar-accent shadow-soft"
+                  : "hover:bg-sidebar-accent/50"
+              )
+            }
+          >
+            <Avatar className="h-9 w-9">
+              <AvatarImage src="" alt={profile?.full_name || ""} />
+              <AvatarFallback className="bg-muted text-muted-foreground text-sm">
+                {profile?.full_name?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0 animate-fade-in">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {profile?.full_name || "Usuário"}
@@ -266,8 +293,8 @@ export function Sidebar() {
                 {profile?.email}
               </p>
             </div>
-          )}
-        </NavLink>
+          </NavLink>
+        )}
         <Button
           variant="ghost"
           size="sm"
