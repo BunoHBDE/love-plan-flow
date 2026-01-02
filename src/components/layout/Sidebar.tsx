@@ -59,11 +59,20 @@ export function Sidebar() {
         >
           {/* Header with close button */}
           <div className="flex items-center justify-between px-4 py-5 border-b border-sidebar-border">
-            <div>
-              <h1 className="font-display text-2xl font-bold text-gold tracking-wide">
-                Ayllah
-              </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Gestão de Eventos</p>
+            <div className="flex items-center gap-3">
+              {profile?.company_logo_url ? (
+                <img 
+                  src={profile.company_logo_url} 
+                  alt={profile.company_name || "Logo"} 
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+              ) : null}
+              <div>
+                <h1 className="font-display text-2xl font-bold text-gold tracking-wide">
+                  {profile?.company_name || "Ayllah"}
+                </h1>
+                <p className="text-xs text-muted-foreground mt-0.5">Gestão de Eventos</p>
+              </div>
             </div>
             <Button
               variant="ghost"
@@ -157,15 +166,32 @@ export function Sidebar() {
       >
         {collapsed ? (
           <div className="w-full flex justify-center">
-            <ChevronRight className="h-5 w-5 text-gold" />
+            {profile?.company_logo_url ? (
+              <img 
+                src={profile.company_logo_url} 
+                alt={profile.company_name || "Logo"} 
+                className="h-8 w-8 rounded-lg object-cover"
+              />
+            ) : (
+              <ChevronRight className="h-5 w-5 text-gold" />
+            )}
           </div>
         ) : (
           <>
-            <div>
-              <h1 className="font-display text-2xl font-bold text-gold tracking-wide">
-                Ayllah
-              </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Gestão de Eventos</p>
+            <div className="flex items-center gap-3">
+              {profile?.company_logo_url ? (
+                <img 
+                  src={profile.company_logo_url} 
+                  alt={profile.company_name || "Logo"} 
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+              ) : null}
+              <div>
+                <h1 className="font-display text-2xl font-bold text-gold tracking-wide">
+                  {profile?.company_name || "Ayllah"}
+                </h1>
+                <p className="text-xs text-muted-foreground mt-0.5">Gestão de Eventos</p>
+              </div>
             </div>
             <ChevronLeft className="h-5 w-5 text-muted-foreground" />
           </>
