@@ -270,21 +270,33 @@ export function SpaceSettingsCard() {
       }
       novoPreco.preco_fixo = valorFixo;
     } else {
-      if (!valorInicial || valorInicial === '0' || !valorPorConvidado || valorPorConvidado === '0') {
-        toast({ title: "Erro", description: "Informe o valor inicial e valor por convidado", variant: "destructive" });
+      // Validar valor por convidado (obrigatório e > 0)
+      if (!valorPorConvidado || valorPorConvidado === '0') {
+        toast({ title: "Erro", description: "Informe o valor por convidado", variant: "destructive" });
         return;
       }
-      const valInicial = parseFloat(valorInicial) / 100;
+      
       const valPorConvidado = parseFloat(valorPorConvidado) / 100;
       
-      if (valInicial <= 0 || valPorConvidado <= 0) {
-        toast({ title: "Erro", description: "Os valores devem ser maiores que R$ 0,00", variant: "destructive" });
+      if (valPorConvidado <= 0) {
+        toast({ title: "Erro", description: "O valor por convidado deve ser maior que R$ 0,00", variant: "destructive" });
         return;
       }
-      if (valInicial > MAX_VALOR_MONETARIO || valPorConvidado > MAX_VALOR_MONETARIO) {
+      if (valPorConvidado > MAX_VALOR_MONETARIO) {
         toast({ title: "Erro", description: "Valor muito alto. Máximo: R$ 1.000.000,00", variant: "destructive" });
         return;
       }
+      
+      // Valor inicial pode ser vazio ou 0 (opcional)
+      const valInicial = valorInicial && valorInicial !== '0' 
+        ? parseFloat(valorInicial) / 100 
+        : 0;
+      
+      if (valInicial > MAX_VALOR_MONETARIO) {
+        toast({ title: "Erro", description: "Valor muito alto. Máximo: R$ 1.000.000,00", variant: "destructive" });
+        return;
+      }
+      
       novoPreco.valor_inicial = valInicial;
       novoPreco.valor_por_convidado = valPorConvidado;
     }
@@ -561,7 +573,7 @@ export function SpaceSettingsCard() {
                 {/* Campos de Preço */}
                 {tipoPreco === 'fixo' ? (
                   <div>
-                    <Label>Valor Fixo</Label>
+                    <Label>Valor Fixo *</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
                       <Input 
@@ -577,21 +589,24 @@ export function SpaceSettingsCard() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label>Valor Inicial</Label>
+                      <Label>Valor Inicial (Opcional)</Label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
                         <Input 
                           type="text"
                           value={formatCurrencyInput(valorInicial)} 
                           onChange={(e) => setValorInicial(parseCurrencyInput(e.target.value))} 
-                          placeholder="5.000,00"
+                          placeholder="0,00"
                           className="pl-10"
                           disabled={isCreating || isUpdating}
                         />
                       </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Deixe vazio ou R$ 0,00 se não houver
+                      </p>
                     </div>
                     <div>
-                      <Label>Valor por Convidado</Label>
+                      <Label>Valor por Convidado *</Label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
                         <Input 
