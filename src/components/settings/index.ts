@@ -19,3 +19,6 @@ export { PlaceholderSection } from "./PlaceholderSection";
 export { PersonalInfoCard } from "./PersonalInfoCard";
 export { CompanyInfoCard } from "./CompanyInfoCard";
 export { PasswordChangeCard } from "./PasswordChangeCard";
+
+// Configurações de Orçamentos
+export { SpaceSettingsCard } from "./SpaceSettingsCard";

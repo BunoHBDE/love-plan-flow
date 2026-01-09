@@ -3,8 +3,6 @@
  * 
  * Permite configurar opções relacionadas aos orçamentos:
  * espaço, pacotes, buffet, extras, pagamento e listas.
- * 
- * TODO: Implementar cada sub-seção conforme necessidade do MVP.
  */
 
 import { useState } from "react";
@@ -12,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FileText } from "lucide-react";
 import { ORCAMENTO_SUB_SECTIONS } from "@/constants/settings";
 import type { OrcamentoSubSection } from "@/constants/settings";
+import { SpaceSettingsCard } from "./SpaceSettingsCard";
 
 export function QuotesSettingsSection() {
   const [activeSubSection, setActiveSubSection] =
@@ -41,25 +40,30 @@ export function QuotesSettingsSection() {
       </div>
 
       {/* Conteúdo da sub-seção */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">
-            Configurações de {currentSubSection?.label}
-          </CardTitle>
-          <CardDescription>
-            Gerencie as opções disponíveis para seus orçamentos
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>
-              Em breve você poderá configurar as opções de {activeSubSection}{" "}
-              aqui.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {activeSubSection === "espaco" && <SpaceSettingsCard />}
+
+      {/* Placeholders para outras seções */}
+      {activeSubSection !== "espaco" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              Configurações de {currentSubSection?.label}
+            </CardTitle>
+            <CardDescription>
+              Gerencie as opções disponíveis para seus orçamentos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>
+                Em breve você poderá configurar as opções de {activeSubSection}{" "}
+                aqui.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
