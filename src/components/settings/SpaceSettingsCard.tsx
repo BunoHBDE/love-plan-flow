@@ -1,6 +1,6 @@
 /**
  * COMPONENTE: SpaceSettingsCard
- * Interface intuitiva com checkboxes para seleção de dias
+ * Configuração de preços de espaço com backend integrado
  */
 
 import { useState } from "react";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Building2, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Building2, Pencil, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Select,
@@ -29,6 +29,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useSpaceSettings } from "@/hooks/useSpaceSettings";
+import type { SpaceData, CreateSpaceData, PrecoDia } from "@/types/spaceSettings.types";
 
 // Gerar lista dos próximos 10 anos
 const anoAtual = new Date().getFullYear();
@@ -44,50 +46,6 @@ const DIAS_SEMANA = [
   "Sábado",
   "Domingo",
   "Feriado",
-];
-
-interface PrecoDia {
-  dias: string[];
-  tipo: 'fixo' | 'variavel';
-  preco_fixo?: number;
-  valor_inicial?: number;
-  valor_por_convidado?: number;
-}
-
-interface SpaceData {
-  id?: string;
-  ano: string;
-  nome: string;
-  precos_por_dia: PrecoDia[];
-  itens_inclusos: string[];
-}
-
-const MOCK_SPACES: SpaceData[] = [
-  {
-    id: "1",
-    ano: "2026",
-    nome: "Espaço Completo 2026",
-    precos_por_dia: [
-      { dias: ["Sábado"], tipo: "fixo", preco_fixo: 8900 },
-      { dias: ["Domingo"], tipo: "fixo", preco_fixo: 7900 },
-      { dias: ["Feriado"], tipo: "fixo", preco_fixo: 9500 },
-    ],
-    itens_inclusos: [
-      "Espaço completo por 8 horas",
-      "Mesas e cadeiras para até 150 convidados",
-      "Estacionamento gratuito"
-    ],
-  },
-  {
-    id: "2",
-    ano: "2026",
-    nome: "Espaço Semana",
-    precos_por_dia: [
-      { dias: ["Segunda", "Terça", "Quarta", "Quinta"], tipo: "variavel", valor_inicial: 4000, valor_por_convidado: 25 },
-      { dias: ["Sexta"], tipo: "variavel", valor_inicial: 5000, valor_por_convidado: 35 },
-    ],
-    itens_inclusos: ["Espaço completo"],
-  }
 ];
 
 // Constantes
@@ -121,7 +79,19 @@ const formatCurrencyInput = (value: string): string => {
 
 export function SpaceSettingsCard() {
   const { toast } = useToast();
-  const [spaces, setSpaces] = useState<SpaceData[]>(MOCK_SPACES);
+  
+  // Hook do backend
+  const {
+    spaces,
+    isLoading,
+    createSpace,
+    updateSpace,
+    deleteSpace,
+    isCreating,
+    isUpdating,
+    isDeleting,
+  } = useSpaceSettings();
+  
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -212,18 +182,25 @@ export function SpaceSettingsCard() {
       return;
     }
 
+    const spaceData: CreateSpaceData = {
+      ano: formData.ano,
+      nome: formData.nome,
+      precos_por_dia: formData.precos_por_dia,
+      itens_inclusos: formData.itens_inclusos,
+    };
+
     if (editingId) {
-      setSpaces(spaces.map(s => s.id === editingId ? { ...s, ...formData } : s));
-      toast({ title: "Espaço atualizado!", description: `${formData.nome} foi atualizado.` });
+      updateSpace(
+        { id: editingId, ...spaceData },
+        {
+          onSuccess: () => resetForm(),
+        }
+      );
     } else {
-      const newSpace: SpaceData = { 
-        ...formData, 
-        id: Date.now().toString(),
-      };
-      setSpaces([...spaces, newSpace]);
-      toast({ title: "Espaço criado!", description: `${formData.nome} foi criado.` });
+      createSpace(spaceData, {
+        onSuccess: () => resetForm(),
+      });
     }
-    resetForm();
   };
 
   const handleDelete = (id: string) => {
@@ -233,8 +210,7 @@ export function SpaceSettingsCard() {
 
   const confirmDelete = () => {
     if (spaceToDelete) {
-      setSpaces(spaces.filter(s => s.id !== spaceToDelete));
-      toast({ title: "Espaço removido!" });
+      deleteSpace(spaceToDelete);
       setSpaceToDelete(null);
     }
     setDeleteDialogOpen(false);
@@ -356,6 +332,17 @@ export function SpaceSettingsCard() {
     }));
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -432,7 +419,9 @@ export function SpaceSettingsCard() {
           <div className="border rounded-lg p-4 sm:p-6 space-y-6 bg-muted/20">
             <div className="flex items-center justify-between gap-4">
               <h3 className="text-base sm:text-lg font-semibold">{editingId ? "Editar Espaço" : "Novo Espaço"}</h3>
-              <Button variant="ghost" size="sm" onClick={resetForm}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" onClick={resetForm} disabled={isCreating || isUpdating}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
 
             {/* Ano e Nome */}
@@ -442,6 +431,7 @@ export function SpaceSettingsCard() {
                 <Select 
                   value={formData.ano} 
                   onValueChange={(value) => setFormData({ ...formData, ano: value })}
+                  disabled={isCreating || isUpdating}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o ano" />
@@ -460,6 +450,7 @@ export function SpaceSettingsCard() {
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })} 
                   placeholder="Ex: Salão Principal"
                   maxLength={MAX_NOME_LENGTH}
+                  disabled={isCreating || isUpdating}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   {formData.nome.length}/{MAX_NOME_LENGTH} caracteres
@@ -486,7 +477,14 @@ export function SpaceSettingsCard() {
                           )}
                         </p>
                       </div>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removerPrecoDia(index)} className="self-end sm:self-auto">
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removerPrecoDia(index)} 
+                        className="self-end sm:self-auto"
+                        disabled={isCreating || isUpdating}
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
@@ -516,13 +514,13 @@ export function SpaceSettingsCard() {
                               ? 'bg-primary/10 border-primary'
                               : 'hover:bg-muted/50 cursor-pointer'
                           }`}
-                          onClick={() => !jaUsado && toggleDia(dia)}
+                          onClick={() => !jaUsado && !isCreating && !isUpdating && toggleDia(dia)}
                         >
                           <Checkbox
                             id={dia}
                             checked={selecionado}
-                            onCheckedChange={() => !jaUsado && toggleDia(dia)}
-                            disabled={jaUsado}
+                            onCheckedChange={() => !jaUsado && !isCreating && !isUpdating && toggleDia(dia)}
+                            disabled={jaUsado || isCreating || isUpdating}
                           />
                           <Label 
                             htmlFor={dia} 
@@ -544,13 +542,17 @@ export function SpaceSettingsCard() {
                 {/* Tipo de Preço */}
                 <div className="space-y-2">
                   <Label>Tipo de Preço</Label>
-                  <RadioGroup value={tipoPreco} onValueChange={(value: 'fixo' | 'variavel') => setTipoPreco(value)}>
+                  <RadioGroup 
+                    value={tipoPreco} 
+                    onValueChange={(value: 'fixo' | 'variavel') => setTipoPreco(value)}
+                    disabled={isCreating || isUpdating}
+                  >
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="fixo" id="tipo-fixo" />
+                      <RadioGroupItem value="fixo" id="tipo-fixo" disabled={isCreating || isUpdating} />
                       <Label htmlFor="tipo-fixo">Preço Fixo</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="variavel" id="tipo-variavel" />
+                      <RadioGroupItem value="variavel" id="tipo-variavel" disabled={isCreating || isUpdating} />
                       <Label htmlFor="tipo-variavel">Preço Variável (por convidado)</Label>
                     </div>
                   </RadioGroup>
@@ -568,6 +570,7 @@ export function SpaceSettingsCard() {
                         onChange={(e) => setPrecoFixo(parseCurrencyInput(e.target.value))} 
                         placeholder="8.900,00"
                         className="pl-10"
+                        disabled={isCreating || isUpdating}
                       />
                     </div>
                   </div>
@@ -583,6 +586,7 @@ export function SpaceSettingsCard() {
                           onChange={(e) => setValorInicial(parseCurrencyInput(e.target.value))} 
                           placeholder="5.000,00"
                           className="pl-10"
+                          disabled={isCreating || isUpdating}
                         />
                       </div>
                     </div>
@@ -596,6 +600,7 @@ export function SpaceSettingsCard() {
                           onChange={(e) => setValorPorConvidado(parseCurrencyInput(e.target.value))} 
                           placeholder="35,00"
                           className="pl-10"
+                          disabled={isCreating || isUpdating}
                         />
                       </div>
                     </div>
@@ -606,7 +611,7 @@ export function SpaceSettingsCard() {
                   type="button" 
                   onClick={adicionarPrecoDia} 
                   className="w-full"
-                  disabled={diasSelecionados.length === 0}
+                  disabled={diasSelecionados.length === 0 || isCreating || isUpdating}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar Preço
@@ -627,12 +632,18 @@ export function SpaceSettingsCard() {
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addItem())} 
                       placeholder="Ex: Mesas e cadeiras para até 150 convidados"
                       maxLength={MAX_ITEM_LENGTH}
+                      disabled={isCreating || isUpdating}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       {newItem.length}/{MAX_ITEM_LENGTH} caracteres
                     </p>
                   </div>
-                  <Button type="button" onClick={addItem} variant="outline">
+                  <Button 
+                    type="button" 
+                    onClick={addItem} 
+                    variant="outline"
+                    disabled={isCreating || isUpdating}
+                  >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -643,7 +654,14 @@ export function SpaceSettingsCard() {
                   {formData.itens_inclusos.map((item, index) => (
                     <li key={index} className="flex items-start sm:items-center justify-between bg-muted rounded-md p-2 gap-2">
                       <span className="text-xs sm:text-sm break-words flex-1 min-w-0">{item}</span>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(index)} className="shrink-0">
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removeItem(index)} 
+                        className="shrink-0"
+                        disabled={isCreating || isUpdating}
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </li>
@@ -654,8 +672,28 @@ export function SpaceSettingsCard() {
 
             {/* Botões de ação */}
             <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-4 border-t">
-              <Button variant="outline" onClick={resetForm} className="w-full sm:w-auto">Cancelar</Button>
-              <Button onClick={handleSubmit} className="w-full sm:w-auto">{editingId ? "Atualizar" : "Criar"} Espaço</Button>
+              <Button 
+                variant="outline" 
+                onClick={resetForm} 
+                className="w-full sm:w-auto"
+                disabled={isCreating || isUpdating}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSubmit} 
+                className="w-full sm:w-auto"
+                disabled={isCreating || isUpdating}
+              >
+                {isCreating || isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {editingId ? "Atualizando..." : "Criando..."}
+                  </>
+                ) : (
+                  <>{editingId ? "Atualizar" : "Criar"} Espaço</>
+                )}
+              </Button>
             </div>
           </div>
         )}
@@ -679,9 +717,20 @@ export function SpaceSettingsCard() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
-              Excluir
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete} 
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
