@@ -431,7 +431,51 @@ export type Database = {
           },
         ]
       }
-    }
+      quote_buffet_options: {
+        Row: {
+          id: string
+          user_id: string
+          ano: string
+          nome: string
+          precos_por_pessoa: Json
+          itens_inclusos: Json
+          ativo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          ano: string
+          nome: string
+          precos_por_pessoa?: Json
+          itens_inclusos?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          ano?: string
+          nome?: string
+          precos_por_pessoa?: Json
+          itens_inclusos?: Json
+          ativo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_buffet_options_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }    
     Views: {
       [_ in never]: never
     }

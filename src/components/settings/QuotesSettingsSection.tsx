@@ -2,7 +2,7 @@
  * SEÇÃO DE CONFIGURAÇÕES DE ORÇAMENTOS
  * 
  * Permite configurar opções relacionadas aos orçamentos:
- * espaço, pacotes, buffet, extras, pagamento e listas.
+ * espaço, buffet, extras, pacotes, pagamento e listas.
  */
 
 import { useState } from "react";
@@ -11,6 +11,7 @@ import { FileText } from "lucide-react";
 import { ORCAMENTO_SUB_SECTIONS } from "@/constants/settings";
 import type { OrcamentoSubSection } from "@/constants/settings";
 import { SpaceSettingsCard } from "./SpaceSettingsCard";
+import { BuffetSettingsCard } from "./BuffetSettingsCard";  // ← ADICIONADO
 
 export function QuotesSettingsSection() {
   const [activeSubSection, setActiveSubSection] =
@@ -41,9 +42,10 @@ export function QuotesSettingsSection() {
 
       {/* Conteúdo da sub-seção */}
       {activeSubSection === "espaco" && <SpaceSettingsCard />}
+      {activeSubSection === "buffet" && <BuffetSettingsCard />}  {/* ← ADICIONADO */}
 
       {/* Placeholders para outras seções */}
-      {activeSubSection !== "espaco" && (
+      {activeSubSection !== "espaco" && activeSubSection !== "buffet" && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">
