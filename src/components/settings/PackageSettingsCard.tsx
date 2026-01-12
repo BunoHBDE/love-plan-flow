@@ -1,8 +1,6 @@
 /**
- * COMPONENT: PackageSettingsCard (CORRIGIDO)
- * - Campos separados para desconto fixo e variável
- * - Preview detalhado mostrando valores fixos e variáveis separadamente
- * - Cálculo correto de descontos aplicados individualmente
+ * COMPONENT: PackageSettingsCard
+ * Gerencia pacotes com desconto dual (fixo + variável) e preview detalhado
  */
 
 import { useState } from "react";
@@ -38,10 +36,7 @@ const ANOS_DISPONIVEIS = Array.from({ length: 10 }, (_, i) => (anoAtual + i).toS
 
 const formatCurrency = (value: number): string => {
   if (isNaN(value)) return 'R$ 0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
 export function PackageSettingsCard() {
@@ -204,153 +199,153 @@ export function PackageSettingsCard() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Pacotes
-          </CardTitle>
-          <CardDescription>
-            Configure pacotes com múltiplos itens e descontos separados para valores fixos e variáveis
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+                <Package className="h-5 w-5 text-primary" />
+                Configuração de Pacotes
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Combine espaços, buffets e serviços com desconto
+              </CardDescription>
+            </div>
+            {!isAdding && (
+              <Button onClick={() => setIsAdding(true)} variant="outline" size="sm" className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar Pacote
+              </Button>
+            )}
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {!isAdding && (
-            <Button onClick={() => setIsAdding(true)} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Pacote
-            </Button>
-          )}
 
-          {/* Lista de Pacotes */}
+        <CardContent className="space-y-6">
+          {/* Lista */}
           {!isAdding && packages.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {packages.map((pkg) => {
                 const precos = calculatePackagePrice(pkg);
                 
                 return (
-                  <div key={pkg.id} className="p-4 border rounded-lg space-y-3 bg-card">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg">{pkg.nome}</h3>
-                        <p className="text-sm text-muted-foreground">Ano: {pkg.ano}</p>
+                  <div key={pkg.id} className="border rounded-lg p-3 sm:p-4 space-y-3 hover:bg-muted/50 transition">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-base sm:text-lg">{pkg.nome} - {pkg.ano}</h4>
                         {pkg.descricao && (
                           <p className="text-sm text-muted-foreground mt-1">{pkg.descricao}</p>
                         )}
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(pkg)}
-                          disabled={isDeleting}
-                        >
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(pkg)}>
                           <Pencil className="h-4 w-4" />
+                          <span className="ml-2 sm:hidden">Editar</span>
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(pkg.id!)}
-                          disabled={isDeleting}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(pkg.id!)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <span className="ml-2 sm:hidden">Excluir</span>
                         </Button>
                       </div>
                     </div>
 
-                    {/* Itens do Pacote */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div className="space-y-2">
                       {precos.espacos.length > 0 && (
                         <div>
-                          <p className="font-medium mb-1">Espaços:</p>
-                          {precos.espacos.map(item => (
-                            <div key={item.id} className="text-muted-foreground">
-                              • {item.nome}
+                          <p className="text-sm font-medium">Espaços:</p>
+                          {precos.espacos.map((item) => (
+                            <div key={item.id} className="text-xs sm:text-sm bg-muted/50 rounded p-2 mt-1">
+                              <span className="font-medium">{item.nome}:</span>{" "}
+                              {item.tipo === 'fixo' ? (
+                                <span className="whitespace-nowrap">{formatCurrency(item.valor_fixo || 0)}</span>
+                              ) : (
+                                <span className="whitespace-nowrap text-blue-600 dark:text-blue-400 font-medium">
+                                  {item.valor_inicial && item.valor_inicial > 0 ? `${formatCurrency(item.valor_inicial)} + ` : ''}
+                                  {formatCurrency(item.valor_por_unidade || 0)}/{item.unidade}
+                                </span>
+                              )}
                             </div>
                           ))}
                         </div>
                       )}
+
                       {precos.buffets.length > 0 && (
                         <div>
-                          <p className="font-medium mb-1">Buffets:</p>
-                          {precos.buffets.map(item => (
-                            <div key={item.id} className="text-muted-foreground">
-                              • {item.nome}
+                          <p className="text-sm font-medium">Buffets:</p>
+                          {precos.buffets.map((item) => (
+                            <div key={item.id} className="text-xs sm:text-sm bg-muted/50 rounded p-2 mt-1">
+                              <span className="font-medium">{item.nome}:</span>{" "}
+                              {item.tipo === 'fixo' ? (
+                                <span className="whitespace-nowrap">{formatCurrency(item.valor_fixo || 0)}</span>
+                              ) : (
+                                <span className="whitespace-nowrap text-blue-600 dark:text-blue-400 font-medium">
+                                  {item.valor_inicial && item.valor_inicial > 0 ? `${formatCurrency(item.valor_inicial)} + ` : ''}
+                                  {formatCurrency(item.valor_por_unidade || 0)}/{item.unidade}
+                                </span>
+                              )}
                             </div>
                           ))}
                         </div>
                       )}
+
                       {precos.servicos.length > 0 && (
                         <div>
-                          <p className="font-medium mb-1">Serviços:</p>
-                          {precos.servicos.map(item => (
-                            <div key={item.id} className="text-muted-foreground">
-                              • {item.nome}
+                          <p className="text-sm font-medium">Serviços:</p>
+                          {precos.servicos.map((item) => (
+                            <div key={item.id} className="text-xs sm:text-sm bg-muted/50 rounded p-2 mt-1">
+                              <span className="font-medium">{item.nome}:</span>{" "}
+                              {item.tipo === 'fixo' ? (
+                                <span className="whitespace-nowrap">{formatCurrency(item.valor_fixo || 0)}</span>
+                              ) : (
+                                <span className="whitespace-nowrap text-blue-600 dark:text-blue-400 font-medium">
+                                  {item.valor_inicial && item.valor_inicial > 0 ? `${formatCurrency(item.valor_inicial)} + ` : ''}
+                                  {formatCurrency(item.valor_por_unidade || 0)}/{item.unidade}
+                                </span>
+                              )}
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
 
-                    {/* Valores */}
                     <div className="pt-3 border-t space-y-2">
-                      {/* Valores Fixos */}
-                      {precos.subtotal_fixo > 0 && (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Subtotal Fixo:</p>
-                            <p className="font-medium">{formatCurrency(precos.subtotal_fixo)}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Desconto Fixo:</p>
-                            <p className="font-medium text-red-600">
-                              -{formatCurrency(precos.desconto_fixo_valor)} ({precos.desconto_fixo_percentual}%)
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">Valores Fixos:</p>
+                          <p className="text-sm">Subtotal: {formatCurrency(precos.subtotal_fixo)}</p>
+                          {pkg.desconto_percentual > 0 && (
+                            <p className="text-sm text-green-600 dark:text-green-400">
+                              Desconto ({pkg.desconto_percentual}%): -{formatCurrency(precos.desconto_fixo_valor)}
                             </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Total Fixo:</p>
-                            <p className="font-semibold">{formatCurrency(precos.total_fixo)}</p>
-                          </div>
+                          )}
+                          <p className="text-sm font-semibold">Total: {formatCurrency(precos.total_fixo)}</p>
                         </div>
-                      )}
 
-                      {/* Valores Variáveis */}
-                      {precos.subtotal_variavel > 0 && (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Subtotal Variável:</p>
-                            <p className="font-medium text-blue-600 dark:text-blue-400">
-                              {formatCurrency(precos.subtotal_variavel)}*
-                            </p>
+                        {precos.tem_variaveis && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground">Valores Variáveis (inicial):</p>
+                            <p className="text-sm">Subtotal: {formatCurrency(precos.subtotal_variavel)}</p>
+                            {pkg.desconto_percentual_variavel > 0 && (
+                              <p className="text-sm text-green-600 dark:text-green-400">
+                                Desconto ({pkg.desconto_percentual_variavel}%): -{formatCurrency(precos.desconto_variavel_valor)}
+                              </p>
+                            )}
+                            <p className="text-sm font-semibold">Total: {formatCurrency(precos.total_variavel)}</p>
                           </div>
-                          <div>
-                            <p className="text-muted-foreground">Desconto Variável:</p>
-                            <p className="font-medium text-red-600">
-                              -{formatCurrency(precos.desconto_variavel_valor)} ({precos.desconto_variavel_percentual}%)
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Total Variável:</p>
-                            <p className="font-semibold text-blue-600 dark:text-blue-400">
-                              {formatCurrency(precos.total_variavel)}*
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
-                      {/* Total Geral */}
                       <div className="pt-2 border-t">
                         <div className="flex justify-between items-center">
-                          <span className="font-semibold">Total Geral:</span>
-                          <span className="text-lg font-bold text-primary">
-                            {formatCurrency(precos.total_geral)}
-                            {precos.tem_variaveis && <span className="text-sm">*</span>}
-                          </span>
+                          <span className="font-semibold">Total do Pacote:</span>
+                          <span className="text-lg font-bold text-primary">{formatCurrency(precos.total_geral)}</span>
                         </div>
                       </div>
 
                       {precos.tem_variaveis && (
-                        <p className="text-xs text-muted-foreground">
-                          * Valores variáveis mostrados são os valores iniciais/base
-                        </p>
+                        <div className="flex gap-2 items-start p-2 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded text-xs">
+                          <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                          <span className="text-blue-800 dark:text-blue-200">
+                            Este pacote possui itens variáveis. O valor final será calculado no orçamento.
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -359,33 +354,23 @@ export function PackageSettingsCard() {
             </div>
           )}
 
-          {!isAdding && packages.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>Nenhum pacote cadastrado ainda</p>
-            </div>
-          )}
-
           {/* Formulário */}
           {isAdding && (
-            <div className="space-y-6 p-4 border rounded-lg bg-muted/30">
+            <div className="space-y-6 border rounded-lg p-4 sm:p-6 bg-muted/20">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">
                   {editingId ? "Editar Pacote" : "Novo Pacote"}
                 </h3>
-                <Button variant="ghost" size="icon" onClick={resetForm}>
+                <Button variant="ghost" size="icon" onClick={resetForm} disabled={isCreating || isUpdating}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
 
-              {/* Campos Básicos */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="ano">Ano *</Label>
+                  <Label>Ano *</Label>
                   <Select value={ano} onValueChange={setAno} disabled={isCreating || isUpdating}>
-                    <SelectTrigger id="ano">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {ANOS_DISPONIVEIS.map((a) => (
                         <SelectItem key={a} value={a}>{a}</SelectItem>
@@ -395,48 +380,40 @@ export function PackageSettingsCard() {
                 </div>
 
                 <div>
-                  <Label htmlFor="nome">Nome do Pacote *</Label>
+                  <Label>Nome do Pacote *</Label>
                   <Input
-                    id="nome"
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
-                    placeholder="Ex: Pacote Premium"
+                    placeholder="Ex: Pacote Completo"
                     maxLength={MAX_NOME_LENGTH}
                     disabled={isCreating || isUpdating}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {nome.length}/{MAX_NOME_LENGTH}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{nome.length}/{MAX_NOME_LENGTH}</p>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="descricao">Descrição (opcional)</Label>
+                <Label>Descrição (Opcional)</Label>
                 <Textarea
-                  id="descricao"
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
-                  placeholder="Descreva o que está incluído neste pacote..."
+                  placeholder="Descreva o que está incluso..."
                   maxLength={MAX_DESCRICAO_LENGTH}
                   disabled={isCreating || isUpdating}
-                  rows={3}
+                  rows={2}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {descricao.length}/{MAX_DESCRICAO_LENGTH}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{descricao.length}/{MAX_DESCRICAO_LENGTH}</p>
               </div>
 
-              {/* Seleção de Itens */}
               <div className="space-y-4">
                 <h4 className="font-medium">Itens do Pacote *</h4>
-
-                {/* Espaços */}
-                {spaces.filter(s => s.ano === ano).length > 0 && (
-                  <div>
-                    <Label className="mb-2 block">Espaços</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg bg-background">
-                      {spaces.filter(s => s.ano === ano).map((espaco) => (
-                        <div key={espaco.id} className="flex items-center gap-2">
+                
+                {spaces.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Espaços</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg max-h-40 overflow-y-auto">
+                      {spaces.filter(s => s.ano === ano).map(espaco => (
+                        <div key={espaco.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`espaco-${espaco.id}`}
                             checked={selectedEspacos.includes(espaco.id!)}
@@ -446,17 +423,19 @@ export function PackageSettingsCard() {
                           <label htmlFor={`espaco-${espaco.id}`} className="text-sm cursor-pointer">{espaco.nome}</label>
                         </div>
                       ))}
+                      {spaces.filter(s => s.ano === ano).length === 0 && (
+                        <p className="text-sm text-muted-foreground col-span-2">Nenhum espaço cadastrado para {ano}</p>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Buffets */}
-                {buffets.filter(b => b.ano === ano).length > 0 && (
-                  <div>
-                    <Label className="mb-2 block">Buffets</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg bg-background">
-                      {buffets.filter(b => b.ano === ano).map((buffet) => (
-                        <div key={buffet.id} className="flex items-center gap-2">
+                {buffets.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Buffets</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg max-h-40 overflow-y-auto">
+                      {buffets.filter(b => b.ano === ano).map(buffet => (
+                        <div key={buffet.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`buffet-${buffet.id}`}
                             checked={selectedBuffets.includes(buffet.id!)}
@@ -466,17 +445,19 @@ export function PackageSettingsCard() {
                           <label htmlFor={`buffet-${buffet.id}`} className="text-sm cursor-pointer">{buffet.nome}</label>
                         </div>
                       ))}
+                      {buffets.filter(b => b.ano === ano).length === 0 && (
+                        <p className="text-sm text-muted-foreground col-span-2">Nenhum buffet cadastrado para {ano}</p>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Serviços */}
-                {services.filter(s => s.ano === ano).length > 0 && (
-                  <div>
-                    <Label className="mb-2 block">Serviços</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg bg-background">
-                      {services.filter(s => s.ano === ano).map((servico) => (
-                        <div key={servico.id} className="flex items-center gap-2">
+                {services.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Serviços</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg max-h-40 overflow-y-auto">
+                      {services.filter(s => s.ano === ano).map(servico => (
+                        <div key={servico.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`servico-${servico.id}`}
                             checked={selectedServicos.includes(servico.id!)}
@@ -486,12 +467,15 @@ export function PackageSettingsCard() {
                           <label htmlFor={`servico-${servico.id}`} className="text-sm cursor-pointer">{servico.nome}</label>
                         </div>
                       ))}
+                      {services.filter(s => s.ano === ano).length === 0 && (
+                        <p className="text-sm text-muted-foreground col-span-2">Nenhum serviço cadastrado para {ano}</p>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* PREVIEW DETALHADO */}
+              {/* Preview Detalhado */}
               {(selectedEspacos.length > 0 || selectedBuffets.length > 0 || selectedServicos.length > 0) && (
                 <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
                   <h4 className="font-medium">Itens Selecionados:</h4>
@@ -573,111 +557,147 @@ export function PackageSettingsCard() {
                 </div>
               )}
 
-              {/* Valores e Descontos */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+              {/* Valores do Pacote */}
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
                 <h4 className="font-medium">Valores do Pacote</h4>
                 
                 {(() => {
-                  const tempPkg: PackageData = {
+                    const tempPkg: PackageData = {
                     ano, nome,
                     itens_pacote: { espacos: selectedEspacos, buffets: selectedBuffets, servicos: selectedServicos },
                     desconto_percentual: descontoPercentualFixo,
-                    desconto_percentual_variavel: descontoPercentualVariavel
-                  };
-                  const precos = calculatePackagePrice(tempPkg);
-                  
-                  return (
+                    desconto_percentual_variavel: descontoPercentualVariavel,
+                    };
+                    const precos = calculatePackagePrice(tempPkg);
+                    
+                    return (
                     <>
-                      {/* Valores Fixos */}
-                      {precos.subtotal_fixo > 0 && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        
+                        {/* VALORES FIXOS (sempre cobrados) */}
                         <div className="space-y-3 p-3 border rounded-lg bg-background">
-                          <h5 className="font-medium text-sm">Valores Fixos</h5>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <h5 className="font-medium text-sm flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-gray-500"></span>
+                            Valores Fixos
+                            </h5>
+                            <p className="text-xs text-muted-foreground">
+                            Valores fixos + valores iniciais (sempre cobrados)
+                            </p>
+                            
                             <div>
-                              <Label>Subtotal Fixo</Label>
-                              <Input value={formatCurrency(precos.subtotal_fixo)} disabled className="bg-muted" />
+                            <Label className="text-xs">Subtotal</Label>
+                            <Input value={formatCurrency(precos.subtotal_fixo)} disabled className="bg-muted text-sm" />
                             </div>
-                            <div>
-                              <Label>Desconto Fixo (%)</Label>
-                              <Input
-                                type="number"
-                                value={descontoPercentualFixo}
-                                onChange={(e) => setDescontoPercentualFixo(Number(e.target.value))}
-                                min="0" max="100"
-                                disabled={isCreating || isUpdating}
-                              />
-                            </div>
-                            <div>
-                              <Label>Total Fixo</Label>
-                              <Input 
-                                value={formatCurrency(precos.total_fixo)} 
-                                disabled 
-                                className="bg-green-50 dark:bg-green-950 font-semibold" 
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
-                      {/* Valores Variáveis */}
-                      {precos.subtotal_variavel > 0 && (
-                        <div className="space-y-3 p-3 border rounded-lg bg-blue-50/50 dark:bg-blue-950/30">
-                          <h5 className="font-medium text-sm text-blue-700 dark:text-blue-300">
-                            Valores Variáveis (Base)
-                          </h5>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                              <Label>Subtotal Variável</Label>
-                              <Input 
-                                value={formatCurrency(precos.subtotal_variavel)} 
-                                disabled 
-                                className="bg-muted" 
-                              />
-                            </div>
-                            <div>
-                              <Label>Desconto Variável (%)</Label>
-                              <Input
+                            <Label className="text-xs">Desconto (%)</Label>
+                            <Input
                                 type="number"
-                                value={descontoPercentualVariavel}
-                                onChange={(e) => setDescontoPercentualVariavel(Number(e.target.value))}
-                                min="0" max="100"
+                                value={descontoPercentualFixo || ''}
+                                onChange={(e) => {
+                                const val = e.target.value;
+                                setDescontoPercentualFixo(val === '' ? 0 : Number(val));
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="0"
                                 disabled={isCreating || isUpdating}
-                              />
+                                className="text-sm"
+                            />
+                            {precos.desconto_fixo_valor > 0 && (
+                                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                -{formatCurrency(precos.desconto_fixo_valor)}
+                                </p>
+                            )}
                             </div>
-                            <div>
-                              <Label>Total Variável</Label>
-                              <Input 
-                                value={formatCurrency(precos.total_variavel)} 
-                                disabled 
-                                className="bg-blue-100 dark:bg-blue-900 font-semibold" 
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
-                      {/* Total Geral */}
-                      <div className="pt-3 border-t">
+                            <div>
+                            <Label className="text-xs font-semibold">Total</Label>
+                            <Input value={formatCurrency(precos.total_fixo)} disabled className="bg-muted font-semibold text-sm" />
+                            </div>
+                        </div>
+
+                        {/* VALORES VARIÁVEIS (taxas por unidade) */}
+                        {precos.tem_variaveis ? (
+                            <div className="space-y-3 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                            <h5 className="font-medium text-sm flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                                Valores Variáveis
+                            </h5>
+                            <p className="text-xs text-muted-foreground">
+                                Soma das taxas unitárias (R$/pessoa, R$/hora)
+                            </p>
+                            
+                            <div>
+                                <Label className="text-xs">Soma das Taxas</Label>
+                                <Input value={formatCurrency(precos.subtotal_variavel)} disabled className="bg-muted text-sm" />
+                            </div>
+
+                            <div>
+                                <Label className="text-xs">Desconto (%)</Label>
+                                <Input
+                                type="number"
+                                value={descontoPercentualVariavel || ''}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setDescontoPercentualVariavel(val === '' ? 0 : Number(val));
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="0"
+                                disabled={isCreating || isUpdating}
+                                className="text-sm"
+                                />
+                                {precos.desconto_variavel_valor > 0 && (
+                                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                                    -{formatCurrency(precos.desconto_variavel_valor)}
+                                </p>
+                                )}
+                            </div>
+
+                            <div>
+                                <Label className="text-xs font-semibold">Taxas com Desconto</Label>
+                                <Input value={formatCurrency(precos.total_variavel)} disabled className="bg-muted font-semibold text-sm" />
+                            </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 p-3 border rounded-lg bg-muted/30 flex items-center justify-center">
+                            <p className="text-sm text-muted-foreground text-center">
+                                Nenhum item com taxa variável
+                            </p>
+                            </div>
+                        )}
+                        </div>
+
+                        {/* TOTAL BASE */}
+                        <div className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
                         <div className="flex justify-between items-center">
-                          <Label className="text-base">Total Geral do Pacote:</Label>
-                          <span className="text-2xl font-bold text-primary">
-                            {formatCurrency(precos.total_geral)}
-                          </span>
+                            <span className="font-semibold">Total Base do Pacote:</span>
+                            <span className="text-xl font-bold text-primary">{formatCurrency(precos.total_geral)}</span>
                         </div>
-                      </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Fixo: {formatCurrency(precos.total_fixo)} + Variável: {formatCurrency(precos.total_variavel)}
+                        </p>
+                        </div>
 
-                      {precos.tem_variaveis && (
+                        {/* AVISO */}
+                        {precos.tem_variaveis && (
                         <div className="flex gap-2 items-start p-2 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded text-xs">
-                          <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                          <span className="text-blue-800 dark:text-blue-200">
-                            Os valores variáveis mostrados são os valores iniciais/base. O valor final dependerá da quantidade de convidados/unidades.
-                          </span>
+                            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                            <span className="text-blue-800 dark:text-blue-200">
+                            Os valores fixos incluem as taxas iniciais dos itens variáveis. 
+                            No orçamento, as taxas variáveis serão multiplicadas pela quantidade de pessoas/horas para calcular o valor final.
+                            </span>
                         </div>
-                      )}
+                        )}
                     </>
-                  );
+                    );
                 })()}
-              </div>
+                </div>
 
               <div className="flex gap-2 justify-end pt-4 border-t">
                 <Button variant="outline" onClick={resetForm} disabled={isCreating || isUpdating}>

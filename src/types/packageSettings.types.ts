@@ -1,6 +1,7 @@
 /**
  * TYPES: Package Settings
  * Tipos para configurações de pacotes com cálculo em tempo real
+ * e descontos separados para valores fixos e variáveis
  */
 
 /**
@@ -68,6 +69,9 @@ export interface PackagePriceCalculation {
   tem_variaveis: boolean;
 }
 
+/**
+ * Dados para criar pacote
+ */
 export interface CreatePackageData {
   ano: string;
   nome: string;
@@ -77,6 +81,9 @@ export interface CreatePackageData {
   desconto_percentual_variavel: number;
 }
 
+/**
+ * Dados para atualizar pacote
+ */
 export interface UpdatePackageData {
   id: string;
   ano?: string;

@@ -1,6 +1,8 @@
 /**
- * HOOK: usePackageSettings
- * Gerencia CRUD de pacotes + cálculo de preços em tempo real
+ * HOOK: usePackageSettings (LÓGICA CORRETA)
+ * 
+ * FIXO = valores fixos puros + valores iniciais dos variáveis (sempre cobrados)
+ * VARIÁVEL = apenas valores por unidade (R$/pessoa, R$/hora)
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,10 +21,6 @@ import type {
 } from "@/types/packageSettings.types";
 
 const QUERY_KEY = ["packageSettings"];
-
-// ============================================================================
-// API Functions
-// ============================================================================
 
 async function fetchPackages(): Promise<PackageData[]> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -51,7 +49,7 @@ async function fetchPackages(): Promise<PackageData[]> {
     descricao: record.descricao || undefined,
     itens_pacote: record.itens_pacote as unknown as ItensPacote,
     desconto_percentual: Number(record.desconto_percentual),
-    desconto_percentual_variavel: 0, // Campo não existe no banco ainda
+    desconto_percentual_variavel: Number(record.desconto_percentual_variavel || 0),
   }));
 }
 
@@ -64,16 +62,15 @@ async function createPackage(packageData: CreatePackageData): Promise<PackageDat
 
   const { data, error } = await supabase
     .from("quote_package_options")
-    .insert([{
+    .insert({
       user_id: user.id,
       ano: packageData.ano,
       nome: packageData.nome,
       descricao: packageData.descricao || null,
       itens_pacote: packageData.itens_pacote as any,
       desconto_percentual: packageData.desconto_percentual,
-      preco_base: 0,
-      preco_final: 0,
-    }])
+      desconto_percentual_variavel: packageData.desconto_percentual_variavel,
+    })
     .select()
     .single();
 
@@ -89,7 +86,7 @@ async function createPackage(packageData: CreatePackageData): Promise<PackageDat
     descricao: data.descricao || undefined,
     itens_pacote: data.itens_pacote as unknown as ItensPacote,
     desconto_percentual: Number(data.desconto_percentual),
-    desconto_percentual_variavel: 0,
+    desconto_percentual_variavel: Number(data.desconto_percentual_variavel || 0),
   };
 }
 
@@ -104,6 +101,7 @@ async function updatePackage(packageData: UpdatePackageData): Promise<PackageDat
       ...(updateData.descricao !== undefined && { descricao: updateData.descricao || null }),
       ...(updateData.itens_pacote && { itens_pacote: updateData.itens_pacote as any }),
       ...(updateData.desconto_percentual !== undefined && { desconto_percentual: updateData.desconto_percentual }),
+      ...(updateData.desconto_percentual_variavel !== undefined && { desconto_percentual_variavel: updateData.desconto_percentual_variavel }),
     })
     .eq("id", id)
     .select()
@@ -121,7 +119,7 @@ async function updatePackage(packageData: UpdatePackageData): Promise<PackageDat
     descricao: data.descricao || undefined,
     itens_pacote: data.itens_pacote as unknown as ItensPacote,
     desconto_percentual: Number(data.desconto_percentual),
-    desconto_percentual_variavel: 0,
+    desconto_percentual_variavel: Number(data.desconto_percentual_variavel || 0),
   };
 }
 
@@ -136,10 +134,6 @@ async function deletePackage(id: string): Promise<void> {
     throw error;
   }
 }
-
-// ============================================================================
-// Hook Principal
-// ============================================================================
 
 export function usePackageSettings() {
   const { toast } = useToast();
@@ -161,10 +155,10 @@ export function usePackageSettings() {
   });
 
   /**
-   * Calcula preços do pacote em tempo real com detalhes completos
-   * Calcula descontos separados para fixos e variáveis
+   * Calcula preços com lógica correta:
+   * FIXO = valores fixos + valores iniciais (sempre cobrados)
+   * VARIÁVEL = apenas valores por unidade (variam com quantidade)
    */
-
   const calculatePackagePrice = (pkg: PackageData): PackagePriceCalculation => {
     const espacosDetalhes: ItemPriceDetail[] = [];
     const buffetsDetalhes: ItemPriceDetail[] = [];
@@ -173,7 +167,7 @@ export function usePackageSettings() {
     let subtotal_fixo = 0;
     let subtotal_variavel = 0;
 
-    // ========== CALCULAR ESPAÇOS ==========
+    // ========== ESPAÇOS ==========
     pkg.itens_pacote.espacos.forEach(id => {
       const espaco = spaces.find(s => s.id === id);
       if (espaco && espaco.precos_por_dia && espaco.precos_por_dia.length > 0) {
@@ -189,21 +183,27 @@ export function usePackageSettings() {
             valor_fixo: valor,
           });
         } else {
+          // Valor inicial vai pro FIXO (sempre cobrado)
           const inicial = preco.valor_inicial || 0;
-          subtotal_variavel += inicial;
+          subtotal_fixo += inicial;
+          
+          // Valor por unidade vai pro VARIÁVEL
+          const porUnidade = preco.valor_por_convidado || 0;
+          subtotal_variavel += porUnidade;
+          
           espacosDetalhes.push({
             id,
             nome: espaco.nome,
             tipo: 'variavel',
             valor_inicial: inicial,
-            valor_por_unidade: preco.valor_por_convidado || 0,
+            valor_por_unidade: porUnidade,
             unidade: 'convidado',
           });
         }
       }
     });
 
-    // ========== CALCULAR BUFFETS ==========
+    // ========== BUFFETS ==========
     pkg.itens_pacote.buffets.forEach(id => {
       const buffet = buffets.find(b => b.id === id);
       if (buffet && buffet.precos_por_pessoa && buffet.precos_por_pessoa.length > 0) {
@@ -220,20 +220,24 @@ export function usePackageSettings() {
           });
         } else {
           const inicial = preco.valor_inicial || 0;
-          subtotal_variavel += inicial;
+          subtotal_fixo += inicial;
+          
+          const porUnidade = preco.valor_por_pessoa || 0;
+          subtotal_variavel += porUnidade;
+          
           buffetsDetalhes.push({
             id,
             nome: buffet.nome,
             tipo: 'variavel',
             valor_inicial: inicial,
-            valor_por_unidade: preco.valor_por_pessoa || 0,
+            valor_por_unidade: porUnidade,
             unidade: 'pessoa',
           });
         }
       }
     });
 
-    // ========== CALCULAR SERVIÇOS ==========
+    // ========== SERVIÇOS ==========
     pkg.itens_pacote.servicos.forEach(id => {
       const servico = services.find(s => s.id === id);
       if (servico && servico.precos && servico.precos.length > 0) {
@@ -250,20 +254,24 @@ export function usePackageSettings() {
           });
         } else {
           const inicial = preco.valor_inicial || 0;
-          subtotal_variavel += inicial;
+          subtotal_fixo += inicial;
+          
+          const porUnidade = preco.valor_por_unidade || 0;
+          subtotal_variavel += porUnidade;
+          
           servicosDetalhes.push({
             id,
             nome: servico.nome,
             tipo: 'variavel',
             valor_inicial: inicial,
-            valor_por_unidade: preco.valor_por_unidade || 0,
+            valor_por_unidade: porUnidade,
             unidade: preco.unidade || 'unidade',
           });
         }
       }
     });
 
-    // ========== CALCULAR DESCONTOS SEPARADOS ==========
+    // Calcular descontos
     const desconto_fixo_valor = (subtotal_fixo * pkg.desconto_percentual) / 100;
     const desconto_variavel_valor = (subtotal_variavel * pkg.desconto_percentual_variavel) / 100;
     
@@ -276,19 +284,16 @@ export function usePackageSettings() {
       buffets: buffetsDetalhes,
       servicos: servicosDetalhes,
       
-      // Valores Fixos
       subtotal_fixo,
       desconto_fixo_valor,
       desconto_fixo_percentual: pkg.desconto_percentual,
       total_fixo,
       
-      // Valores Variáveis
       subtotal_variavel,
       desconto_variavel_valor,
       desconto_variavel_percentual: pkg.desconto_percentual_variavel,
       total_variavel,
       
-      // Total
       total_geral,
       tem_variaveis: subtotal_variavel > 0,
     };

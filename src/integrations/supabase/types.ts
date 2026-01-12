@@ -271,13 +271,12 @@ export type Database = {
           ano: string
           ativo: boolean
           created_at: string
-          desconto_percentual: number | null
-          descricao: string | null
+          desconto_percentual: number
+          desconto_percentual_variavel: number
+          descricao: string
           id: string
           itens_pacote: Json
           nome: string
-          preco_base: number
-          preco_final: number
           updated_at: string
           user_id: string
         }
@@ -285,13 +284,12 @@ export type Database = {
           ano: string
           ativo?: boolean
           created_at?: string
-          desconto_percentual?: number | null
-          descricao?: string | null
+          desconto_percentual?: number
+          desconto_percentual_variavel?: number
+          descricao?: string
           id?: string
           itens_pacote?: Json
           nome: string
-          preco_base: number
-          preco_final: number
           updated_at?: string
           user_id: string
         }
@@ -299,17 +297,24 @@ export type Database = {
           ano?: string
           ativo?: boolean
           created_at?: string
-          desconto_percentual?: number | null
-          descricao?: string | null
+          desconto_percentual?: number
+          desconto_percentual_variavel?: number
+          descricao?: string
           id?: string
           itens_pacote?: Json
           nome?: string
-          preco_base?: number
-          preco_final?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quote_package_options_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       quote_service_options: {
         Row: {
