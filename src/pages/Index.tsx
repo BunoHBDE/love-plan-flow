@@ -3,6 +3,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { UpcomingVisits } from "@/components/dashboard/UpcomingVisits";
 import { RecentClients } from "@/components/dashboard/RecentClients";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { SubscriptionGate } from "@/components/subscription";
 import {
   Calendar,
   FileText,
@@ -39,6 +40,7 @@ const Index = () => {
 
   return (
     <MainLayout>
+      <SubscriptionGate>
       <div className="space-y-8">
         {/* Header */}
         <div className="animate-fade-in">
@@ -92,6 +94,7 @@ const Index = () => {
           </div>
         </div>
       </div>
+      </SubscriptionGate>
     </MainLayout>
   );
 };

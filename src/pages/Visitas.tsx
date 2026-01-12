@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
+import { SubscriptionGate } from "@/components/subscription";
 import { 
   Plus,
   LayoutList,
@@ -341,6 +342,7 @@ export default function Visitas() {
 
   return (
     <MainLayout>
+      <SubscriptionGate>
       <div className="space-y-8">
         {/* ==================== HEADER ==================== */}
         <div className="flex flex-col gap-4 animate-fade-in">
@@ -497,6 +499,7 @@ export default function Visitas() {
           onConfirm={handleDeleteVisit}
         />
       </div>
+      </SubscriptionGate>
     </MainLayout>
   );
 }
