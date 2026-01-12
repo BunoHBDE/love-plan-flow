@@ -33,7 +33,6 @@ import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { useQuotesOptimized as useQuotes, type Quote } from "@/hooks/useQuotesOptimized";
 import { SubscriptionGate } from "@/components/subscription";
-import jsPDF from "jspdf";
 
 type QuoteStatus = "rascunho" | "enviado" | "aceito" | "recusado" | "expirado";
 
@@ -257,7 +256,8 @@ export default function Orcamentos() {
                 <Calendar
                   mode="single"
                   selected={dateFilter}
-                  onSelect={setDateFilter}                
+                  onSelect={setDateFilter}
+
                 />
               </PopoverContent>
             </Popover>
@@ -425,69 +425,4 @@ export default function Orcamentos() {
       </SubscriptionGate>
     </MainLayout>
   );
-}
-
-interface QuoteItem {
-  description: string;
-  value: number;
-}
-
-interface Parcela {
-  numero: number;
-  valor: number;
-  dataVencimento: string;
-}
-
-interface PaymentTerms {
-  percentualSinal: number;
-  valorSinal: number;
-  numeroParcelas: number;
-  parcelas: Parcela[];
-}
-
-interface ComposicaoPreco {
-  espaco?: number;
-  decoracao?: number;
-  buffet?: number | null;
-  custoConvidadoAdicional?: number;
-  ano?: string;
-  buffetNome?: string | null;
-  itens?: any[];
-  subtotal_fixo?: number;
-  desconto_fixo?: number;
-  total_fixo?: number;
-  subtotal_variavel?: number;
-  desconto_variavel?: number;
-  total_variavel?: number;
-  total_extras?: number;
-  total_geral?: number;
-}
-
-interface ExtraItem {
-  descricao: string;
-  valor: number;
-  porConvidado?: boolean;
-}
-
-interface Desconto {
-  descricao: string;
-  percentual: number;
-  valor: number;
-}
-
-interface QuoteData {
-  id: string;
-  clientName: string;
-  weddingDate: string;
-  guestCount: number;
-  totalValue: number;
-  status: string;
-  createdAt: string;
-  validUntil: string;
-  items: QuoteItem[];''
-  paymentTerms?: PaymentTerms;
-  composicao?: ComposicaoPreco;
-  pacoteNome?: string;
-  extras?: ExtraItem[];
-  desconto?: Desconto;
 }
