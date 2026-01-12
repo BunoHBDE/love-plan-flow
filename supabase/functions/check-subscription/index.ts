@@ -20,10 +20,6 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
-
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -41,6 +37,33 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
+
+    // Verificar override no profiles ANTES do Stripe
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('subscription_override')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.subscription_override === true) {
+      logStep("Subscription override found, granting access", { userId: user.id });
+      return new Response(JSON.stringify({
+        subscribed: true,
+        status: 'override',
+        trial_end: null,
+        current_period_end: null,
+        cancel_at_period_end: false,
+        price_id: null,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Continua verificação normal do Stripe
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    logStep("Stripe key verified");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
