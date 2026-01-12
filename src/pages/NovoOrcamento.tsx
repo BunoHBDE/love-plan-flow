@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Await, useNavigate, useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -398,6 +398,9 @@ export default function NovoOrcamento() {
 
     setIsSaving(true);
 
+    // Calcular valor total final com desconto
+    const valorTotalFinal = composicao.total_geral - (discount?.valor || 0);
+
     const quoteData = await createQuote({
       client_id: clienteId,
       tipo_evento: tipoEvento || null,
@@ -413,13 +416,21 @@ export default function NovoOrcamento() {
       servico_ids: servicoIds.length > 0 ? servicoIds : null,
       pacote_id: pacoteId,
       
+      // Quantidades customizadas de serviços
+      servico_quantidades: servicoIds.length > 0 ? serviceQuantities : null,
+      
       // Composição de preço
       composicao_preco: composicao,
+      
+      // Desconto
+      desconto_descricao: discount?.descricao || null,
+      desconto_percentual: discount?.percentual || 0,
+      desconto_valor: discount?.valor || 0,
       
       // Valores (mantidos para compatibilidade)
       pacote: pacoteId || "",
       menu_buffet: buffetId || null,
-      valor_total: composicao.total_geral,
+      valor_total: valorTotalFinal, // Valor final com desconto
       
       validade: validadeOrcamento || null,
       status,

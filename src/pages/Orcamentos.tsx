@@ -32,8 +32,8 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { useQuotesOptimized as useQuotes, type Quote } from "@/hooks/useQuotesOptimized";
-import { calcularPrecoDetalhado, getAnoFromDate } from "@/lib/pricing";
 import { SubscriptionGate } from "@/components/subscription";
+import jsPDF from "jspdf";
 
 type QuoteStatus = "rascunho" | "enviado" | "aceito" | "recusado" | "expirado";
 
@@ -138,25 +138,26 @@ export default function Orcamentos() {
         }
       : undefined;
 
-    // Calculate composition
-    const ano = quote.data_evento ? getAnoFromDate(quote.data_evento) : (quote.ano_evento || new Date().getFullYear().toString());
-    const composicaoPreco = calcularPrecoDetalhado(
-      quote.pacote,
-      quote.dia_semana || "sabado",
-      quote.n_convidados,
-      quote.menu_buffet,
-      ano
-    );
+    // ✅ NOVO: Usar composicao_preco do banco
+    const composicaoPreco = quote.composicao_preco as any;
 
     // Parse extras from quote data
     const extrasJson = quote.extras_json as any[] | null;
     const extras = extrasJson && extrasJson.length > 0
       ? extrasJson.map((e: any) => ({
-          descricao: e.descricao,
-          valor: e.valor,
-          porConvidado: e.porConvidado || false,
+          descricao: e.descricao || e.description,
+          valor: e.valor || e.value,
+          porConvidado: e.porConvidado || e.perGuest || false,
         }))
       : undefined;
+
+    // ✅ NOVO: Extrair dados da composição
+    const items = composicaoPreco?.itens?.map((item: any) => ({
+      description: item.nome,
+      value: item.valor_total,
+      tipo: item.tipo,
+      tipo_preco: item.tipo_preco,
+    })) || [];
 
     generateQuotePDF({
       id: quote.quote_number,
@@ -167,19 +168,26 @@ export default function Orcamentos() {
       status: quote.status as any,
       createdAt: quote.created_at.split("T")[0],
       validUntil: quote.validade || "",
-      items: [
-        { description: `Pacote ${quote.pacote}`, value: Number(quote.valor_total) },
-      ],
+      items,
       paymentTerms,
+      // ✅ NOVO: Passar composição completa
       composicao: composicaoPreco ? {
-        espaco: composicaoPreco.espaco,
-        decoracao: composicaoPreco.decoracao,
-        buffet: composicaoPreco.buffet,
-        custoConvidadoAdicional: composicaoPreco.custoConvidadoAdicional,
-        ano: composicaoPreco.detalhes.ano,
-        buffetNome: composicaoPreco.detalhes.buffetNome,
+        itens: composicaoPreco.itens || [],
+        subtotal_fixo: composicaoPreco.subtotal_fixo || 0,
+        desconto_fixo: composicaoPreco.desconto_fixo || 0,
+        total_fixo: composicaoPreco.total_fixo || 0,
+        subtotal_variavel: composicaoPreco.subtotal_variavel || 0,
+        desconto_variavel: composicaoPreco.desconto_variavel || 0,
+        total_variavel: composicaoPreco.total_variavel || 0,
+        total_extras: composicaoPreco.total_extras || 0,
+        total_geral: composicaoPreco.total_geral || 0,
       } : undefined,
-      pacoteNome: composicaoPreco?.detalhes.pacoteNome,
+      // ✅ NOVO: Passar desconto
+      desconto: quote.desconto_valor ? {
+        descricao: quote.desconto_descricao || '',
+        percentual: quote.desconto_percentual || 0,
+        valor: quote.desconto_valor || 0,
+      } : undefined,
       extras,
     });
   };
@@ -198,102 +206,98 @@ export default function Orcamentos() {
               Orçamentos
             </h1>
             <p className="text-muted-foreground mt-1">
-              Crie e gerencie propostas comerciais
+              Gerencie todos os orçamentos dos seus eventos
             </p>
           </div>
-
-          <Button variant="gold" size="lg" onClick={() => navigate("/orcamentos/novo")}>
-            <Plus className="h-5 w-5" />
+          <Button
+            onClick={() => navigate("/orcamentos/novo")}
+            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow"
+          >
+            <Plus className="mr-2 h-4 w-4" />
             Novo Orçamento
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="space-y-4 animate-slide-up">
-          <div className="flex flex-wrap gap-4">
-            {/* Search by name */}
-            <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-soft space-y-4 animate-fade-in animation-delay-100">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Search by client name */}
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome do cliente..."
+                placeholder="Buscar por cliente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            {/* Search by quote number */}
-            <div className="relative min-w-[180px]">
-              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Nº do orçamento..."
-                value={quoteNumberFilter}
-                onChange={(e) => setQuoteNumberFilter(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            {/* Filter by quote number */}
+            <Input
+              placeholder="Filtrar por número..."
+              value={quoteNumberFilter}
+              onChange={(e) => setQuoteNumberFilter(e.target.value)}
+            />
 
-            {/* Date filter */}
+            {/* Filter by date */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    "min-w-[180px] justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal",
                     !dateFilter && "text-muted-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateFilter ? format(dateFilter, "dd/MM/yyyy", { locale: ptBR }) : "Data de criação"}
+                  {dateFilter ? format(dateFilter, "PPP", { locale: ptBR }) : "Filtrar por data"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={dateFilter}
-                  onSelect={setDateFilter}
-                  className="pointer-events-auto"
+                  onSelect={setDateFilter}                
                 />
               </PopoverContent>
             </Popover>
+          </div>
 
-            {/* Clear filters */}
+          {/* Status filter chips */}
+          <div className="flex flex-wrap gap-2">
+            {allStatuses.map((status) => (
+              <button
+                key={status}
+                onClick={() => toggleStatus(status)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-medium border transition-all",
+                  selectedStatuses.includes(status)
+                    ? statusSelectedStyles[status]
+                    : statusStyles[status]
+                )}
+              >
+                {statusLabels[status]}
+              </button>
+            ))}
             {hasActiveFilters && (
-              <Button variant="ghost" onClick={clearFilters} className="gap-2">
-                <X className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="mr-1 h-3 w-3" />
                 Limpar filtros
               </Button>
             )}
           </div>
-
-          {/* Status filters */}
-          <div className="flex flex-wrap gap-2">
-            <span className="text-sm text-muted-foreground mr-2 self-center">Status:</span>
-            {allStatuses.map((status) => {
-              const isSelected = selectedStatuses.includes(status);
-              return (
-                <Button
-                  key={status}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleStatus(status)}
-                  className={cn(
-                    "transition-all",
-                    isSelected && statusSelectedStyles[status]
-                  )}
-                >
-                  {statusLabels[status]}
-                </Button>
-              );
-            })}
-          </div>
         </div>
 
-        {/* Quotes Table */}
-        <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden animate-slide-up">
+        {/* Table */}
+        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-soft animate-fade-in animation-delay-200">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -307,7 +311,7 @@ export default function Orcamentos() {
                       Cliente
                     </th>
                     <th className="text-left p-4 font-medium text-muted-foreground">
-                      Data Casamento
+                      Data Evento
                     </th>
                     <th className="text-left p-4 font-medium text-muted-foreground">
                       Valor
@@ -421,4 +425,69 @@ export default function Orcamentos() {
       </SubscriptionGate>
     </MainLayout>
   );
+}
+
+interface QuoteItem {
+  description: string;
+  value: number;
+}
+
+interface Parcela {
+  numero: number;
+  valor: number;
+  dataVencimento: string;
+}
+
+interface PaymentTerms {
+  percentualSinal: number;
+  valorSinal: number;
+  numeroParcelas: number;
+  parcelas: Parcela[];
+}
+
+interface ComposicaoPreco {
+  espaco?: number;
+  decoracao?: number;
+  buffet?: number | null;
+  custoConvidadoAdicional?: number;
+  ano?: string;
+  buffetNome?: string | null;
+  itens?: any[];
+  subtotal_fixo?: number;
+  desconto_fixo?: number;
+  total_fixo?: number;
+  subtotal_variavel?: number;
+  desconto_variavel?: number;
+  total_variavel?: number;
+  total_extras?: number;
+  total_geral?: number;
+}
+
+interface ExtraItem {
+  descricao: string;
+  valor: number;
+  porConvidado?: boolean;
+}
+
+interface Desconto {
+  descricao: string;
+  percentual: number;
+  valor: number;
+}
+
+interface QuoteData {
+  id: string;
+  clientName: string;
+  weddingDate: string;
+  guestCount: number;
+  totalValue: number;
+  status: string;
+  createdAt: string;
+  validUntil: string;
+  items: QuoteItem[];''
+  paymentTerms?: PaymentTerms;
+  composicao?: ComposicaoPreco;
+  pacoteNome?: string;
+  extras?: ExtraItem[];
+  desconto?: Desconto;
 }

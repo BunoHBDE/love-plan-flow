@@ -15,6 +15,17 @@ type QuoteUpdateDB = Database['public']['Tables']['quotes']['Update'];
 
 export interface Quote extends QuoteRow {
   client?: any;
+  
+  // ✅ Novos campos que podem não estar nos tipos do Supabase ainda
+  espaco_id?: string | null;
+  buffet_id?: string | null;
+  servico_ids?: string[] | null;
+  pacote_id?: string | null;
+  servico_quantidades?: any;
+  composicao_preco?: any;
+  desconto_descricao?: string | null;
+  desconto_percentual?: number | null;
+  desconto_valor?: number | null;
 }
 
 // Interface customizada para facilitar o uso
@@ -33,6 +44,9 @@ export interface QuoteInsert {
   buffet_id?: string | null;
   servico_ids?: string[] | null;
   pacote_id?: string | null;
+  
+  // Quantidades customizadas de serviços (JSON)
+  servico_quantidades?: any;
   
   // Composição de preço (JSON)
   composicao_preco?: any;

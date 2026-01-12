@@ -19,12 +19,21 @@ interface PaymentTerms {
 }
 
 interface ComposicaoPreco {
-  espaco: number;
-  decoracao: number;
-  buffet: number | null;
-  custoConvidadoAdicional: number;
-  ano: string;
-  buffetNome: string | null;
+  espaco?: number;
+  decoracao?: number;
+  buffet?: number | null;
+  custoConvidadoAdicional?: number;
+  ano?: string;
+  buffetNome?: string | null;
+  itens?: any[];
+  subtotal_fixo?: number;
+  desconto_fixo?: number;
+  total_fixo?: number;
+  subtotal_variavel?: number;
+  desconto_variavel?: number;
+  total_variavel?: number;
+  total_extras?: number;
+  total_geral?: number;
 }
 
 interface ExtraItem {

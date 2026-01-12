@@ -149,8 +149,11 @@ export function calcularComposicaoPreco(
     } else {
       // Valor inicial vai pro fixo
       subtotal_fixo += item.valor_inicial || 0;
+      
       // Valor por unidade * quantidade vai pro variável
-      subtotal_variavel += (item.valor_por_unidade || 0) * nConvidados;
+      // A quantidade JÁ está no valor_total do item, então:
+      const valorVariavel = item.valor_total - (item.valor_inicial || 0);
+      subtotal_variavel += valorVariavel;
     }
   });
 
@@ -175,6 +178,13 @@ export function calcularComposicaoPreco(
   }, 0);
 
   const total_geral = total_fixo + total_variavel + total_extras;
+
+  // IMPORTANTE: total_geral NÃO inclui desconto adicional do formulário
+  // O desconto adicional é aplicado separadamente nos campos:
+  // - desconto_descricao
+  // - desconto_percentual  
+  // - desconto_valor
+  // E o valor FINAL é salvo em: valor_total = total_geral - desconto_valor
 
   return {
     itens,
