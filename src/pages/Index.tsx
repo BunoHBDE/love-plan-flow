@@ -3,7 +3,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { UpcomingVisits } from "@/components/dashboard/UpcomingVisits";
 import { RecentClients } from "@/components/dashboard/RecentClients";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { SubscriptionGate } from "@/components/subscription";
+import { SubscriptionGate, TrialBanner } from "@/components/subscription";
 import {
   Calendar,
   FileText,
@@ -42,6 +42,9 @@ const Index = () => {
     <MainLayout>
       <SubscriptionGate>
       <div className="space-y-8">
+        {/* Trial Banner */}
+        <TrialBanner />
+
         {/* Header */}
         <div className="animate-fade-in">
           <h1 className="text-3xl font-display font-bold text-foreground">
