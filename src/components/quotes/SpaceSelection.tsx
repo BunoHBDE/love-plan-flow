@@ -14,7 +14,7 @@ import { formatCurrency } from "@/lib/pricingCalculator";
 interface SpaceSelectionProps {
   spaces: SpaceData[];
   selectedSpaceId: string | null;
-  onSpaceChange: (spaceId: string) => void;
+  onSpaceChange: (spaceId: string | null) => void;
   diaSemana: string | null;
   anoEvento: string;
   disabled?: boolean;
@@ -46,14 +46,15 @@ export function SpaceSelection({
           Espaço (Opcional)
         </Label>
         <Select
-          value={selectedSpaceId || ""}
-          onValueChange={onSpaceChange}
+          value={selectedSpaceId || "none"}
+          onValueChange={(value) => onSpaceChange(value === "none" ? null : value)}
           disabled={disabled || spacesDoAno.length === 0}
         >
           <SelectTrigger>
             <SelectValue placeholder="Selecione um espaço" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="none">Nenhum espaço</SelectItem>
             {spacesDoAno.map((space) => (
               <SelectItem key={space.id} value={space.id!}>
                 {space.nome}
@@ -116,7 +117,7 @@ export function SpaceSelection({
               </div>
 
               {/* Itens inclusos */}
-              {selectedSpace.itens_inclusos.length > 0 && (
+              {selectedSpace.itens_inclusos && selectedSpace.itens_inclusos.length > 0 && (
                 <div className="pt-2 border-t border-border">
                   <p className="text-xs font-medium text-muted-foreground mb-1">
                     Itens inclusos:

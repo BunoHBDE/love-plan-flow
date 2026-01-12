@@ -38,6 +38,7 @@ import { useClientsOptimized as useClients, type Client, type ClientInsert } fro
 import { useQuotesOptimized as useQuotes } from "@/hooks/useQuotesOptimized";
 import { PaymentTermsForm, type PaymentTermsData } from "@/components/quotes/PaymentTermsForm";
 import { ExtrasForm, type ExtraItem, calcularTotalExtras } from "@/components/quotes/ExtrasForm";
+import { DiscountForm, type DiscountData } from "@/components/quotes/DiscountForm";
 import { SpaceSelection } from "@/components/quotes/SpaceSelection";
 import { BuffetSelection } from "@/components/quotes/BuffetSelection";
 import { ServicesSelection } from "@/components/quotes/ServicesSelection";
@@ -127,6 +128,7 @@ export default function NovoOrcamento() {
   const [espacoId, setEspacoId] = useState<string | null>(null);
   const [buffetId, setBuffetId] = useState<string | null>(null);
   const [servicoIds, setServicoIds] = useState<string[]>([]);
+  const [serviceQuantities, setServiceQuantities] = useState<Record<string, number>>({});
   const [pacoteId, setPacoteId] = useState<string | null>(null);
 
   // Price composition
@@ -138,6 +140,13 @@ export default function NovoOrcamento() {
 
   // Extras
   const [extras, setExtras] = useState<ExtraItem[]>([]);
+
+  // Discount
+  const [discount, setDiscount] = useState<DiscountData>({
+    descricao: "",
+    percentual: 0,
+    valor: 0,
+  });
 
   // Payment terms
   const [paymentTerms, setPaymentTerms] = useState<PaymentTermsData>({
@@ -196,7 +205,22 @@ export default function NovoOrcamento() {
     servicoIds.forEach((servicoId) => {
       const servico = services.find((s) => s.id === servicoId);
       if (servico) {
-        const precoServico = calcularPrecoServico(servico, nConvidados);
+        // Verificar se precisa usar quantidade customizada
+        const preco = servico.precos?.[0];
+        let quantidade = nConvidados; // Padrão: número de convidados
+        
+        if (preco && preco.tipo === 'variavel') {
+          const unidade = preco.unidade?.toLowerCase() || '';
+          const isPessoaUnidade = unidade === 'pessoa' || unidade === 'pessoas' || 
+                                  unidade === 'convidado' || unidade === 'convidados';
+          
+          // Se não é por pessoa, usar quantidade customizada
+          if (!isPessoaUnidade) {
+            quantidade = serviceQuantities[servicoId] || 1;
+          }
+        }
+        
+        const precoServico = calcularPrecoServico(servico, quantidade);
         if (precoServico) {
           itens.push(precoServico);
         }
@@ -209,7 +233,7 @@ export default function NovoOrcamento() {
     // Calcular composição final
     const novaComposicao = calcularComposicaoPreco(itens, pacote || null, extras, nConvidados);
     setComposicao(novaComposicao);
-  }, [espacoId, buffetId, servicoIds, pacoteId, diaSemana, nConvidados, extras, spaces, buffets, services, packages]);
+  }, [espacoId, buffetId, servicoIds, serviceQuantities, pacoteId, diaSemana, nConvidados, extras, spaces, buffets, services, packages]);
 
   // Update diaSemana when dataEvento changes
   useEffect(() => {
@@ -328,6 +352,32 @@ export default function NovoOrcamento() {
       return;
     }
 
+    // Validar quantidades de serviços
+    for (const servicoId of servicoIds) {
+      const servico = services.find(s => s.id === servicoId);
+      if (servico) {
+        const preco = servico.precos?.[0];
+        if (preco && preco.tipo === 'variavel') {
+          const unidade = preco.unidade?.toLowerCase() || '';
+          const isPessoaUnidade = unidade === 'pessoa' || unidade === 'pessoas' || 
+                                  unidade === 'convidado' || unidade === 'convidados';
+          
+          // Se não é por pessoa, validar quantidade customizada
+          if (!isPessoaUnidade) {
+            const quantidade = serviceQuantities[servicoId] || 0;
+            if (quantidade < 1) {
+              toast({
+                title: "Quantidade inválida",
+                description: `Informe a quantidade de ${preco.unidade || 'unidades'} para "${servico.nome}".`,
+                variant: "destructive",
+              });
+              return;
+            }
+          }
+        }
+      }
+    }
+
     if (!composicao || composicao.total_geral <= 0) {
       toast({
         title: "Valor inválido",
@@ -348,7 +398,7 @@ export default function NovoOrcamento() {
 
     setIsSaving(true);
 
-    const quoteData = await createQuote ({
+    const quoteData = await createQuote({
       client_id: clienteId,
       tipo_evento: tipoEvento || null,
       data_status: dataStatus,
@@ -477,6 +527,7 @@ export default function NovoOrcamento() {
                       onChange={(e) => setTermoBuscaCliente(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleBuscarCliente()}
                       className="pl-10"
+                      autoComplete="off"
                     />
                   </div>
                   <Button onClick={handleBuscarCliente} disabled={isSearching}>
@@ -730,7 +781,14 @@ export default function NovoOrcamento() {
                 <ServicesSelection
                   services={services}
                   selectedServiceIds={servicoIds}
+                  serviceQuantities={serviceQuantities}
                   onServicesChange={setServicoIds}
+                  onQuantityChange={(serviceId, quantity) => {
+                    setServiceQuantities(prev => ({
+                      ...prev,
+                      [serviceId]: quantity
+                    }));
+                  }}
                   anoEvento={anoEvento}
                 />
 
@@ -758,24 +816,41 @@ export default function NovoOrcamento() {
               />
             </div>
 
-            {/* Block 5 - Resumo do Orçamento */}
+            {/* Block 5 - Desconto */}
+            {composicao && composicao.total_geral > 0 && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+                <div className="flex items-center gap-2 mb-4">
+                  <PackageIcon className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-display font-semibold">Desconto</h2>
+                </div>
+
+                <DiscountForm
+                  valorTotal={composicao.total_geral}
+                  discount={discount}
+                  onChange={setDiscount}
+                />
+              </div>
+            )}
+
+            {/* Block 6 - Resumo do Orçamento */}
             {composicao && composicao.total_geral > 0 && (
               <div className="animate-slide-up">
                 <QuotePriceSummary
                   composicao={composicao}
                   nConvidados={nConvidados}
+                  discount={discount}
                 />
               </div>
             )}
 
-            {/* Block 6 - Condições de Pagamento */}
+            {/* Block 7 - Condições de Pagamento */}
             {composicao && composicao.total_geral > 0 && (
               <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
                 <div className="flex items-center gap-2 mb-4">
                   <h2 className="text-lg font-display font-semibold">Condições de Pagamento</h2>
                 </div>
                 <PaymentTermsForm
-                  valorTotal={composicao.total_geral}
+                  valorTotal={composicao.total_geral - (discount?.valor || 0)}
                   dataEvento={dataStatus === "com_data" ? dataEvento : null}
                   onChange={setPaymentTerms}
                   onValidationChange={setHasPaymentErrors}

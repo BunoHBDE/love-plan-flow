@@ -21,16 +21,32 @@ export interface Quote extends QuoteRow {
 export interface QuoteInsert {
   quote_number?: string;
   client_id: string;
-  canal_entrada?: string | null;
   tipo_evento?: string | null;
   data_status?: string;
   data_evento?: string | null;
   dia_semana?: string | null;
   ano_evento?: string | null;
   n_convidados: number;
+  
+  // Novas referências às configurações
+  espaco_id?: string | null;
+  buffet_id?: string | null;
+  servico_ids?: string[] | null;
+  pacote_id?: string | null;
+  
+  // Composição de preço (JSON)
+  composicao_preco?: any;
+  
+  // Valores (mantidos para compatibilidade)
   pacote: string;
   menu_buffet?: string | null;
   valor_total: number;
+  
+  // Desconto
+  desconto_descricao?: string | null;
+  desconto_percentual?: number;
+  desconto_valor?: number;
+  
   validade?: string | null;
   status?: string;
   observacoes_internas?: string | null;
@@ -41,11 +57,6 @@ export interface QuoteInsert {
   dia_vencimento?: number;
   parcelas_json?: any; // ✅ Aceita qualquer tipo
   extras_json?: any;   // ✅ Aceita qualquer tipo
-  espaco_id?: string | null;
-  buffet_id?: string | null;
-  servico_ids?: string[] | null;
-  pacote_id?: string | null;
-  composicao_preco?: any; // JSON da composição de preço
 }
 
 // ==========================================

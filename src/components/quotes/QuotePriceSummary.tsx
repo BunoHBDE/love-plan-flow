@@ -4,12 +4,19 @@ import { DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import type { QuoteComposicao } from "@/types/quote.types";
 import { formatCurrency } from "@/lib/pricingCalculator";
 
+export interface DiscountData {
+  descricao: string;
+  percentual: number;
+  valor: number;
+}
+
 interface QuotePriceSummaryProps {
   composicao: QuoteComposicao | null;
   nConvidados: number;
+  discount?: DiscountData;
 }
 
-export function QuotePriceSummary({ composicao, nConvidados }: QuotePriceSummaryProps) {
+export function QuotePriceSummary({ composicao, nConvidados, discount }: QuotePriceSummaryProps) {
   if (!composicao) {
     return (
       <Card className="p-6 bg-muted/50">
@@ -50,7 +57,10 @@ export function QuotePriceSummary({ composicao, nConvidados }: QuotePriceSummary
                   {item.nome}
                   {item.tipo_preco === 'variavel' && item.unidade && (
                     <span className="text-xs text-muted-foreground ml-1">
-                      ({item.unidade})
+                      ({item.unidade === 'pessoa' || item.unidade === 'convidado' 
+                        ? `${nConvidados} ${item.unidade}${nConvidados > 1 ? 's' : ''}`
+                        : item.unidade
+                      })
                     </span>
                   )}
                 </span>
@@ -146,6 +156,38 @@ export function QuotePriceSummary({ composicao, nConvidados }: QuotePriceSummary
           </>
         )}
 
+        {/* Subtotal antes do desconto */}
+        {discount && discount.valor > 0 && (
+          <>
+            <Separator />
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-medium text-foreground">
+                {formatCurrency(composicao.total_geral)}
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* Desconto */}
+        {discount && discount.valor > 0 && (
+          <>
+            <div className="flex justify-between text-sm">
+              <div className="flex flex-col">
+                <span className="text-green-600">Desconto</span>
+                {discount.descricao && (
+                  <span className="text-xs text-muted-foreground">
+                    {discount.descricao}
+                  </span>
+                )}
+              </div>
+              <span className="font-medium text-green-600">
+                - {formatCurrency(discount.valor)}
+              </span>
+            </div>
+          </>
+        )}
+
         <Separator className="my-4" />
 
         {/* Total Geral */}
@@ -155,11 +197,15 @@ export function QuotePriceSummary({ composicao, nConvidados }: QuotePriceSummary
               Valor Total
             </span>
             <span className="text-2xl font-bold text-primary">
-              {formatCurrency(composicao.total_geral)}
+              {formatCurrency(
+                discount && discount.valor > 0 
+                  ? composicao.total_geral - discount.valor
+                  : composicao.total_geral
+              )}
             </span>
           </div>
           
-          {hasDiscount && (
+          {(hasDiscount || (discount && discount.valor > 0)) && (
             <p className="text-xs text-green-600 mt-2 text-center">
               ✓ Descontos aplicados com sucesso
             </p>

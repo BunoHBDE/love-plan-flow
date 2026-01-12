@@ -215,7 +215,11 @@ export function PaymentTermsForm({
         setErroSinal(true);
       } else {
         setErroSinal(false);
-        setPercentualSinal(Math.min(num, 100));
+        const clamped = Math.min(num, 100);
+        setPercentualSinal(clamped);
+        // Atualizar o valor do sinal baseado no novo percentual
+        const novoValorSinal = (valorTotal * clamped) / 100;
+        setValorSinalInput(formatNumberBR(novoValorSinal));
       }
     }
   };
@@ -226,10 +230,16 @@ export function PaymentTermsForm({
       setPercentualSinal(10);
       setPercentualInput("10");
       setErroSinal(false);
+      // Atualizar valor do sinal para 10%
+      const novoValorSinal = (valorTotal * 10) / 100;
+      setValorSinalInput(formatNumberBR(novoValorSinal));
     } else {
       const clamped = Math.min(num, 100);
       setPercentualSinal(clamped);
       setPercentualInput(clamped.toString());
+      // Atualizar valor do sinal baseado no percentual
+      const novoValorSinal = (valorTotal * clamped) / 100;
+      setValorSinalInput(formatNumberBR(novoValorSinal));
     }
     setValorSinalManual(null);
   };

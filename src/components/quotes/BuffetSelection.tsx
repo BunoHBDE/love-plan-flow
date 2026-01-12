@@ -105,7 +105,7 @@ export function BuffetSelection({
               </div>
 
               {/* Itens inclusos */}
-              {selectedBuffet.itens_inclusos.length > 0 && (
+              {selectedBuffet.itens_inclusos && selectedBuffet.itens_inclusos.length > 0 && (
                 <div className="pt-2 border-t border-border">
                   <p className="text-xs font-medium text-muted-foreground mb-1">
                     Itens inclusos:
