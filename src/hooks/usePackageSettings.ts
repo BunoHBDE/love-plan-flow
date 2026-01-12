@@ -1,16 +1,21 @@
 /**
  * HOOK: usePackageSettings
- * Gerencia CRUD de configurações de pacotes
+ * Gerencia CRUD de pacotes + cálculo de preços em tempo real
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSpaceSettings } from "@/hooks/useSpaceSettings";
+import { useBuffetSettings } from "@/hooks/useBuffetSettings";
+import { useServiceSettings } from "@/hooks/useServiceSettings";
 import type { 
   PackageData, 
   CreatePackageData, 
   UpdatePackageData,
-  ItensPacote
+  ItensPacote,
+  PackagePriceCalculation,
+  ItemPriceDetail
 } from "@/types/packageSettings.types";
 
 const QUERY_KEY = ["packageSettings"];
@@ -45,9 +50,7 @@ async function fetchPackages(): Promise<PackageData[]> {
     nome: record.nome,
     descricao: record.descricao || undefined,
     itens_pacote: record.itens_pacote as unknown as ItensPacote,
-    preco_base: Number(record.preco_base),
     desconto_percentual: Number(record.desconto_percentual),
-    preco_final: Number(record.preco_final),
   }));
 }
 
@@ -66,9 +69,7 @@ async function createPackage(packageData: CreatePackageData): Promise<PackageDat
       nome: packageData.nome,
       descricao: packageData.descricao || null,
       itens_pacote: packageData.itens_pacote as any,
-      preco_base: packageData.preco_base,
       desconto_percentual: packageData.desconto_percentual,
-      preco_final: packageData.preco_final,
     })
     .select()
     .single();
@@ -84,9 +85,7 @@ async function createPackage(packageData: CreatePackageData): Promise<PackageDat
     nome: data.nome,
     descricao: data.descricao || undefined,
     itens_pacote: data.itens_pacote as unknown as ItensPacote,
-    preco_base: Number(data.preco_base),
     desconto_percentual: Number(data.desconto_percentual),
-    preco_final: Number(data.preco_final),
   };
 }
 
@@ -100,9 +99,7 @@ async function updatePackage(packageData: UpdatePackageData): Promise<PackageDat
       ...(updateData.nome && { nome: updateData.nome }),
       ...(updateData.descricao !== undefined && { descricao: updateData.descricao || null }),
       ...(updateData.itens_pacote && { itens_pacote: updateData.itens_pacote as any }),
-      ...(updateData.preco_base !== undefined && { preco_base: updateData.preco_base }),
       ...(updateData.desconto_percentual !== undefined && { desconto_percentual: updateData.desconto_percentual }),
-      ...(updateData.preco_final !== undefined && { preco_final: updateData.preco_final }),
     })
     .eq("id", id)
     .select()
@@ -119,9 +116,7 @@ async function updatePackage(packageData: UpdatePackageData): Promise<PackageDat
     nome: data.nome,
     descricao: data.descricao || undefined,
     itens_pacote: data.itens_pacote as unknown as ItensPacote,
-    preco_base: Number(data.preco_base),
     desconto_percentual: Number(data.desconto_percentual),
-    preco_final: Number(data.preco_final),
   };
 }
 
@@ -145,6 +140,10 @@ export function usePackageSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { spaces } = useSpaceSettings();
+  const { buffets } = useBuffetSettings();
+  const { services } = useServiceSettings();
+
   const {
     data: packages = [],
     isLoading,
@@ -155,6 +154,125 @@ export function usePackageSettings() {
     queryFn: fetchPackages,
     staleTime: 1000 * 60 * 5,
   });
+
+  /**
+   * Calcula preços do pacote em tempo real com detalhes completos
+   */
+  const calculatePackagePrice = (pkg: PackageData): PackagePriceCalculation => {
+    const espacosDetalhes: ItemPriceDetail[] = [];
+    const buffetsDetalhes: ItemPriceDetail[] = [];
+    const servicosDetalhes: ItemPriceDetail[] = [];
+
+    let subtotal = 0;
+    let tem_variaveis = false;
+
+    // Calcular Espaços
+    pkg.itens_pacote.espacos.forEach(id => {
+      const espaco = spaces.find(s => s.id === id);
+      if (espaco && espaco.precos_por_dia && espaco.precos_por_dia.length > 0) {
+        const preco = espaco.precos_por_dia[0];
+        
+        if (preco.tipo === 'fixo') {
+          const valor = preco.preco_fixo || 0;
+          subtotal += valor;
+          espacosDetalhes.push({
+            id,
+            nome: espaco.nome,
+            tipo: 'fixo',
+            valor_fixo: valor,
+          });
+        } else {
+          tem_variaveis = true;
+          const inicial = preco.valor_inicial || 0;
+          subtotal += inicial;
+          espacosDetalhes.push({
+            id,
+            nome: espaco.nome,
+            tipo: 'variavel',
+            valor_inicial: inicial,
+            valor_por_unidade: preco.valor_por_convidado || 0,
+            unidade: 'convidado',
+          });
+        }
+      }
+    });
+
+    // Calcular Buffets
+    pkg.itens_pacote.buffets.forEach(id => {
+      const buffet = buffets.find(b => b.id === id);
+      if (buffet && buffet.precos_por_pessoa && buffet.precos_por_pessoa.length > 0) {
+        const preco = buffet.precos_por_pessoa[0];
+        
+        if (preco.tipo === 'fixo') {
+          const valor = preco.preco_fixo || 0;
+          subtotal += valor;
+          buffetsDetalhes.push({
+            id,
+            nome: buffet.nome,
+            tipo: 'fixo',
+            valor_fixo: valor,
+          });
+        } else {
+          tem_variaveis = true;
+          const inicial = preco.valor_inicial || 0;
+          subtotal += inicial;
+          buffetsDetalhes.push({
+            id,
+            nome: buffet.nome,
+            tipo: 'variavel',
+            valor_inicial: inicial,
+            valor_por_unidade: preco.valor_por_pessoa || 0,
+            unidade: 'pessoa',
+          });
+        }
+      }
+    });
+
+    // Calcular Serviços
+    pkg.itens_pacote.servicos.forEach(id => {
+      const servico = services.find(s => s.id === id);
+      if (servico && servico.precos && servico.precos.length > 0) {
+        const preco = servico.precos[0];
+        
+        if (preco.tipo === 'fixo') {
+          const valor = preco.preco_fixo || 0;
+          subtotal += valor;
+          servicosDetalhes.push({
+            id,
+            nome: servico.nome,
+            tipo: 'fixo',
+            valor_fixo: valor,
+          });
+        } else {
+          tem_variaveis = true;
+          const inicial = preco.valor_inicial || 0;
+          subtotal += inicial;
+          servicosDetalhes.push({
+            id,
+            nome: servico.nome,
+            tipo: 'variavel',
+            valor_inicial: inicial,
+            valor_por_unidade: preco.valor_por_unidade || 0,
+            unidade: preco.unidade || 'unidade',
+          });
+        }
+      }
+    });
+
+    const desconto_valor = (subtotal * pkg.desconto_percentual) / 100;
+    const total = subtotal - desconto_valor;
+
+    return {
+      espacos: espacosDetalhes,
+      buffets: buffetsDetalhes,
+      servicos: servicosDetalhes,
+      subtotal,
+      desconto_valor,
+      desconto_percentual: pkg.desconto_percentual,
+      total,
+      tem_variaveis,
+    };
+  };
 
   const createMutation = useMutation({
     mutationFn: createPackage,
@@ -235,6 +353,7 @@ export function usePackageSettings() {
     packages,
     isLoading,
     error,
+    calculatePackagePrice,
     createPackage: createMutation.mutate,
     updatePackage: updateMutation.mutate,
     deletePackage: deleteMutation.mutate,

@@ -1,15 +1,15 @@
 /**
  * TYPES: Package Settings
- * Tipos para configurações de pacotes
+ * Tipos para configurações de pacotes com cálculo em tempo real
  */
 
 /**
- * Itens inclusos no pacote
+ * Itens inclusos no pacote (apenas IDs - referências)
  */
 export interface ItensPacote {
-  espacos: string[];   // IDs dos espaços
-  buffets: string[];   // IDs dos buffets
-  servicos: string[];  // IDs dos serviços
+  espacos: string[];
+  buffets: string[];
+  servicos: string[];
 }
 
 /**
@@ -21,27 +21,38 @@ export interface PackageData {
   nome: string;
   descricao?: string;
   itens_pacote: ItensPacote;
-  preco_base: number;
   desconto_percentual: number;
-  preco_final: number;
 }
 
 /**
- * Registro do banco (com campos adicionais)
+ * Detalhes de preço de um item individual
  */
-export interface PackageRecord {
+export interface ItemPriceDetail {
   id: string;
-  user_id: string;
-  ano: string;
   nome: string;
-  descricao: string | null;
-  itens_pacote: ItensPacote;
-  preco_base: number;
+  tipo: 'fixo' | 'variavel';
+  
+  // Preço Fixo
+  valor_fixo?: number;
+  
+  // Preço Variável
+  valor_inicial?: number;
+  valor_por_unidade?: number;
+  unidade?: string;
+}
+
+/**
+ * Resultado do cálculo de preços do pacote
+ */
+export interface PackagePriceCalculation {
+  espacos: ItemPriceDetail[];
+  buffets: ItemPriceDetail[];
+  servicos: ItemPriceDetail[];
+  subtotal: number;
+  desconto_valor: number;
   desconto_percentual: number;
-  preco_final: number;
-  ativo: boolean;
-  created_at: string;
-  updated_at: string;
+  total: number;
+  tem_variaveis: boolean;
 }
 
 /**
@@ -52,9 +63,7 @@ export interface CreatePackageData {
   nome: string;
   descricao?: string;
   itens_pacote: ItensPacote;
-  preco_base: number;
   desconto_percentual: number;
-  preco_final: number;
 }
 
 /**
@@ -66,7 +75,5 @@ export interface UpdatePackageData {
   nome?: string;
   descricao?: string;
   itens_pacote?: ItensPacote;
-  preco_base?: number;
   desconto_percentual?: number;
-  preco_final?: number;
 }

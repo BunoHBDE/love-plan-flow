@@ -1,9 +1,10 @@
 /**
- * COMPONENT: PackageSettingsCard
- * Card para gerenciar pacotes que combinam espaço, buffet e serviços
+ * COMPONENT: PackageSettingsCard (FINAL v2)
+ * - Preview detalhado mostrando tipo (fixo/variável) + unidade no formulário
+ * - Cor azul (blue-600) com melhor contraste
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,26 +22,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Loader2, Edit, Trash2, X, Package } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, X, Package, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePackageSettings } from "@/hooks/usePackageSettings";
 import { useSpaceSettings } from "@/hooks/useSpaceSettings";
 import { useBuffetSettings } from "@/hooks/useBuffetSettings";
 import { useServiceSettings } from "@/hooks/useServiceSettings";
-import type { PackageData, ItensPacote } from "@/types/packageSettings.types";
-
-// ============================================================================
-// CONSTANTES
-// ============================================================================
+import type { PackageData } from "@/types/packageSettings.types";
 
 const MAX_NOME_LENGTH = 100;
 const MAX_DESCRICAO_LENGTH = 500;
 const anoAtual = new Date().getFullYear();
 const ANOS_DISPONIVEIS = Array.from({ length: 10 }, (_, i) => (anoAtual + i).toString());
-
-// ============================================================================
-// FUNÇÕES AUXILIARES
-// ============================================================================
 
 const formatCurrency = (value: number): string => {
   if (isNaN(value)) return 'R$ 0,00';
@@ -50,21 +43,13 @@ const formatCurrency = (value: number): string => {
   }).format(value);
 };
 
-const formatPercentage = (value: number): string => {
-  return `${value.toFixed(0)}%`;
-};
-
-// ============================================================================
-// COMPONENTE PRINCIPAL
-// ============================================================================
-
 export function PackageSettingsCard() {
   const { toast } = useToast();
   
-  // Hooks de dados
   const {
     packages,
     isLoading: isLoadingPackages,
+    calculatePackagePrice,
     createPackage,
     updatePackage,
     deletePackage,
@@ -77,88 +62,17 @@ export function PackageSettingsCard() {
   const { buffets, isLoading: isLoadingBuffets } = useBuffetSettings();
   const { services, isLoading: isLoadingServices } = useServiceSettings();
 
-  // Estados do formulário
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [ano, setAno] = useState(anoAtual.toString());
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  
-  // Itens selecionados
   const [selectedEspacos, setSelectedEspacos] = useState<string[]>([]);
   const [selectedBuffets, setSelectedBuffets] = useState<string[]>([]);
   const [selectedServicos, setSelectedServicos] = useState<string[]>([]);
-  
-  // Preços
-  const [precoBase, setPrecoBase] = useState(0);
   const [descontoPercentual, setDescontoPercentual] = useState(0);
-  const [precoFinal, setPrecoFinal] = useState(0);
-
-  // Dialog de exclusão
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [packageToDelete, setPackageToDelete] = useState<string | null>(null);
-
-  // ============================================================================
-  // EFEITO: Calcular preço base automaticamente
-  // ============================================================================
-
-  useEffect(() => {
-    let total = 0;
-    
-    // Somar espaços selecionados
-    selectedEspacos.forEach(id => {
-      const espaco = spaces.find(s => s.id === id);
-      if (espaco && espaco.precos_por_dia.length > 0) {
-        // Pega o primeiro preço como referência
-        const preco = espaco.precos_por_dia[0];
-        if (preco.tipo === 'fixo') {
-          total += preco.preco_fixo || 0;
-        } else {
-          total += (preco.valor_inicial || 0);
-        }
-      }
-    });
-    
-    // Somar buffets selecionados
-    selectedBuffets.forEach(id => {
-      const buffet = buffets.find(b => b.id === id);
-      if (buffet && buffet.precos_por_pessoa.length > 0) {
-        const preco = buffet.precos_por_pessoa[0];
-        if (preco.tipo === 'fixo') {
-          total += preco.preco_fixo || 0;
-        } else {
-          total += (preco.valor_inicial || 0);
-        }
-      }
-    });
-    
-    // Somar serviços selecionados
-    selectedServicos.forEach(id => {
-      const servico = services.find(s => s.id === id);
-      if (servico && servico.precos.length > 0) {
-        const preco = servico.precos[0];
-        if (preco.tipo === 'fixo') {
-          total += preco.preco_fixo || 0;
-        } else {
-          total += (preco.valor_inicial || 0);
-        }
-      }
-    });
-    
-    setPrecoBase(total);
-  }, [selectedEspacos, selectedBuffets, selectedServicos, spaces, buffets, services]);
-
-  // ============================================================================
-  // EFEITO: Calcular preço final quando muda desconto
-  // ============================================================================
-
-  useEffect(() => {
-    const desconto = (precoBase * descontoPercentual) / 100;
-    setPrecoFinal(precoBase - desconto);
-  }, [precoBase, descontoPercentual]);
-  // ============================================================================
-  // HANDLERS
-  // ============================================================================
 
   const resetForm = () => {
     setIsAdding(false);
@@ -169,12 +83,10 @@ export function PackageSettingsCard() {
     setSelectedEspacos([]);
     setSelectedBuffets([]);
     setSelectedServicos([]);
-    setPrecoBase(0);
     setDescontoPercentual(0);
-    setPrecoFinal(0);
   };
 
-  const startEdit = (pkg: PackageData) => {
+  const handleEdit = (pkg: PackageData) => {
     setEditingId(pkg.id!);
     setIsAdding(true);
     setAno(pkg.ano);
@@ -183,17 +95,15 @@ export function PackageSettingsCard() {
     setSelectedEspacos(pkg.itens_pacote.espacos);
     setSelectedBuffets(pkg.itens_pacote.buffets);
     setSelectedServicos(pkg.itens_pacote.servicos);
-    setPrecoBase(pkg.preco_base);
     setDescontoPercentual(pkg.desconto_percentual);
-    setPrecoFinal(pkg.preco_final);
   };
 
-  const confirmDelete = (id: string) => {
+  const handleDelete = (id: string) => {
     setPackageToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  const handleDelete = () => {
+  const confirmDelete = () => {
     if (packageToDelete) {
       deletePackage(packageToDelete, {
         onSuccess: () => {
@@ -243,53 +153,24 @@ export function PackageSettingsCard() {
       return;
     }
 
-    const itensPacote: ItensPacote = {
-      espacos: selectedEspacos,
-      buffets: selectedBuffets,
-      servicos: selectedServicos,
-    };
-
     const packageData = {
       ano,
       nome: nome.trim(),
       descricao: descricao.trim() || undefined,
-      itens_pacote: itensPacote,
-      preco_base: precoBase,
+      itens_pacote: {
+        espacos: selectedEspacos,
+        buffets: selectedBuffets,
+        servicos: selectedServicos,
+      },
       desconto_percentual: descontoPercentual,
-      preco_final: precoFinal,
     };
 
     if (editingId) {
-      updatePackage({ id: editingId, ...packageData }, {
-        onSuccess: resetForm
-      });
+      updatePackage({ id: editingId, ...packageData }, { onSuccess: resetForm });
     } else {
-      createPackage(packageData, {
-        onSuccess: resetForm
-      });
+      createPackage(packageData, { onSuccess: resetForm });
     }
   };
-
-  // ============================================================================
-  // FUNÇÕES AUXILIARES DE RENDER
-  // ============================================================================
-
-  const getNomeById = (id: string, type: 'espaco' | 'buffet' | 'servico') => {
-    if (type === 'espaco') {
-      const item = spaces.find(s => s.id === id);
-      return item ? item.nome : 'Não encontrado';
-    } else if (type === 'buffet') {
-      const item = buffets.find(b => b.id === id);
-      return item ? item.nome : 'Não encontrado';
-    } else {
-      const item = services.find(s => s.id === id);
-      return item ? item.nome : 'Não encontrado';
-    }
-  };
-
-  // ============================================================================
-  // RENDER
-  // ============================================================================
 
   if (isLoadingPackages || isLoadingSpaces || isLoadingBuffets || isLoadingServices) {
     return (
@@ -333,100 +214,142 @@ export function PackageSettingsCard() {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* Lista de Pacotes */}
-          {packages.length > 0 && !isAdding && (
+          {/* Lista */}
+          {!isAdding && packages.length > 0 && (
             <div className="space-y-4">
-              {packages.map((pkg) => (
-                <div
-                  key={pkg.id}
-                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-medium">{pkg.nome}</h4>
-                      <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded">
-                        {pkg.ano}
-                      </span>
-                    </div>
-                    
-                    {pkg.descricao && (
-                      <p className="text-sm text-muted-foreground">{pkg.descricao}</p>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                      {pkg.itens_pacote.espacos.length > 0 && (
-                        <div>
-                          <span className="font-medium">Espaços:</span> {pkg.itens_pacote.espacos.map(id => getNomeById(id, 'espaco')).join(', ')}
-                        </div>
-                      )}
-                      {pkg.itens_pacote.buffets.length > 0 && (
-                        <div>
-                          <span className="font-medium">Buffets:</span> {pkg.itens_pacote.buffets.map(id => getNomeById(id, 'buffet')).join(', ')}
-                        </div>
-                      )}
-                      {pkg.itens_pacote.servicos.length > 0 && (
-                        <div>
-                          <span className="font-medium">Serviços:</span> {pkg.itens_pacote.servicos.map(id => getNomeById(id, 'servico')).join(', ')}
-                        </div>
-                      )}
+              {packages.map((pkg) => {
+                const precos = calculatePackagePrice(pkg);
+                
+                return (
+                  <div key={pkg.id} className="border rounded-lg p-3 sm:p-4 space-y-3 hover:bg-muted/50 transition">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-base sm:text-lg">{pkg.nome} - {pkg.ano}</h4>
+                        {pkg.descricao && (
+                          <p className="text-sm text-muted-foreground mt-1">{pkg.descricao}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(pkg)}>
+                          <Pencil className="h-4 w-4" />
+                          <span className="ml-2 sm:hidden">Editar</span>
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(pkg.id!)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <span className="ml-2 sm:hidden">Excluir</span>
+                        </Button>
+                      </div>
                     </div>
 
-                    <div className="flex gap-4 text-sm">
-                      <span className="text-muted-foreground">Base: {formatCurrency(pkg.preco_base)}</span>
+                    <div className="space-y-2">
+                      {precos.espacos.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium">Espaços:</p>
+                          {precos.espacos.map((item) => (
+                            <div key={item.id} className="text-xs sm:text-sm bg-muted/50 rounded p-2 mt-1">
+                              <span className="font-medium">{item.nome}:</span>{" "}
+                              {item.tipo === 'fixo' ? (
+                                <span className="whitespace-nowrap">{formatCurrency(item.valor_fixo || 0)}</span>
+                              ) : (
+                                <span className="whitespace-nowrap text-blue-600 dark:text-blue-400 font-medium">
+                                  {item.valor_inicial && item.valor_inicial > 0 ? `${formatCurrency(item.valor_inicial)} + ` : ''}
+                                  {formatCurrency(item.valor_por_unidade || 0)}/{item.unidade}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {precos.buffets.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium">Buffets:</p>
+                          {precos.buffets.map((item) => (
+                            <div key={item.id} className="text-xs sm:text-sm bg-muted/50 rounded p-2 mt-1">
+                              <span className="font-medium">{item.nome}:</span>{" "}
+                              {item.tipo === 'fixo' ? (
+                                <span className="whitespace-nowrap">{formatCurrency(item.valor_fixo || 0)}</span>
+                              ) : (
+                                <span className="whitespace-nowrap text-blue-600 dark:text-blue-400 font-medium">
+                                  {item.valor_inicial && item.valor_inicial > 0 ? `${formatCurrency(item.valor_inicial)} + ` : ''}
+                                  {formatCurrency(item.valor_por_unidade || 0)}/{item.unidade}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {precos.servicos.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium">Serviços:</p>
+                          {precos.servicos.map((item) => (
+                            <div key={item.id} className="text-xs sm:text-sm bg-muted/50 rounded p-2 mt-1">
+                              <span className="font-medium">{item.nome}:</span>{" "}
+                              {item.tipo === 'fixo' ? (
+                                <span className="whitespace-nowrap">{formatCurrency(item.valor_fixo || 0)}</span>
+                              ) : (
+                                <span className="whitespace-nowrap text-blue-600 dark:text-blue-400 font-medium">
+                                  {item.valor_inicial && item.valor_inicial > 0 ? `${formatCurrency(item.valor_inicial)} + ` : ''}
+                                  {formatCurrency(item.valor_por_unidade || 0)}/{item.unidade}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-3 border-t space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Subtotal {precos.tem_variaveis && '(valores iniciais)'}:
+                        </span>
+                        <span className="font-medium">{formatCurrency(precos.subtotal)}</span>
+                      </div>
                       {pkg.desconto_percentual > 0 && (
-                        <span className="text-green-600">Desconto: {formatPercentage(pkg.desconto_percentual)}</span>
+                        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                          <span>Desconto ({pkg.desconto_percentual}%):</span>
+                          <span>-{formatCurrency(precos.desconto_valor)}</span>
+                        </div>
                       )}
-                      <span className="font-medium">Final: {formatCurrency(pkg.preco_final)}</span>
+                      <div className="flex justify-between text-sm font-semibold">
+                        <span>Total {precos.tem_variaveis && 'base'}:</span>
+                        <span>{formatCurrency(precos.total)}</span>
+                      </div>
+
+                      {precos.tem_variaveis && (
+                        <div className="flex gap-2 items-start mt-2 p-2 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded text-xs">
+                          <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                          <span className="text-blue-800 dark:text-blue-200">
+                            Este pacote possui itens variáveis. O valor final será calculado no orçamento.
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  <div className="flex gap-2 ml-4">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => startEdit(pkg)}
-                      disabled={isCreating || isUpdating || isDeleting}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => confirmDelete(pkg.id!)}
-                      disabled={isCreating || isUpdating || isDeleting}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
           {/* Formulário */}
           {isAdding && (
-            <div className="space-y-6 p-6 border rounded-lg bg-muted/20">
+            <div className="space-y-6 border rounded-lg p-4 sm:p-6 bg-muted/20">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">
                   {editingId ? "Editar Pacote" : "Novo Pacote"}
                 </h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={resetForm}
-                  disabled={isCreating || isUpdating}
-                >
+                <Button variant="ghost" size="icon" onClick={resetForm} disabled={isCreating || isUpdating}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Ano *</Label>
                   <Select value={ano} onValueChange={setAno} disabled={isCreating || isUpdating}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {ANOS_DISPONIVEIS.map((a) => (
                         <SelectItem key={a} value={a}>{a}</SelectItem>
@@ -444,9 +367,7 @@ export function PackageSettingsCard() {
                     maxLength={MAX_NOME_LENGTH}
                     disabled={isCreating || isUpdating}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {nome.length}/{MAX_NOME_LENGTH}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{nome.length}/{MAX_NOME_LENGTH}</p>
                 </div>
               </div>
 
@@ -455,25 +376,21 @@ export function PackageSettingsCard() {
                 <Textarea
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
-                  placeholder="Descreva o que está incluso no pacote..."
+                  placeholder="Descreva o que está incluso..."
                   maxLength={MAX_DESCRICAO_LENGTH}
                   disabled={isCreating || isUpdating}
                   rows={2}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {descricao.length}/{MAX_DESCRICAO_LENGTH}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{descricao.length}/{MAX_DESCRICAO_LENGTH}</p>
               </div>
 
-              {/* Seleção de Itens */}
               <div className="space-y-4">
                 <h4 className="font-medium">Itens do Pacote *</h4>
                 
-                {/* Espaços */}
                 {spaces.length > 0 && (
                   <div className="space-y-2">
                     <Label>Espaços</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 border rounded-lg">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg max-h-40 overflow-y-auto">
                       {spaces.filter(s => s.ano === ano).map(espaco => (
                         <div key={espaco.id} className="flex items-center space-x-2">
                           <Checkbox
@@ -482,23 +399,20 @@ export function PackageSettingsCard() {
                             onCheckedChange={() => toggleItem(espaco.id!, selectedEspacos, setSelectedEspacos)}
                             disabled={isCreating || isUpdating}
                           />
-                          <label htmlFor={`espaco-${espaco.id}`} className="text-sm cursor-pointer">
-                            {espaco.nome}
-                          </label>
+                          <label htmlFor={`espaco-${espaco.id}`} className="text-sm cursor-pointer">{espaco.nome}</label>
                         </div>
                       ))}
                       {spaces.filter(s => s.ano === ano).length === 0 && (
-                        <p className="text-sm text-muted-foreground">Nenhum espaço cadastrado para {ano}</p>
+                        <p className="text-sm text-muted-foreground col-span-2">Nenhum espaço cadastrado para {ano}</p>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* Buffets */}
                 {buffets.length > 0 && (
                   <div className="space-y-2">
                     <Label>Buffets</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 border rounded-lg">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg max-h-40 overflow-y-auto">
                       {buffets.filter(b => b.ano === ano).map(buffet => (
                         <div key={buffet.id} className="flex items-center space-x-2">
                           <Checkbox
@@ -507,23 +421,20 @@ export function PackageSettingsCard() {
                             onCheckedChange={() => toggleItem(buffet.id!, selectedBuffets, setSelectedBuffets)}
                             disabled={isCreating || isUpdating}
                           />
-                          <label htmlFor={`buffet-${buffet.id}`} className="text-sm cursor-pointer">
-                            {buffet.nome}
-                          </label>
+                          <label htmlFor={`buffet-${buffet.id}`} className="text-sm cursor-pointer">{buffet.nome}</label>
                         </div>
                       ))}
                       {buffets.filter(b => b.ano === ano).length === 0 && (
-                        <p className="text-sm text-muted-foreground">Nenhum buffet cadastrado para {ano}</p>
+                        <p className="text-sm text-muted-foreground col-span-2">Nenhum buffet cadastrado para {ano}</p>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* Serviços */}
                 {services.length > 0 && (
                   <div className="space-y-2">
                     <Label>Serviços</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 border rounded-lg">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg max-h-40 overflow-y-auto">
                       {services.filter(s => s.ano === ano).map(servico => (
                         <div key={servico.id} className="flex items-center space-x-2">
                           <Checkbox
@@ -532,73 +443,156 @@ export function PackageSettingsCard() {
                             onCheckedChange={() => toggleItem(servico.id!, selectedServicos, setSelectedServicos)}
                             disabled={isCreating || isUpdating}
                           />
-                          <label htmlFor={`servico-${servico.id}`} className="text-sm cursor-pointer">
-                            {servico.nome}
-                          </label>
+                          <label htmlFor={`servico-${servico.id}`} className="text-sm cursor-pointer">{servico.nome}</label>
                         </div>
                       ))}
                       {services.filter(s => s.ano === ano).length === 0 && (
-                        <p className="text-sm text-muted-foreground">Nenhum serviço cadastrado para {ano}</p>
+                        <p className="text-sm text-muted-foreground col-span-2">Nenhum serviço cadastrado para {ano}</p>
                       )}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Preços */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-                <h4 className="font-medium">Preços do Pacote</h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label>Preço Base (Calculado)</Label>
-                    <Input
-                      value={formatCurrency(precoBase)}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
+              {/* PREVIEW DETALHADO */}
+              {(selectedEspacos.length > 0 || selectedBuffets.length > 0 || selectedServicos.length > 0) && (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <h4 className="font-medium">Itens Selecionados:</h4>
+                  
+                  {selectedEspacos.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-1">Espaços:</p>
+                      {selectedEspacos.map(id => {
+                        const espaco = spaces.find(s => s.id === id);
+                        if (!espaco?.precos_por_dia?.[0]) return null;
+                        const preco = espaco.precos_por_dia[0];
+                        
+                        return (
+                          <div key={id} className="text-xs sm:text-sm bg-background rounded p-2 mt-1">
+                            <span className="font-medium">{espaco.nome}:</span>{" "}
+                            {preco.tipo === 'fixo' ? (
+                              <span>{formatCurrency(preco.preco_fixo || 0)}</span>
+                            ) : (
+                              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                {preco.valor_inicial && preco.valor_inicial > 0 ? `${formatCurrency(preco.valor_inicial)} + ` : ''}
+                                {formatCurrency(preco.valor_por_convidado || 0)}/convidado
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                  <div>
-                    <Label>Desconto (%)</Label>
-                    <Input
-                      type="number"
-                      value={descontoPercentual}
-                      onChange={(e) => setDescontoPercentual(Number(e.target.value))}
-                      min="0"
-                      max="100"
-                      disabled={isCreating || isUpdating}
-                    />
-                  </div>
+                  {selectedBuffets.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-1">Buffets:</p>
+                      {selectedBuffets.map(id => {
+                        const buffet = buffets.find(b => b.id === id);
+                        if (!buffet?.precos_por_pessoa?.[0]) return null;
+                        const preco = buffet.precos_por_pessoa[0];
+                        
+                        return (
+                          <div key={id} className="text-xs sm:text-sm bg-background rounded p-2 mt-1">
+                            <span className="font-medium">{buffet.nome}:</span>{" "}
+                            {preco.tipo === 'fixo' ? (
+                              <span>{formatCurrency(preco.preco_fixo || 0)}</span>
+                            ) : (
+                              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                {preco.valor_inicial && preco.valor_inicial > 0 ? `${formatCurrency(preco.valor_inicial)} + ` : ''}
+                                {formatCurrency(preco.valor_por_pessoa || 0)}/pessoa
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                  <div>
-                    <Label>Preço Final</Label>
-                    <Input
-                      value={formatCurrency(precoFinal)}
-                      disabled
-                      className="bg-primary/10 font-medium"
-                    />
-                  </div>
+                  {selectedServicos.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-1">Serviços:</p>
+                      {selectedServicos.map(id => {
+                        const servico = services.find(s => s.id === id);
+                        if (!servico?.precos?.[0]) return null;
+                        const preco = servico.precos[0];
+                        
+                        return (
+                          <div key={id} className="text-xs sm:text-sm bg-background rounded p-2 mt-1">
+                            <span className="font-medium">{servico.nome}:</span>{" "}
+                            {preco.tipo === 'fixo' ? (
+                              <span>{formatCurrency(preco.preco_fixo || 0)}</span>
+                            ) : (
+                              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                {preco.valor_inicial && preco.valor_inicial > 0 ? `${formatCurrency(preco.valor_inicial)} + ` : ''}
+                                {formatCurrency(preco.valor_por_unidade || 0)}/{preco.unidade || 'unidade'}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {/* Valores */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <h4 className="font-medium">Valores do Pacote</h4>
+                
+                {(() => {
+                  const tempPkg: PackageData = {
+                    ano, nome,
+                    itens_pacote: { espacos: selectedEspacos, buffets: selectedBuffets, servicos: selectedServicos },
+                    desconto_percentual: descontoPercentual,
+                  };
+                  const precos = calculatePackagePrice(tempPkg);
+                  
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <Label>Subtotal</Label>
+                          <Input value={formatCurrency(precos.subtotal)} disabled className="bg-muted" />
+                          <p className="text-xs text-muted-foreground mt-1">Soma dos itens</p>
+                        </div>
+                        <div>
+                          <Label>Desconto (%)</Label>
+                          <Input
+                            type="number"
+                            value={descontoPercentual}
+                            onChange={(e) => setDescontoPercentual(Number(e.target.value))}
+                            min="0" max="100"
+                            disabled={isCreating || isUpdating}
+                          />
+                        </div>
+                        <div>
+                          <Label>Total</Label>
+                          <Input value={formatCurrency(precos.total)} disabled className="bg-primary/10 font-semibold" />
+                          <p className="text-xs text-muted-foreground mt-1">Com desconto</p>
+                        </div>
+                      </div>
+
+                      {precos.tem_variaveis && (
+                        <div className="flex gap-2 items-start p-2 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded text-xs">
+                          <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                          <span className="text-blue-800 dark:text-blue-200">
+                            Este pacote possui itens variáveis. Os valores mostrados são os valores iniciais/base.
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="flex gap-2 justify-end pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={resetForm}
-                  disabled={isCreating || isUpdating}
-                >
+                <Button variant="outline" onClick={resetForm} disabled={isCreating || isUpdating}>
                   Cancelar
                 </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={isCreating || isUpdating}
-                >
+                <Button onClick={handleSave} disabled={isCreating || isUpdating}>
                   {(isCreating || isUpdating) ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Salvando...
-                    </>
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>
                   ) : (
                     editingId ? "Atualizar" : "Salvar"
                   )}
@@ -609,7 +603,6 @@ export function PackageSettingsCard() {
         </CardContent>
       </Card>
 
-      {/* Dialog de Exclusão */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -621,21 +614,13 @@ export function PackageSettingsCard() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                handleDelete();
-              }}
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
               className="bg-destructive hover:bg-destructive/90"
               disabled={isDeleting}
             >
               {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Excluindo...
-                </>
-              ) : (
-                "Excluir"
-              )}
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excluindo...</>
+              ) : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
