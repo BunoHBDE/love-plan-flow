@@ -25,7 +25,7 @@ import {
   Search,
   User,
   Calendar,
-  Package,
+  Package as PackageIcon,
   FileText,
   ArrowLeft,
   Save,
@@ -38,14 +38,25 @@ import { useClientsOptimized as useClients, type Client, type ClientInsert } fro
 import { useQuotesOptimized as useQuotes } from "@/hooks/useQuotesOptimized";
 import { PaymentTermsForm, type PaymentTermsData } from "@/components/quotes/PaymentTermsForm";
 import { ExtrasForm, type ExtraItem, calcularTotalExtras } from "@/components/quotes/ExtrasForm";
-import { 
-  calcularPrecoDetalhado, 
-  getDiaSemana, 
+import { SpaceSelection } from "@/components/quotes/SpaceSelection";
+import { BuffetSelection } from "@/components/quotes/BuffetSelection";
+import { ServicesSelection } from "@/components/quotes/ServicesSelection";
+import { PackageSelection } from "@/components/quotes/PackageSelection";
+import { QuotePriceSummary } from "@/components/quotes/QuotePriceSummary";
+import { useSpaceSettings } from "@/hooks/useSpaceSettings";
+import { useBuffetSettings } from "@/hooks/useBuffetSettings";
+import { useServiceSettings } from "@/hooks/useServiceSettings";
+import { usePackageSettings } from "@/hooks/usePackageSettings";
+import { usePaymentSettings } from "@/hooks/usePaymentSettings";
+import {
+  calcularPrecoEspaco,
+  calcularPrecoBuffet,
+  calcularPrecoServico,
+  calcularComposicaoPreco,
+  getDiaSemana,
   getAnoFromDate,
-  formatCurrency as formatCurrencyUtil,
-  type ComposicaoPreco 
-} from "@/lib/pricing";
-import { DollarSign } from "lucide-react";
+} from "@/lib/pricingCalculator";
+import type { QuoteItem, QuoteComposicao } from "@/types/quote.types";
 
 const canaisEntrada = [
   { value: "instagram", label: "Instagram" },
@@ -62,24 +73,29 @@ const tiposEvento = [
   { value: "aniversario", label: "Aniversário" },
 ];
 
-const pacotes = [
-  { value: "harmonia", label: "Harmonia" },
-  { value: "jardim", label: "Jardim dos Sonhos" },
-  { value: "essencia", label: "Essência" },
-  { value: "florescer", label: "Florescer" },
-];
-
-const menusBuffet = [
-  { value: "massas", label: "Massas" },
-  { value: "brasileirinho", label: "Brasileirinho" },
+const diasSemana = [
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+  "Domingo",
 ];
 
 export default function NovoOrcamento() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  
+  // Hooks
   const { searchClients, createClient } = useClients();
   const { createQuote } = useQuotes();
+  const { spaces } = useSpaceSettings();
+  const { buffets } = useBuffetSettings();
+  const { services } = useServiceSettings();
+  const { packages } = usePackageSettings();
+  const { settings: paymentSettings } = usePaymentSettings();
 
   // Pre-fill event date from URL params
   useEffect(() => {
@@ -103,22 +119,27 @@ export default function NovoOrcamento() {
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
-  const [nConvidados, setNConvidados] = useState(0);
 
-  // Quote data
+  // Event data
   const [canalEntrada, setCanalEntrada] = useState("");
   const [tipoEvento, setTipoEvento] = useState("");
   const [dataStatus, setDataStatus] = useState<"com_data" | "sem_data">("sem_data");
   const [dataEvento, setDataEvento] = useState("");
   const [diaSemana, setDiaSemana] = useState<string | null>(null);
-  const [anoEvento, setAnoEvento] = useState<string | null>(null);
+  const [anoEvento, setAnoEvento] = useState<string>(() => {
+    return new Date().getFullYear().toString();
+  });
   const [validadeOrcamento, setValidadeOrcamento] = useState("");
+  const [nConvidados, setNConvidados] = useState(0);
 
-  // Package data
-  const [pacote, setPacote] = useState("");
-  const [menuBuffet, setMenuBuffet] = useState<string | null>(null);
-  const [valorOrcamento, setValorOrcamento] = useState(0);
-  const [composicaoPreco, setComposicaoPreco] = useState<ComposicaoPreco | null>(null);
+  // Quote selections
+  const [espacoId, setEspacoId] = useState<string | null>(null);
+  const [buffetId, setBuffetId] = useState<string | null>(null);
+  const [servicoIds, setServicoIds] = useState<string[]>([]);
+  const [pacoteId, setPacoteId] = useState<string | null>(null);
+
+  // Price composition
+  const [composicao, setComposicao] = useState<QuoteComposicao | null>(null);
 
   // Observations
   const [observacoesInternas, setObservacoesInternas] = useState("");
@@ -129,50 +150,82 @@ export default function NovoOrcamento() {
 
   // Payment terms
   const [paymentTerms, setPaymentTerms] = useState<PaymentTermsData>({
-    percentualSinal: 10,
+    percentualSinal: paymentSettings?.percentual_minimo_sinal || 10,
     valorSinal: 0,
     numeroParcelas: 1,
-    diaVencimento: 10,
+    diaVencimento: paymentSettings?.dia_vencimento_padrao || 10,
     parcelas: [],
   });
   const [hasPaymentErrors, setHasPaymentErrors] = useState(false);
 
-  // Calculate price when relevant fields change
+  // Update payment settings when they load
   useEffect(() => {
-    const dia = dataStatus === "com_data" ? getDiaSemana(dataEvento) : diaSemana;
-    const ano = dataStatus === "com_data" && dataEvento ? getAnoFromDate(dataEvento) : (anoEvento || new Date().getFullYear().toString());
-    
-    if (pacote && dia && nConvidados > 0) {
-      const composicao = calcularPrecoDetalhado(pacote, dia, nConvidados, menuBuffet, ano);
-      if (composicao) {
-        setComposicaoPreco(composicao);
-        setValorOrcamento(composicao.total);
-      } else {
-        setComposicaoPreco(null);
-        setValorOrcamento(0);
-      }
-    } else {
-      setComposicaoPreco(null);
-      setValorOrcamento(0);
+    if (paymentSettings) {
+      setPaymentTerms((prev) => ({
+        ...prev,
+        percentualSinal: paymentSettings.percentual_minimo_sinal,
+        diaVencimento: paymentSettings.dia_vencimento_padrao,
+      }));
     }
-  }, [pacote, diaSemana, dataEvento, dataStatus, nConvidados, menuBuffet, anoEvento]);
+  }, [paymentSettings]);
+
+  // Calculate price when selections change
+  useEffect(() => {
+    if (!espacoId || !diaSemana || nConvidados <= 0) {
+      setComposicao(null);
+      return;
+    }
+
+    const itens: QuoteItem[] = [];
+
+    // Calcular preço do espaço
+    const espaco = spaces.find((s) => s.id === espacoId);
+    if (espaco) {
+      const precoEspaco = calcularPrecoEspaco(espaco, diaSemana, nConvidados);
+      if (precoEspaco) {
+        itens.push(precoEspaco);
+      }
+    }
+
+    // Calcular preço do buffet (se selecionado)
+    if (buffetId) {
+      const buffet = buffets.find((b) => b.id === buffetId);
+      if (buffet) {
+        const precoBuffet = calcularPrecoBuffet(buffet, nConvidados);
+        if (precoBuffet) {
+          itens.push(precoBuffet);
+        }
+      }
+    }
+
+    // Calcular preço dos serviços (se selecionados)
+    servicoIds.forEach((servicoId) => {
+      const servico = services.find((s) => s.id === servicoId);
+      if (servico) {
+        const precoServico = calcularPrecoServico(servico, nConvidados);
+        if (precoServico) {
+          itens.push(precoServico);
+        }
+      }
+    });
+
+    // Buscar pacote (se selecionado)
+    const pacote = pacoteId ? packages.find((p) => p.id === pacoteId) : null;
+
+    // Calcular composição final
+    const novaComposicao = calcularComposicaoPreco(itens, pacote || null, extras, nConvidados);
+    setComposicao(novaComposicao);
+  }, [espacoId, buffetId, servicoIds, pacoteId, diaSemana, nConvidados, extras, spaces, buffets, services, packages]);
 
   // Update diaSemana when dataEvento changes
   useEffect(() => {
     if (dataStatus === "com_data" && dataEvento) {
       const dia = getDiaSemana(dataEvento);
       setDiaSemana(dia);
-      const year = new Date(dataEvento).getFullYear().toString();
+      const year = getAnoFromDate(dataEvento);
       setAnoEvento(year);
     }
   }, [dataEvento, dataStatus]);
-
-  // Reset menu when package changes to one that doesn't need it
-  useEffect(() => {
-    if (pacote !== "essencia" && pacote !== "florescer") {
-      setMenuBuffet(null);
-    }
-  }, [pacote]);
 
   // Set default validity (30 days from now)
   useEffect(() => {
@@ -220,38 +273,26 @@ export default function NovoOrcamento() {
 
   const handleClientCreated = async (clientData: ClientFormData & { id: string }) => {
     const newClient: ClientInsert = {
-    nome: clientData.name,
-    email: clientData.email || null,
-    telefone: clientData.phone,
-    cpf: clientData.cpf || null,
-    cep: clientData.address.cep || null,
-    rua: clientData.address.street || null,
-    numero: clientData.address.number || null,
-    complemento: clientData.address.complement || null,
-    bairro: clientData.address.neighborhood || null,
-    cidade: clientData.address.city || null,
-    estado_uf: clientData.address.state || null,
-  };
+      nome: clientData.name,
+      email: clientData.email || null,
+      telefone: clientData.phone,
+      cpf: clientData.cpf || null,
+      cep: clientData.address.cep || null,
+      rua: clientData.address.street || null,
+      numero: clientData.address.number || null,
+      complemento: clientData.address.complement || null,
+      bairro: clientData.address.neighborhood || null,
+      cidade: clientData.address.city || null,
+      estado_uf: clientData.address.state || null,
+    };
 
-  const createdClient = await createClient(newClient); // ✅ Retorna Client | null
-  
-  if (createdClient) {
-    handleSelecionarCliente(createdClient); // ✅ Funciona direto!
-  }
-  
-  setIsClientDialogOpen(false);
-};
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString + "T12:00:00").toLocaleDateString("pt-BR");
+    const createdClient = await createClient(newClient);
+    
+    if (createdClient) {
+      handleSelecionarCliente(createdClient);
+    }
+    
+    setIsClientDialogOpen(false);
   };
 
   const handleSalvarOrcamento = async (status: "rascunho" | "enviado") => {
@@ -265,9 +306,9 @@ export default function NovoOrcamento() {
       return;
     }
 
-    if (!pacote) {
+    if (!espacoId) {
       toast({
-        title: "Selecione um pacote",
+        title: "Selecione um espaço",
         variant: "destructive",
       });
       return;
@@ -282,8 +323,7 @@ export default function NovoOrcamento() {
       return;
     }
 
-    const dia = dataStatus === "com_data" ? getDiaSemana(dataEvento) : diaSemana;
-    if (!dia) {
+    if (!diaSemana) {
       toast({
         title: "Defina o dia da semana",
         description: "Selecione a data do evento ou o dia da semana.",
@@ -292,7 +332,7 @@ export default function NovoOrcamento() {
       return;
     }
 
-    if (status === "enviado" && valorOrcamento <= 0) {
+    if (!composicao || composicao.total_geral <= 0) {
       toast({
         title: "Valor inválido",
         description: "O orçamento precisa ter um valor calculado.",
@@ -301,23 +341,41 @@ export default function NovoOrcamento() {
       return;
     }
 
+    if (status === "enviado" && hasPaymentErrors) {
+      toast({
+        title: "Erro nas condições de pagamento",
+        description: "Corrija os erros antes de salvar o orçamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
 
-    const totalExtras = calcularTotalExtras(extras, nConvidados);
-    const valorFinal = valorOrcamento + totalExtras;
-
-    const quote = await createQuote({
+    const quoteData = await createQuote ({
       client_id: clienteId,
       canal_entrada: canalEntrada || null,
       tipo_evento: tipoEvento || null,
       data_status: dataStatus,
       data_evento: dataStatus === "com_data" && dataEvento ? dataEvento : null,
-      dia_semana: dia,
+      dia_semana: diaSemana,
       ano_evento: anoEvento,
       n_convidados: nConvidados,
-      pacote,
-      menu_buffet: menuBuffet,
-      valor_total: valorFinal,
+      
+      // Novas referências às configurações
+      espaco_id: espacoId,
+      buffet_id: buffetId,
+      servico_ids: servicoIds.length > 0 ? servicoIds : null,
+      pacote_id: pacoteId,
+      
+      // Composição de preço
+      composicao_preco: composicao,
+      
+      // Valores (mantidos para compatibilidade)
+      pacote: pacoteId || "",
+      menu_buffet: buffetId || null,
+      valor_total: composicao.total_geral,
+      
       validade: validadeOrcamento || null,
       status,
       observacoes_internas: observacoesInternas || null,
@@ -330,6 +388,8 @@ export default function NovoOrcamento() {
       extras_json: extras,
     });
 
+    const quote = await createQuote(quoteData as any);
+
     setIsSaving(false);
 
     if (quote) {
@@ -337,7 +397,6 @@ export default function NovoOrcamento() {
     }
   };
 
-  const needsMenu = pacote === "essencia" || pacote === "florescer";
   const currentYear = new Date().getFullYear();
   const anos = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
 
@@ -549,46 +608,45 @@ export default function NovoOrcamento() {
                 </div>
 
                 {dataStatus === "com_data" ? (
-                  <>
-                    <div>
-                      <Label className="text-muted-foreground text-sm">Data do Casamento</Label>
-                      <Input
-                        type="date"
-                        value={dataEvento}
-                        onChange={(e) => setDataEvento(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-sm">Dia da Semana</Label>
-                      <p className="font-medium py-2">
-                        {diaSemana === "sabado" ? "Sábado" : diaSemana === "domingo" ? "Domingo" : "-"}
-                      </p>
-                    </div>
-                  </>
+                  <div className="md:col-span-2">
+                    <Label className="text-muted-foreground text-sm">Data do Evento</Label>
+                    <Input
+                      type="date"
+                      value={dataEvento}
+                      onChange={(e) => setDataEvento(e.target.value)}
+                    />
+                  </div>
                 ) : (
                   <>
                     <div>
-                      <Label className="text-muted-foreground text-sm">Dia da Semana *</Label>
-                      <Select value={diaSemana || ""} onValueChange={setDiaSemana}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sabado">Sábado</SelectItem>
-                          <SelectItem value="domingo">Domingo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
                       <Label className="text-muted-foreground text-sm">Ano do Evento</Label>
-                      <Select value={anoEvento || ""} onValueChange={setAnoEvento}>
+                      <Select value={anoEvento} onValueChange={setAnoEvento}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue placeholder="Selecione o ano" />
                         </SelectTrigger>
                         <SelectContent>
                           {anos.map((ano) => (
                             <SelectItem key={ano} value={ano}>
                               {ano}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Dia da Semana</Label>
+                      <Select
+                        value={diaSemana || ""}
+                        onValueChange={(v) => setDiaSemana(v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o dia" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {diasSemana.map((dia) => (
+                            <SelectItem key={dia} value={dia}>
+                              {dia}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -601,9 +659,9 @@ export default function NovoOrcamento() {
                   <Label className="text-muted-foreground text-sm">Número de Convidados *</Label>
                   <Input
                     type="number"
+                    min="1"
                     value={nConvidados || ""}
                     onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
-                    placeholder="150"
                   />
                 </div>
 
@@ -618,69 +676,64 @@ export default function NovoOrcamento() {
               </div>
             </div>
 
-            {/* Block 3 - Pacote */}
+            {/* Block 3 - Seleções (Espaço, Buffet, Serviços, Pacote) */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-              <div className="flex items-center gap-2 mb-4">
-                <Package className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Pacote e Valores</h2>
+              <div className="flex items-center gap-2 mb-6">
+                <PackageIcon className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">Itens do Orçamento</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-sm">Pacote *</Label>
-                  <Select value={pacote} onValueChange={setPacote}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o pacote" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pacotes.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-6">
+                {/* Seleção de Espaço */}
+                <SpaceSelection
+                  spaces={spaces}
+                  selectedSpaceId={espacoId}
+                  onSpaceChange={setEspacoId}
+                  diaSemana={diaSemana}
+                  anoEvento={anoEvento}
+                />
 
-                {needsMenu && (
-                  <div>
-                    <Label className="text-muted-foreground text-sm">Menu do Buffet *</Label>
-                    <Select value={menuBuffet || ""} onValueChange={setMenuBuffet}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o menu" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {menusBuffet.map((m) => (
-                          <SelectItem key={m.value} value={m.value}>
-                            {m.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                {/* Seleção de Buffet */}
+                <BuffetSelection
+                  buffets={buffets}
+                  selectedBuffetId={buffetId}
+                  onBuffetChange={setBuffetId}
+                  anoEvento={anoEvento}
+                />
+
+                {/* Seleção de Serviços */}
+                <ServicesSelection
+                  services={services}
+                  selectedServiceIds={servicoIds}
+                  onServicesChange={setServicoIds}
+                  anoEvento={anoEvento}
+                />
+
+                {/* Seleção de Pacote */}
+                <PackageSelection
+                  packages={packages}
+                  selectedPackageId={pacoteId}
+                  onPackageChange={setPacoteId}
+                  anoEvento={anoEvento}
+                />
               </div>
             </div>
 
-            {/* Block 4 - Condições de Pagamento */}
-            <PaymentTermsForm
-              valorTotal={valorOrcamento + calcularTotalExtras(extras, nConvidados)}
-              dataEvento={dataStatus === "com_data" ? dataEvento : null}
-              onChange={setPaymentTerms}
-              onValidationChange={setHasPaymentErrors}
-            />
-
-            {/* Block 5 - Valores Extras */}
+            {/* Block 4 - Extras */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
-                <DollarSign className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Valores Extras</h2>
+                <Plus className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">Extras</h2>
               </div>
 
-              <ExtrasForm extras={extras} onChange={setExtras} guestCount={nConvidados} />
+              <ExtrasForm
+                extras={extras}
+                onChange={setExtras}
+                guestCount={nConvidados}
+              />
             </div>
 
-            {/* Block 6 - Observações */}
+            {/* Block 5 - Observações */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="h-5 w-5 text-primary" />
@@ -691,162 +744,47 @@ export default function NovoOrcamento() {
                 <div>
                   <Label className="text-muted-foreground text-sm">Observações Internas</Label>
                   <Textarea
+                    placeholder="Observações que só você verá..."
                     value={observacoesInternas}
                     onChange={(e) => setObservacoesInternas(e.target.value)}
-                    placeholder="Notas internas sobre o orçamento..."
                     rows={3}
-                    className="mt-1"
                   />
                 </div>
 
                 <div>
                   <Label className="text-muted-foreground text-sm">Observações para o Cliente</Label>
                   <Textarea
+                    placeholder="Observações que aparecerão no orçamento..."
                     value={observacoesCliente}
                     onChange={(e) => setObservacoesCliente(e.target.value)}
-                    placeholder="Informações adicionais para o cliente..."
                     rows={3}
-                    className="mt-1"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Sidebar - Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-card rounded-xl p-6 shadow-soft border border-border sticky top-6 animate-slide-up">
-              <h2 className="text-lg font-display font-semibold mb-4">Resumo do Orçamento</h2>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground text-sm">Cliente</span>
-                  <span className="font-medium text-sm">{nomeCliente || "-"}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground text-sm">Data do Evento</span>
-                  <span className="font-medium text-sm">
-                    {dataEvento
-                      ? formatDate(dataEvento)
-                      : diaSemana && anoEvento
-                      ? `${diaSemana === "sabado" ? "Sábado" : "Domingo"} - ${anoEvento}`
-                      : "-"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground text-sm">Convidados</span>
-                  <span className="font-medium text-sm">{nConvidados || "-"}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground text-sm">Pacote</span>
-                  <span className="font-medium text-sm">
-                    {composicaoPreco?.detalhes.pacoteNome || pacotes.find((p) => p.value === pacote)?.label || "-"}
-                  </span>
-                </div>
-                {composicaoPreco?.detalhes.buffetNome && (
-                  <div className="flex justify-between items-center py-2 border-b border-border">
-                    <span className="text-muted-foreground text-sm">Buffet</span>
-                    <span className="font-medium text-sm">{composicaoPreco.detalhes.buffetNome}</span>
-                  </div>
-                )}
-
-                {/* Composição do Valor */}
-                {composicaoPreco && (
-                  <div className="pt-4 space-y-2">
-                    <h3 className="text-sm font-semibold text-primary">Composição do Valor</h3>
-                    
-                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground text-xs">Espaço ({composicaoPreco.detalhes.ano})</span>
-                        <span className="font-medium text-sm">{formatCurrency(composicaoPreco.espaco)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground text-xs">Decoração</span>
-                        <span className="font-medium text-sm">{formatCurrency(composicaoPreco.decoracao)}</span>
-                      </div>
-                      {composicaoPreco.buffet !== null && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground text-xs">Buffet ({composicaoPreco.detalhes.buffetNome})</span>
-                          <span className="font-medium text-sm">{formatCurrency(composicaoPreco.buffet)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex justify-between items-center pt-2 border-t border-primary/20">
-                      <span className="font-medium text-sm">Valor por Convidado Adicional</span>
-                      <span className="font-semibold text-primary text-sm">
-                        {formatCurrency(composicaoPreco.custoConvidadoAdicional)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Extras no resumo */}
-                {extras.length > 0 && (
-                  <div className="pt-4 space-y-2">
-                    <h3 className="text-sm font-semibold text-primary">Valores Extras</h3>
-                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                      {extras.map((extra) => {
-                        const valorCalculado = extra.porConvidado 
-                          ? extra.valor * nConvidados 
-                          : extra.valor;
-                        return (
-                          <div key={extra.id} className="flex justify-between items-center">
-                            <span className="text-muted-foreground text-xs">
-                              {extra.descricao}
-                              {extra.porConvidado && ` (×${nConvidados})`}
-                            </span>
-                            <span className="font-medium text-sm">{formatCurrency(valorCalculado)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center py-2 border-b border-border">
-                  <span className="text-muted-foreground text-sm">Validade</span>
-                  <span className="font-medium text-sm">{formatDate(validadeOrcamento)}</span>
-                </div>
-
-                <div className="pt-4 border-t-2 border-primary/20">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-medium">Valor Total</span>
-                    <span className="text-2xl font-display font-bold text-primary">
-                      {formatCurrency(valorOrcamento + calcularTotalExtras(extras, nConvidados))}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-4 space-y-2">
-                  <Button
-                    variant="gold"
-                    className="w-full"
-                    onClick={() => handleSalvarOrcamento("enviado")}
-                    disabled={isSaving || hasPaymentErrors}
-                  >
-                    {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Salvar Orçamento
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => handleSalvarOrcamento("rascunho")}
-                    disabled={isSaving || hasPaymentErrors}
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Salvar Rascunho
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => navigate("/orcamentos")}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </div>
+          {/* Sidebar - Resumo e Pagamento */}
+          <div className="space-y-6">
+            {/* Price Summary */}
+            <div className="sticky top-6">
+              <QuotePriceSummary
+                composicao={composicao}
+                nConvidados={nConvidados}
+              />
             </div>
+
+            {/* Payment Terms */}
+            {composicao && composicao.total_geral > 0 && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+                <PaymentTermsForm
+                  valorTotal={composicao.total_geral}
+                  dataEvento={dataStatus === "com_data" ? dataEvento : null}
+                  onChange={setPaymentTerms}
+                  onValidationChange={setHasPaymentErrors}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

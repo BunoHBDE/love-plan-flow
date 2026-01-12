@@ -41,6 +41,11 @@ export interface QuoteInsert {
   dia_vencimento?: number;
   parcelas_json?: any; // ✅ Aceita qualquer tipo
   extras_json?: any;   // ✅ Aceita qualquer tipo
+  espaco_id?: string | null;
+  buffet_id?: string | null;
+  servico_ids?: string[] | null;
+  pacote_id?: string | null;
+  composicao_preco?: any; // JSON da composição de preço
 }
 
 // ==========================================
