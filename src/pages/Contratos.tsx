@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { calcularTotalExtras } from "@/components/quotes/ExtrasForm";
+import { SubscriptionGate } from "@/components/subscription";
 
 type ContractStatus = "pendente" | "assinado" | "em_execucao" | "concluido" | "cancelado";
 
@@ -278,6 +279,10 @@ export default function Contratos() {
 
   return (
     <MainLayout>
+      <SubscriptionGate
+        title="Contratos Premium"
+        description="Gere contratos automaticamente com o Plano Pro."
+      >
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
@@ -441,6 +446,7 @@ export default function Contratos() {
           </div>
         )}
       </div>
+      </SubscriptionGate>
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>

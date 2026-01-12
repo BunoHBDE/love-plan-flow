@@ -53,6 +53,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { DayWithTooltip } from "@/components/disponibilidade/DayWithTooltip";
 import { DayContentProps } from "react-day-picker";
+import { SubscriptionGate } from "@/components/subscription";
 
 type ViewMode = "mensal" | "estacao" | "anual";
 
@@ -442,6 +443,10 @@ export default function Disponibilidade() {
 
   return (
     <MainLayout>
+      <SubscriptionGate
+        title="Disponibilidade Premium"
+        description="Gerencie a disponibilidade do espaço com o Plano Pro."
+      >
       <div className="space-y-8">
         
         {/* Header */}
@@ -650,11 +655,10 @@ export default function Disponibilidade() {
                 </div>
               ))}
             </div>
-
-
           </>
         )}
       </div>
+      </SubscriptionGate>
 
       {/* Dialog de Ações para Data */}
       <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>

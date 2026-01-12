@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { useQuotesOptimized as useQuotes, type Quote } from "@/hooks/useQuotesOptimized";
 import { calcularPrecoDetalhado, getAnoFromDate } from "@/lib/pricing";
+import { SubscriptionGate } from "@/components/subscription";
 
 type QuoteStatus = "rascunho" | "enviado" | "aceito" | "recusado" | "expirado";
 
@@ -185,6 +186,10 @@ export default function Orcamentos() {
 
   return (
     <MainLayout>
+      <SubscriptionGate 
+        title="Orçamentos Premium"
+        description="Crie e gerencie orçamentos ilimitados com o Plano Pro."
+      >
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
@@ -413,6 +418,7 @@ export default function Orcamentos() {
           )}
         </div>
       </div>
+      </SubscriptionGate>
     </MainLayout>
   );
 }
