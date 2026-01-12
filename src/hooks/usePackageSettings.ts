@@ -51,7 +51,7 @@ async function fetchPackages(): Promise<PackageData[]> {
     descricao: record.descricao || undefined,
     itens_pacote: record.itens_pacote as unknown as ItensPacote,
     desconto_percentual: Number(record.desconto_percentual),
-    desconto_percentual_variavel: Number(record.desconto_percentual_variavel),
+    desconto_percentual_variavel: 0, // Campo não existe no banco ainda
   }));
 }
 
@@ -64,15 +64,16 @@ async function createPackage(packageData: CreatePackageData): Promise<PackageDat
 
   const { data, error } = await supabase
     .from("quote_package_options")
-    .insert({
+    .insert([{
       user_id: user.id,
       ano: packageData.ano,
       nome: packageData.nome,
       descricao: packageData.descricao || null,
       itens_pacote: packageData.itens_pacote as any,
       desconto_percentual: packageData.desconto_percentual,
-      desconto_percentual_variavel: packageData.desconto_percentual_variavel, // CORRIGIDO: adicionar campo variável
-    })
+      preco_base: 0,
+      preco_final: 0,
+    }])
     .select()
     .single();
 
@@ -88,7 +89,7 @@ async function createPackage(packageData: CreatePackageData): Promise<PackageDat
     descricao: data.descricao || undefined,
     itens_pacote: data.itens_pacote as unknown as ItensPacote,
     desconto_percentual: Number(data.desconto_percentual),
-    desconto_percentual_variavel: Number(data.desconto_percentual_variavel),
+    desconto_percentual_variavel: 0,
   };
 }
 
@@ -103,7 +104,6 @@ async function updatePackage(packageData: UpdatePackageData): Promise<PackageDat
       ...(updateData.descricao !== undefined && { descricao: updateData.descricao || null }),
       ...(updateData.itens_pacote && { itens_pacote: updateData.itens_pacote as any }),
       ...(updateData.desconto_percentual !== undefined && { desconto_percentual: updateData.desconto_percentual }),
-      ...(updateData.desconto_percentual_variavel !== undefined && { desconto_percentual_variavel: updateData.desconto_percentual_variavel }), // CORRIGIDO: adicionar campo variável
     })
     .eq("id", id)
     .select()
@@ -121,7 +121,7 @@ async function updatePackage(packageData: UpdatePackageData): Promise<PackageDat
     descricao: data.descricao || undefined,
     itens_pacote: data.itens_pacote as unknown as ItensPacote,
     desconto_percentual: Number(data.desconto_percentual),
-    desconto_percentual_variavel: Number(data.desconto_percentual_variavel),
+    desconto_percentual_variavel: 0,
   };
 }
 
