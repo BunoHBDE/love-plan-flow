@@ -27,7 +27,7 @@ export function QuotesSettingsSection() {
   return (
     <div className="space-y-6">
       {/* Sub-navegação */}
-      <div className="flex flex-wrap gap-2 p-1 bg-muted/50 rounded-lg border">
+      <div className="flex flex-wrap justify-center gap-2 p-1 bg-muted/50 rounded-lg border">
         {ORCAMENTO_SUB_SECTIONS.map((sub) => (
           <button
             key={sub.id}
