@@ -21,7 +21,8 @@ export interface PackageData {
   nome: string;
   descricao?: string;
   itens_pacote: ItensPacote;
-  desconto_percentual: number;
+  desconto_percentual: number;          // Desconto para valores fixos
+  desconto_percentual_variavel: number; // Desconto para valores variáveis
 }
 
 /**
@@ -45,30 +46,37 @@ export interface ItemPriceDetail {
  * Resultado do cálculo de preços do pacote
  */
 export interface PackagePriceCalculation {
+  // Itens detalhados
   espacos: ItemPriceDetail[];
   buffets: ItemPriceDetail[];
   servicos: ItemPriceDetail[];
-  subtotal: number;
-  desconto_valor: number;
-  desconto_percentual: number;
-  total: number;
+  
+  // Valores Fixos
+  subtotal_fixo: number;
+  desconto_fixo_valor: number;
+  desconto_fixo_percentual: number;
+  total_fixo: number;
+  
+  // Valores Variáveis
+  subtotal_variavel: number;
+  desconto_variavel_valor: number;
+  desconto_variavel_percentual: number;
+  total_variavel: number;
+  
+  // Total Geral
+  total_geral: number;
   tem_variaveis: boolean;
 }
 
-/**
- * Dados para criar pacote
- */
 export interface CreatePackageData {
   ano: string;
   nome: string;
   descricao?: string;
   itens_pacote: ItensPacote;
   desconto_percentual: number;
+  desconto_percentual_variavel: number;
 }
 
-/**
- * Dados para atualizar pacote
- */
 export interface UpdatePackageData {
   id: string;
   ano?: string;
@@ -76,4 +84,5 @@ export interface UpdatePackageData {
   descricao?: string;
   itens_pacote?: ItensPacote;
   desconto_percentual?: number;
+  desconto_percentual_variavel?: number;
 }

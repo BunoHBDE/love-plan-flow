@@ -528,6 +528,7 @@ export type Database = {
           descricao: string | null
           itens_pacote: Json
           desconto_percentual: number
+          desconto_percentual_variavel?: number
           ativo: boolean
           created_at: string
           updated_at: string
@@ -541,6 +542,7 @@ export type Database = {
           itens_pacote: Json
           ativo?: boolean
           desconto_percentual: number
+          desconto_percentual_variavel?: number
           created_at?: string
           updated_at?: string
         }
@@ -552,7 +554,8 @@ export type Database = {
           descricao?: string | null
           itens_pacote?: Json
           ativo?: boolean
-          desconto_percentual?: number
+          desconto_percentual?: number  
+          desconto_percentual_variavel?: number
           created_at?: string
           updated_at?: string
         }
