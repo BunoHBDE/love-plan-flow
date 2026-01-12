@@ -486,6 +486,48 @@ export type Database = {
           },
         ]
       }
+      payment_settings: {
+        Row: {
+          created_at: string
+          dia_vencimento_padrao: number
+          dias_ultima_parcela_antes_evento: number
+          dias_vencimento_opcoes: number[]
+          id: string
+          meses_apos_evento: number | null
+          numero_parcelas_fixo: number | null
+          percentual_minimo_sinal: number
+          tipo_parcelamento: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dia_vencimento_padrao?: number
+          dias_ultima_parcela_antes_evento?: number
+          dias_vencimento_opcoes?: number[]
+          id?: string
+          meses_apos_evento?: number | null
+          numero_parcelas_fixo?: number | null
+          percentual_minimo_sinal?: number
+          tipo_parcelamento?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dia_vencimento_padrao?: number
+          dias_ultima_parcela_antes_evento?: number
+          dias_vencimento_opcoes?: number[]
+          id?: string
+          meses_apos_evento?: number | null
+          numero_parcelas_fixo?: number | null
+          percentual_minimo_sinal?: number
+          tipo_parcelamento?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

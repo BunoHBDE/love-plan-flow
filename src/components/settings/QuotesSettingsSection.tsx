@@ -14,6 +14,7 @@ import { SpaceSettingsCard } from "./SpaceSettingsCard";
 import { BuffetSettingsCard } from "./BuffetSettingsCard";
 import { ServiceSettingsCard } from "./ServiceSettingsCard";  
 import { PackageSettingsCard } from "./PackageSettingsCard";
+import { PaymentSettingsCard } from "./PaymentSettingsCard";
 
 export function QuotesSettingsSection() {
   const [activeSubSection, setActiveSubSection] =
@@ -47,12 +48,14 @@ export function QuotesSettingsSection() {
       {activeSubSection === "buffet" && <BuffetSettingsCard />}
       {activeSubSection === "servicos" && <ServiceSettingsCard />}  
       {activeSubSection === "pacotes" && <PackageSettingsCard />}
+      {activeSubSection === "pagamento" && <PaymentSettingsCard />}
 
       {/* Placeholders para outras seções */}
       {activeSubSection !== "espaco" && 
        activeSubSection !== "buffet" && 
        activeSubSection !== "servicos" &&
-       activeSubSection !== "pacotes" && (
+       activeSubSection !== "pacotes" &&
+       activeSubSection !== "pagamento" && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">

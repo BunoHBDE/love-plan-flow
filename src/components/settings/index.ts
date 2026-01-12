@@ -25,3 +25,4 @@ export { SpaceSettingsCard } from "./SpaceSettingsCard";
 export { BuffetSettingsCard } from "./BuffetSettingsCard";
 export { ServiceSettingsCard } from "./ServiceSettingsCard";
 export { PackageSettingsCard } from "./PackageSettingsCard";
+export { PaymentSettingsCard } from "./PaymentSettingsCard";
