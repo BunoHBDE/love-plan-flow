@@ -22,4 +22,5 @@ export { PasswordChangeCard } from "./PasswordChangeCard";
 
 // Configurações de Orçamentos
 export { SpaceSettingsCard } from "./SpaceSettingsCard";
-export { BuffetSettingsCard } from "./BuffetSettingsCard";  // ← ADICIONADO
+export { BuffetSettingsCard } from "./BuffetSettingsCard";
+export { ServiceSettingsCard } from "./ServiceSettingsCard";  // ← ADICIONADO
