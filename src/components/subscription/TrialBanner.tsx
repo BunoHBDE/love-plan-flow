@@ -8,21 +8,19 @@
 import { Clock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSubscriptionContext } from "@/contexts/SubscriptionContext";
+import { useNavigate } from "react-router-dom";
 
 export function TrialBanner() {
-  const { isTrialing, trialDaysRemaining, createCheckout, loading } = useSubscriptionContext();
+  const { isTrialing, trialDaysRemaining, loading } = useSubscriptionContext();
+  const navigate = useNavigate();
 
   // Só exibe para usuários em trial
   if (loading || !isTrialing) {
     return null;
   }
 
-  const handleUpgrade = async () => {
-    try {
-      await createCheckout('yearly');
-    } catch (error) {
-      console.error('Error creating checkout:', error);
-    }
+  const handleUpgrade = () => {
+    navigate('/configuracoes?tab=assinatura');
   };
 
   // Define estilo baseado na urgência

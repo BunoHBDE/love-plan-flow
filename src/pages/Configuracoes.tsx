@@ -10,7 +10,8 @@
  * - Constantes centralizadas: fácil atualização de opções
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Loader2, LogOut, ScrollText, Calendar, CalendarCheck } from "lucide-react";
@@ -36,7 +37,16 @@ export default function Configuracoes() {
   // ==========================================
   // ESTADO DA NAVEGAÇÃO
   // ==========================================
-  const [activeSection, setActiveSection] = useState<MainSection>("perfil");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as MainSection | null;
+  const [activeSection, setActiveSection] = useState<MainSection>(tabParam || "perfil");
+
+  // Atualiza a seção ativa quando o parâmetro da URL mudar
+  useEffect(() => {
+    if (tabParam && ["perfil", "empresa", "assinatura", "orcamentos", "contratos", "visitas", "disponibilidade"].includes(tabParam)) {
+      setActiveSection(tabParam);
+    }
+  }, [tabParam]);
 
   // ==========================================
   // HOOK DE CONFIGURAÇÕES DO PERFIL
