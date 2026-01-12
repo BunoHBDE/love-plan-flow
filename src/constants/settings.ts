@@ -34,8 +34,7 @@ export type OrcamentoSubSection =
   | "pacotes" 
   | "buffet" 
   | "servicos" 
-  | "pagamento" 
-  | "listas";
+  | "pagamento";
 
 export interface SectionConfig {
   id: MainSection;
@@ -192,7 +191,6 @@ export const ORCAMENTO_SUB_SECTIONS: SubSectionConfig[] = [
   { id: "buffet", label: "Buffet" },
   { id: "servicos", label: "Serviços" },
   { id: "pagamento", label: "Pagamento" },
-  { id: "listas", label: "Listas" },
 ];
 
 // ==========================================
