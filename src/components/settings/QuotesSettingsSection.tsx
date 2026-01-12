@@ -12,7 +12,8 @@ import { ORCAMENTO_SUB_SECTIONS } from "@/constants/settings";
 import type { OrcamentoSubSection } from "@/constants/settings";
 import { SpaceSettingsCard } from "./SpaceSettingsCard";
 import { BuffetSettingsCard } from "./BuffetSettingsCard";
-import { ServiceSettingsCard } from "./ServiceSettingsCard";  // ← ADICIONADO
+import { ServiceSettingsCard } from "./ServiceSettingsCard";  
+import { PackageSettingsCard } from "./PackageSettingsCard";
 
 export function QuotesSettingsSection() {
   const [activeSubSection, setActiveSubSection] =
@@ -44,12 +45,14 @@ export function QuotesSettingsSection() {
       {/* Conteúdo da sub-seção */}
       {activeSubSection === "espaco" && <SpaceSettingsCard />}
       {activeSubSection === "buffet" && <BuffetSettingsCard />}
-      {activeSubSection === "servicos" && <ServiceSettingsCard />}  {/* ← ADICIONADO */}
+      {activeSubSection === "servicos" && <ServiceSettingsCard />}  
+      {activeSubSection === "pacotes" && <PackageSettingsCard />}
 
       {/* Placeholders para outras seções */}
       {activeSubSection !== "espaco" && 
        activeSubSection !== "buffet" && 
-       activeSubSection !== "servicos" && (
+       activeSubSection !== "servicos" &&
+       activeSubSection !== "pacotes" && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">
