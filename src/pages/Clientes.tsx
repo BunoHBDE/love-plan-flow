@@ -6,6 +6,7 @@ import { Heart, Phone, Mail, Plus, Search, MapPin, Loader2, Pencil, Trash2 } fro
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
 import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
 import { useClientsOptimized as useClients, Client, ClientInsert } from "@/hooks/useClientsOptimized";
+import { SubscriptionGate } from "@/components/subscription";
 
 
 const statusLabels = {
@@ -88,6 +89,7 @@ export default function Clientes() {
 
   return (
     <MainLayout>
+      <SubscriptionGate>
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
@@ -217,6 +219,7 @@ export default function Clientes() {
           </div>
         )}
       </div>
+      </SubscriptionGate>
     </MainLayout>
   );
 }

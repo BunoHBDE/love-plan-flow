@@ -3,6 +3,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubscriptionGate } from "@/components/subscription";
 import {
   Dialog,
   DialogContent,
@@ -169,6 +170,7 @@ export default function Pagamentos() {
 
   return (
     <MainLayout>
+      <SubscriptionGate>
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
@@ -460,6 +462,7 @@ export default function Pagamentos() {
           )}
         </div>
       </div>
+      </SubscriptionGate>
     </MainLayout>
   );
 }
