@@ -118,98 +118,270 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address_cep: string | null
+          address_city: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
           avatar_url: string | null
+          birth_date: string | null
           company_address: string | null
+          company_cep: string | null
+          company_city: string | null
           company_cnpj: string | null
+          company_complement: string | null
           company_email: string | null
           company_logo_url: string | null
           company_name: string | null
+          company_neighborhood: string | null
+          company_number: string | null
           company_phone: string | null
+          company_state: string | null
+          company_street: string | null
+          cpf: string | null
           created_at: string
           email: string | null
           full_name: string | null
+          gender: string | null
           id: string
+          marital_status: string | null
+          nationality: string | null
+          occupation: string | null
           phone: string | null
+          rg: string | null
           updated_at: string
           whatsapp: string | null
         }
         Insert: {
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           avatar_url?: string | null
+          birth_date?: string | null
           company_address?: string | null
+          company_cep?: string | null
+          company_city?: string | null
           company_cnpj?: string | null
+          company_complement?: string | null
           company_email?: string | null
           company_logo_url?: string | null
           company_name?: string | null
+          company_neighborhood?: string | null
+          company_number?: string | null
           company_phone?: string | null
+          company_state?: string | null
+          company_street?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
+          gender?: string | null
           id: string
+          marital_status?: string | null
+          nationality?: string | null
+          occupation?: string | null
           phone?: string | null
+          rg?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
         Update: {
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           avatar_url?: string | null
+          birth_date?: string | null
           company_address?: string | null
+          company_cep?: string | null
+          company_city?: string | null
           company_cnpj?: string | null
+          company_complement?: string | null
           company_email?: string | null
           company_logo_url?: string | null
           company_name?: string | null
+          company_neighborhood?: string | null
+          company_number?: string | null
           company_phone?: string | null
+          company_state?: string | null
+          company_street?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
+          gender?: string | null
           id?: string
+          marital_status?: string | null
+          nationality?: string | null
+          occupation?: string | null
           phone?: string | null
+          rg?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
         Relationships: []
       }
-      quote_space_prices: {
+      quote_buffet_options: {
         Row: {
-          id: string
-          user_id: string
           ano: string
-          nome: string
-          precos_por_dia: Json
-          itens_inclusos: Json
           ativo: boolean
           created_at: string
+          id: string
+          itens_inclusos: Json
+          nome: string
+          precos_por_pessoa: Json
           updated_at: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
           ano: string
-          nome: string
-          precos_por_dia?: Json
-          itens_inclusos?: Json
           ativo?: boolean
           created_at?: string
+          id?: string
+          itens_inclusos?: Json
+          nome: string
+          precos_por_pessoa?: Json
           updated_at?: string
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
           ano?: string
-          nome?: string
-          precos_por_dia?: Json
-          itens_inclusos?: Json
           ativo?: boolean
           created_at?: string
+          id?: string
+          itens_inclusos?: Json
+          nome?: string
+          precos_por_pessoa?: Json
           updated_at?: string
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "quote_space_prices_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      quote_package_options: {
+        Row: {
+          ano: string
+          ativo: boolean
+          created_at: string
+          desconto_percentual: number | null
+          descricao: string | null
+          id: string
+          itens_pacote: Json
+          nome: string
+          preco_base: number
+          preco_final: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ano: string
+          ativo?: boolean
+          created_at?: string
+          desconto_percentual?: number | null
+          descricao?: string | null
+          id?: string
+          itens_pacote?: Json
+          nome: string
+          preco_base: number
+          preco_final: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ano?: string
+          ativo?: boolean
+          created_at?: string
+          desconto_percentual?: number | null
+          descricao?: string | null
+          id?: string
+          itens_pacote?: Json
+          nome?: string
+          preco_base?: number
+          preco_final?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quote_service_options: {
+        Row: {
+          ano: string
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          precos: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ano: string
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          precos?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ano?: string
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          precos?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quote_space_prices: {
+        Row: {
+          ano: string
+          ativo: boolean
+          created_at: string
+          id: string
+          itens_inclusos: Json
+          nome: string
+          precos_por_dia: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ano: string
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          itens_inclusos?: Json
+          nome: string
+          precos_por_dia?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ano?: string
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          itens_inclusos?: Json
+          nome?: string
+          precos_por_dia?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       quotes: {
         Row: {
@@ -431,146 +603,7 @@ export type Database = {
           },
         ]
       }
-      quote_buffet_options: {
-        Row: {
-          id: string
-          user_id: string
-          ano: string
-          nome: string
-          precos_por_pessoa: Json
-          itens_inclusos: Json
-          ativo: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          ano: string
-          nome: string
-          precos_por_pessoa?: Json
-          itens_inclusos?: Json
-          ativo?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          ano?: string
-          nome?: string
-          precos_por_pessoa?: Json
-          itens_inclusos?: Json
-          ativo?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quote_buffet_options_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quote_service_options: {
-        Row: {
-          id: string
-          user_id: string
-          ano: string
-          nome: string
-          precos: Json
-          descricao: string | null
-          ativo: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          ano: string
-          nome: string
-          precos?: Json
-          descricao?: string | null
-          ativo?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          ano?: string
-          nome?: string
-          precos?: Json
-          descricao?: string | null
-          ativo?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quote_service_options_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quote_package_options: {
-        Row: {
-          id: string
-          user_id: string
-          ano: string
-          nome: string
-          descricao: string | null
-          itens_pacote: Json
-          desconto_percentual: number
-          desconto_percentual_variavel?: number
-          ativo: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          ano: string
-          nome: string
-          descricao?: string | null
-          itens_pacote: Json
-          ativo?: boolean
-          desconto_percentual: number
-          desconto_percentual_variavel?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          ano?: string
-          nome?: string
-          descricao?: string | null
-          itens_pacote?: Json
-          ativo?: boolean
-          desconto_percentual?: number  
-          desconto_percentual_variavel?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quote_package_options_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ] 
-      }
-    }    
-    
+    }
     Views: {
       [_ in never]: never
     }
