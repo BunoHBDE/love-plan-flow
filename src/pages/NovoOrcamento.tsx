@@ -58,14 +58,6 @@ import {
 } from "@/lib/pricingCalculator";
 import type { QuoteItem, QuoteComposicao } from "@/types/quote.types";
 
-const canaisEntrada = [
-  { value: "instagram", label: "Instagram" },
-  { value: "google", label: "Google" },
-  { value: "indicacao", label: "Indicação" },
-  { value: "feira", label: "Feira de Noivas" },
-  { value: "outro", label: "Outro" },
-];
-
 const tiposEvento = [
   { value: "casamento", label: "Casamento" },
   { value: "debutante", label: "Debutante" },
@@ -121,7 +113,6 @@ export default function NovoOrcamento() {
   const [cpf, setCpf] = useState("");
 
   // Event data
-  const [canalEntrada, setCanalEntrada] = useState("");
   const [tipoEvento, setTipoEvento] = useState("");
   const [dataStatus, setDataStatus] = useState<"com_data" | "sem_data">("sem_data");
   const [dataEvento, setDataEvento] = useState("");
@@ -171,19 +162,22 @@ export default function NovoOrcamento() {
 
   // Calculate price when selections change
   useEffect(() => {
-    if (!espacoId || !diaSemana || nConvidados <= 0) {
+    // Precisa ter pelo menos um item selecionado e número de convidados
+    if ((!espacoId && !buffetId && servicoIds.length === 0) || nConvidados <= 0) {
       setComposicao(null);
       return;
     }
 
     const itens: QuoteItem[] = [];
 
-    // Calcular preço do espaço
-    const espaco = spaces.find((s) => s.id === espacoId);
-    if (espaco) {
-      const precoEspaco = calcularPrecoEspaco(espaco, diaSemana, nConvidados);
-      if (precoEspaco) {
-        itens.push(precoEspaco);
+    // Calcular preço do espaço (se selecionado)
+    if (espacoId && diaSemana) {
+      const espaco = spaces.find((s) => s.id === espacoId);
+      if (espaco) {
+        const precoEspaco = calcularPrecoEspaco(espaco, diaSemana, nConvidados);
+        if (precoEspaco) {
+          itens.push(precoEspaco);
+        }
       }
     }
 
@@ -306,9 +300,10 @@ export default function NovoOrcamento() {
       return;
     }
 
-    if (!espacoId) {
+    if (!espacoId && !buffetId && servicoIds.length === 0 && !pacoteId) {
       toast({
-        title: "Selecione um espaço",
+        title: "Selecione ao menos um item",
+        description: "Selecione espaço, buffet, serviços ou pacote.",
         variant: "destructive",
       });
       return;
@@ -323,10 +318,11 @@ export default function NovoOrcamento() {
       return;
     }
 
-    if (!diaSemana) {
+    // Validar dia da semana apenas se espaço estiver selecionado
+    if (espacoId && !diaSemana) {
       toast({
         title: "Defina o dia da semana",
-        description: "Selecione a data do evento ou o dia da semana.",
+        description: "O dia da semana é necessário para calcular o preço do espaço.",
         variant: "destructive",
       });
       return;
@@ -354,7 +350,6 @@ export default function NovoOrcamento() {
 
     const quoteData = await createQuote ({
       client_id: clienteId,
-      canal_entrada: canalEntrada || null,
       tipo_evento: tipoEvento || null,
       data_status: dataStatus,
       data_evento: dataStatus === "com_data" && dataEvento ? dataEvento : null,
@@ -400,6 +395,24 @@ export default function NovoOrcamento() {
   const currentYear = new Date().getFullYear();
   const anos = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
 
+  // Obter dias da semana disponíveis baseado nos espaços configurados
+  const getDiasDisponiveis = () => {
+    const spacesDoAno = spaces.filter((s) => s.ano === anoEvento);
+    if (spacesDoAno.length === 0) return diasSemana;
+
+    const diasSet = new Set<string>();
+    spacesDoAno.forEach((space) => {
+      space.precos_por_dia?.forEach((preco) => {
+        preco.dias.forEach((dia) => diasSet.add(dia));
+      });
+    });
+
+    // Retornar dias na ordem correta
+    return diasSemana.filter((dia) => diasSet.has(dia));
+  };
+
+  const diasDisponiveis = getDiasDisponiveis();
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -443,9 +456,9 @@ export default function NovoOrcamento() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6">
+          {/* Main Content - Tudo em uma coluna */}
+          <div className="space-y-6">
             {/* Block 1 - Cliente */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
@@ -552,26 +565,11 @@ export default function NovoOrcamento() {
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
                 <Calendar className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Dados do Evento</h2>
+                <h2 className="text-lg font-display font-semibold">Informações do Evento</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-sm">Canal de Entrada</Label>
-                  <Select value={canalEntrada} onValueChange={setCanalEntrada}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {canaisEntrada.map((canal) => (
-                        <SelectItem key={canal.value} value={canal.value}>
-                          {canal.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
+                {/* Tipo de Evento e Número de Convidados - Sempre visíveis */}
                 <div>
                   <Label className="text-muted-foreground text-sm">Tipo de Evento</Label>
                   <Select value={tipoEvento} onValueChange={setTipoEvento}>
@@ -586,6 +584,17 @@ export default function NovoOrcamento() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground text-sm">Número de Convidados *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={nConvidados || ""}
+                    onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
+                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
                 </div>
 
                 {/* Date Status Selection */}
@@ -608,18 +617,33 @@ export default function NovoOrcamento() {
                 </div>
 
                 {dataStatus === "com_data" ? (
-                  <div className="md:col-span-2">
-                    <Label className="text-muted-foreground text-sm">Data do Evento</Label>
-                    <Input
-                      type="date"
-                      value={dataEvento}
-                      onChange={(e) => setDataEvento(e.target.value)}
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Data do Evento *</Label>
+                      <Input
+                        type="date"
+                        value={dataEvento}
+                        onChange={(e) => setDataEvento(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
+                      <Input
+                        type="date"
+                        value={validadeOrcamento}
+                        onChange={(e) => setValidadeOrcamento(e.target.value)}
+                      />
+                    </div>
+                  </>
                 ) : (
                   <>
                     <div>
-                      <Label className="text-muted-foreground text-sm">Ano do Evento</Label>
+                      <Label className="text-muted-foreground text-sm">
+                        Ano do Evento *
+                        <span className="block text-xs font-normal text-muted-foreground/70 mt-0.5">
+                          Para carregar configurações
+                        </span>
+                      </Label>
                       <Select value={anoEvento} onValueChange={setAnoEvento}>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o ano" />
@@ -635,7 +659,12 @@ export default function NovoOrcamento() {
                     </div>
 
                     <div>
-                      <Label className="text-muted-foreground text-sm">Dia da Semana</Label>
+                      <Label className="text-muted-foreground text-sm">
+                        Dia da Semana *
+                        <span className="block text-xs font-normal text-muted-foreground/70 mt-0.5">
+                          Para calcular preços
+                        </span>
+                      </Label>
                       <Select
                         value={diaSemana || ""}
                         onValueChange={(v) => setDiaSemana(v)}
@@ -644,35 +673,31 @@ export default function NovoOrcamento() {
                           <SelectValue placeholder="Selecione o dia" />
                         </SelectTrigger>
                         <SelectContent>
-                          {diasSemana.map((dia) => (
-                            <SelectItem key={dia} value={dia}>
-                              {dia}
+                          {diasDisponiveis.length > 0 ? (
+                            diasDisponiveis.map((dia) => (
+                              <SelectItem key={dia} value={dia}>
+                                {dia}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              Configure espaços primeiro
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="md:col-span-2">
+                      <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
+                      <Input
+                        type="date"
+                        value={validadeOrcamento}
+                        onChange={(e) => setValidadeOrcamento(e.target.value)}
+                      />
+                    </div>
                   </>
                 )}
-
-                <div>
-                  <Label className="text-muted-foreground text-sm">Número de Convidados *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={nConvidados || ""}
-                    onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
-                  <Input
-                    type="date"
-                    value={validadeOrcamento}
-                    onChange={(e) => setValidadeOrcamento(e.target.value)}
-                  />
-                </div>
               </div>
             </div>
 
@@ -733,7 +758,32 @@ export default function NovoOrcamento() {
               />
             </div>
 
-            {/* Block 5 - Observações */}
+            {/* Block 5 - Resumo do Orçamento */}
+            {composicao && composicao.total_geral > 0 && (
+              <div className="animate-slide-up">
+                <QuotePriceSummary
+                  composicao={composicao}
+                  nConvidados={nConvidados}
+                />
+              </div>
+            )}
+
+            {/* Block 6 - Condições de Pagamento */}
+            {composicao && composicao.total_geral > 0 && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+                <div className="flex items-center gap-2 mb-4">
+                  <h2 className="text-lg font-display font-semibold">Condições de Pagamento</h2>
+                </div>
+                <PaymentTermsForm
+                  valorTotal={composicao.total_geral}
+                  dataEvento={dataStatus === "com_data" ? dataEvento : null}
+                  onChange={setPaymentTerms}
+                  onValidationChange={setHasPaymentErrors}
+                />
+              </div>
+            )}
+
+            {/* Block 7 - Observações */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="h-5 w-5 text-primary" />
@@ -762,29 +812,6 @@ export default function NovoOrcamento() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Sidebar - Resumo e Pagamento */}
-          <div className="space-y-6">
-            {/* Price Summary */}
-            <div className="sticky top-6">
-              <QuotePriceSummary
-                composicao={composicao}
-                nConvidados={nConvidados}
-              />
-            </div>
-
-            {/* Payment Terms */}
-            {composicao && composicao.total_geral > 0 && (
-              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-                <PaymentTermsForm
-                  valorTotal={composicao.total_geral}
-                  dataEvento={dataStatus === "com_data" ? dataEvento : null}
-                  onChange={setPaymentTerms}
-                  onValidationChange={setHasPaymentErrors}
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>

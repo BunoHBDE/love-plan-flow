@@ -43,7 +43,7 @@ export function SpaceSelection({
     <div className="space-y-4">
       <div>
         <Label className="text-muted-foreground text-sm">
-          Espaço *
+          Espaço (Opcional)
         </Label>
         <Select
           value={selectedSpaceId || ""}

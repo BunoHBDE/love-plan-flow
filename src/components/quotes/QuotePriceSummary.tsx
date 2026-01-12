@@ -20,7 +20,7 @@ export function QuotePriceSummary({ composicao, nConvidados }: QuotePriceSummary
           <h3 className="font-semibold text-foreground">Resumo do Orçamento</h3>
         </div>
         <p className="text-sm text-muted-foreground text-center py-8">
-          Configure o espaço e outros itens para ver o resumo
+          Configure os itens do orçamento para ver o resumo
         </p>
       </Card>
     );
@@ -45,8 +45,8 @@ export function QuotePriceSummary({ composicao, nConvidados }: QuotePriceSummary
           </p>
           <div className="space-y-1">
             {composicao.itens.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span className="text-foreground">
+              <div key={item.id} className="flex justify-between text-sm gap-4">
+                <span className="text-foreground truncate">
                   {item.nome}
                   {item.tipo_preco === 'variavel' && item.unidade && (
                     <span className="text-xs text-muted-foreground ml-1">
@@ -54,7 +54,7 @@ export function QuotePriceSummary({ composicao, nConvidados }: QuotePriceSummary
                     </span>
                   )}
                 </span>
-                <span className="font-medium text-foreground">
+                <span className="font-medium text-foreground whitespace-nowrap">
                   {formatCurrency(item.valor_total)}
                 </span>
               </div>
@@ -64,74 +64,74 @@ export function QuotePriceSummary({ composicao, nConvidados }: QuotePriceSummary
 
         <Separator />
 
-        {/* Valores Fixos */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-blue-500" />
-            <p className="text-sm font-medium text-foreground">Valores Fixos</p>
-          </div>
-          
-          <div className="pl-6 space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal fixo</span>
-              <span className="text-foreground">
-                {formatCurrency(composicao.subtotal_fixo)}
-              </span>
+        {/* Layout responsivo para valores fixos e variáveis */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Valores Fixos */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-blue-500" />
+              <p className="text-sm font-medium text-foreground">Valores Fixos</p>
             </div>
             
-            {composicao.desconto_fixo > 0 && (
-              <div className="flex justify-between text-sm text-green-600">
-                <span>Desconto aplicado</span>
-                <span>- {formatCurrency(composicao.desconto_fixo)}</span>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="text-foreground">
+                  {formatCurrency(composicao.subtotal_fixo)}
+                </span>
               </div>
-            )}
-            
-            <div className="flex justify-between text-sm font-semibold pt-1 border-t border-border/50">
-              <span className="text-foreground">Total Fixo</span>
-              <span className="text-blue-600">
-                {formatCurrency(composicao.total_fixo)}
-              </span>
+              
+              {composicao.desconto_fixo > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Desconto</span>
+                  <span>- {formatCurrency(composicao.desconto_fixo)}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between font-semibold pt-1 border-t border-border/50">
+                <span className="text-foreground">Total</span>
+                <span className="text-blue-600">
+                  {formatCurrency(composicao.total_fixo)}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Valores Variáveis */}
-        {composicao.subtotal_variavel > 0 && (
-          <>
-            <Separator />
+          {/* Valores Variáveis */}
+          {composicao.subtotal_variavel > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-purple-500" />
                 <p className="text-sm font-medium text-foreground">
-                  Valores Variáveis ({nConvidados} convidados)
+                  Variáveis ({nConvidados})
                 </p>
               </div>
               
-              <div className="pl-6 space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal variável</span>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
                   <span className="text-foreground">
                     {formatCurrency(composicao.subtotal_variavel)}
                   </span>
                 </div>
                 
                 {composicao.desconto_variavel > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Desconto aplicado</span>
+                  <div className="flex justify-between text-green-600">
+                    <span>Desconto</span>
                     <span>- {formatCurrency(composicao.desconto_variavel)}</span>
                   </div>
                 )}
                 
-                <div className="flex justify-between text-sm font-semibold pt-1 border-t border-border/50">
-                  <span className="text-foreground">Total Variável</span>
+                <div className="flex justify-between font-semibold pt-1 border-t border-border/50">
+                  <span className="text-foreground">Total</span>
                   <span className="text-purple-600">
                     {formatCurrency(composicao.total_variavel)}
                   </span>
                 </div>
               </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
 
         {/* Extras */}
         {composicao.total_extras > 0 && (
@@ -150,7 +150,7 @@ export function QuotePriceSummary({ composicao, nConvidados }: QuotePriceSummary
 
         {/* Total Geral */}
         <div className="bg-primary/10 rounded-lg p-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center flex-wrap gap-2">
             <span className="text-base font-semibold text-foreground">
               Valor Total
             </span>
