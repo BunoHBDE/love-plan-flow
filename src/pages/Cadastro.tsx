@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { OnboardingSidebar } from '@/components/onboarding/OnboardingSidebar';
 import { Step1CreateAccount } from '@/components/onboarding/Step1CreateAccount';
 import { Step2SpaceProfile } from '@/components/onboarding/Step2SpaceProfile';
@@ -30,6 +31,8 @@ export default function Cadastro() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     name: '',
     email: '',
@@ -44,6 +47,28 @@ export default function Cadastro() {
     eventType: '',
     socialContact: '',
   });
+
+  const handleResendEmail = async () => {
+    if (!onboardingData.email) return;
+    
+    setIsResendingEmail(true);
+    setResendSuccess(false);
+    
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: onboardingData.email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+    
+    setIsResendingEmail(false);
+    
+    if (!error) {
+      setResendSuccess(true);
+      setTimeout(() => setResendSuccess(false), 5000);
+    }
+  };
   
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -182,11 +207,40 @@ export default function Cadastro() {
                   Por favor, verifique sua caixa de entrada e clique no link para ativar sua conta.
                 </p>
               </div>
-              <div className="pt-4">
+              <div className="pt-4 space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Você será redirecionado automaticamente...
                 </p>
-                <Loader2 className="h-5 w-5 animate-spin text-accent mx-auto mt-3" />
+                <Loader2 className="h-5 w-5 animate-spin text-accent mx-auto" />
+                
+                <div className="border-t pt-4 mt-4">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Não recebeu o email?
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={handleResendEmail}
+                    disabled={isResendingEmail || resendSuccess}
+                    className="gap-2"
+                  >
+                    {isResendingEmail ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Reenviando...
+                      </>
+                    ) : resendSuccess ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        Email reenviado!
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4" />
+                        Reenviar email
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (
