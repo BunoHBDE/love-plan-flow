@@ -14,6 +14,9 @@ import LandingPage from "./pages/LandingPage";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Cadastro from "./pages/Cadastro";
+import Termos from "./pages/Termos";
+import Privacidade from "./pages/Privacidade";
+import Cookies from "./pages/Cookies";
 import Clientes from "./pages/Clientes";
 import Visitas from "./pages/Visitas";
 import Orcamentos from "./pages/Orcamentos";
@@ -38,6 +41,9 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/login" element={<Auth />} />
               <Route path="/cadastro" element={<Cadastro />} />
+              <Route path="/termos" element={<Termos />} />
+              <Route path="/privacidade" element={<Privacidade />} />
+              <Route path="/cookies" element={<Cookies />} />
               
               {/* Rotas protegidas - Dashboard e funcionalidades */}
               <Route 
