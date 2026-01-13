@@ -16,7 +16,7 @@ const phoneFormatRegex = /^\(\d{2}\) \d{4,5}-\d{4}$/;
 
 const schema = z.object({
   name: z.string()
-    .min(5, 'Nome deve ter no mínimo 5 caracteres')
+    .min(1, 'Nome é obrigatório')
     .max(100, 'Nome deve ter no máximo 100 caracteres'),
   email: z.string()
     .min(1, 'Email é obrigatório')
