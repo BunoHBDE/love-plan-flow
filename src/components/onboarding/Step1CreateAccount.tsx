@@ -74,8 +74,8 @@ export function Step1CreateAccount({ onComplete, isSubmitting, defaultValues }: 
       password: defaultValues.password,
       whatsapp: '',
       allowContact: true,
-      acceptTerms: false,
-      acceptPrivacy: false,
+      acceptTerms: true,
+      acceptPrivacy: true,
     },
   });
 
