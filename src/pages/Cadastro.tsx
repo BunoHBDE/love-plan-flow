@@ -13,6 +13,8 @@ export interface OnboardingData {
   name: string;
   email: string;
   password: string;
+  whatsapp: string;
+  allowContact: boolean;
   // Step 2
   spaceName: string;
   spaceType: string;
@@ -31,6 +33,8 @@ export default function Cadastro() {
     name: '',
     email: '',
     password: '',
+    whatsapp: '',
+    allowContact: true,
     spaceName: '',
     spaceType: '',
     userRole: '',
@@ -54,7 +58,7 @@ export default function Cadastro() {
     setOnboardingData(prev => ({ ...prev, ...data }));
   };
 
-  const handleStep1Complete = async (data: { name: string; email: string; password: string }) => {
+  const handleStep1Complete = async (data: { name: string; email: string; password: string; whatsapp: string; allowContact: boolean }) => {
     setIsSubmitting(true);
     updateData(data);
 
@@ -67,6 +71,8 @@ export default function Cadastro() {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: data.name,
+          whatsapp: data.whatsapp,
+          allow_contact: data.allowContact,
         },
       },
     });
@@ -96,7 +102,7 @@ export default function Cadastro() {
         .from('profiles')
         .update({
           company_name: finalData.spaceName,
-          // We could add more fields here if needed
+          whatsapp: finalData.whatsapp,
         })
         .eq('id', user.id);
     }
