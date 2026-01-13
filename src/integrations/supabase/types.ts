@@ -116,6 +116,48 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_settings: {
+        Row: {
+          created_at: string
+          dia_vencimento_padrao: number
+          dias_ultima_parcela_antes_evento: number
+          dias_vencimento_opcoes: number[]
+          id: string
+          meses_apos_evento: number | null
+          numero_parcelas_fixo: number | null
+          percentual_minimo_sinal: number
+          tipo_parcelamento: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dia_vencimento_padrao?: number
+          dias_ultima_parcela_antes_evento?: number
+          dias_vencimento_opcoes?: number[]
+          id?: string
+          meses_apos_evento?: number | null
+          numero_parcelas_fixo?: number | null
+          percentual_minimo_sinal?: number
+          tipo_parcelamento?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dia_vencimento_padrao?: number
+          dias_ultima_parcela_antes_evento?: number
+          dias_vencimento_opcoes?: number[]
+          id?: string
+          meses_apos_evento?: number | null
+          numero_parcelas_fixo?: number | null
+          percentual_minimo_sinal?: number
+          tipo_parcelamento?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address_cep: string | null
@@ -274,12 +316,14 @@ export type Database = {
           ano: string
           ativo: boolean
           created_at: string
-          desconto_percentual: number
-          desconto_percentual_variavel: number
-          descricao: string
+          desconto_percentual: number | null
+          desconto_percentual_variavel: number | null
+          descricao: string | null
           id: string
           itens_pacote: Json
           nome: string
+          preco_base: number
+          preco_final: number
           updated_at: string
           user_id: string
         }
@@ -287,12 +331,14 @@ export type Database = {
           ano: string
           ativo?: boolean
           created_at?: string
-          desconto_percentual?: number
-          desconto_percentual_variavel?: number
-          descricao?: string
+          desconto_percentual?: number | null
+          desconto_percentual_variavel?: number | null
+          descricao?: string | null
           id?: string
           itens_pacote?: Json
           nome: string
+          preco_base: number
+          preco_final: number
           updated_at?: string
           user_id: string
         }
@@ -300,24 +346,18 @@ export type Database = {
           ano?: string
           ativo?: boolean
           created_at?: string
-          desconto_percentual?: number
-          desconto_percentual_variavel?: number
-          descricao?: string
+          desconto_percentual?: number | null
+          desconto_percentual_variavel?: number | null
+          descricao?: string | null
           id?: string
           itens_pacote?: Json
           nome?: string
+          preco_base?: number
+          preco_final?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "quote_package_options_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       quote_service_options: {
         Row: {
@@ -394,14 +434,20 @@ export type Database = {
       quotes: {
         Row: {
           ano_evento: string | null
+          buffet_id: string | null
           canal_entrada: string | null
           client_id: string
+          composicao_preco: Json | null
           created_at: string
           created_by: string
           data_evento: string | null
           data_status: string
+          desconto_descricao: string | null
+          desconto_percentual: number | null
+          desconto_valor: number | null
           dia_semana: string | null
           dia_vencimento: number
+          espaco_id: string | null
           extras_json: Json | null
           id: string
           menu_buffet: string | null
@@ -410,35 +456,35 @@ export type Database = {
           observacoes_cliente: string | null
           observacoes_internas: string | null
           pacote: string
+          pacote_id: string | null
           parcelas_json: Json | null
           percentual_sinal: number
           quote_number: string
+          servico_ids: string[] | null
+          servico_quantidades: Json | null
           status: string
           tipo_evento: string | null
           updated_at: string
           validade: string | null
           valor_sinal: number
-          valor_total: number 
-          espaco_id?: string | null
-          buffet_id?: string | null
-          servico_ids?: string[] | null
-          pacote_id?: string | null
-          servico_quantidades?: Json | null
-          composicao_preco?: Json | null
-          desconto_descricao?: string | null
-          desconto_percentual?: number
-          desconto_valor?: number
+          valor_total: number
         }
         Insert: {
           ano_evento?: string | null
+          buffet_id?: string | null
           canal_entrada?: string | null
           client_id: string
+          composicao_preco?: Json | null
           created_at?: string
           created_by: string
           data_evento?: string | null
           data_status?: string
+          desconto_descricao?: string | null
+          desconto_percentual?: number | null
+          desconto_valor?: number | null
           dia_semana?: string | null
           dia_vencimento?: number
+          espaco_id?: string | null
           extras_json?: Json | null
           id?: string
           menu_buffet?: string | null
@@ -447,35 +493,35 @@ export type Database = {
           observacoes_cliente?: string | null
           observacoes_internas?: string | null
           pacote: string
+          pacote_id?: string | null
           parcelas_json?: Json | null
           percentual_sinal?: number
           quote_number: string
+          servico_ids?: string[] | null
+          servico_quantidades?: Json | null
           status?: string
           tipo_evento?: string | null
           updated_at?: string
           validade?: string | null
           valor_sinal?: number
           valor_total?: number
-          espaco_id?: string | null
-          buffet_id?: string | null
-          servico_ids?: string[] | null
-          pacote_id?: string | null
-          servico_quantidades?: Json | null
-          composicao_preco?: Json | null
-          desconto_descricao?: string | null
-          desconto_percentual?: number
-          desconto_valor?: number
         }
         Update: {
           ano_evento?: string | null
+          buffet_id?: string | null
           canal_entrada?: string | null
           client_id?: string
+          composicao_preco?: Json | null
           created_at?: string
           created_by?: string
           data_evento?: string | null
           data_status?: string
+          desconto_descricao?: string | null
+          desconto_percentual?: number | null
+          desconto_valor?: number | null
           dia_semana?: string | null
           dia_vencimento?: number
+          espaco_id?: string | null
           extras_json?: Json | null
           id?: string
           menu_buffet?: string | null
@@ -484,26 +530,27 @@ export type Database = {
           observacoes_cliente?: string | null
           observacoes_internas?: string | null
           pacote?: string
+          pacote_id?: string | null
           parcelas_json?: Json | null
           percentual_sinal?: number
           quote_number?: string
+          servico_ids?: string[] | null
+          servico_quantidades?: Json | null
           status?: string
           tipo_evento?: string | null
           updated_at?: string
           validade?: string | null
           valor_sinal?: number
           valor_total?: number
-          espaco_id?: string | null
-          buffet_id?: string | null
-          servico_ids?: string[] | null
-          pacote_id?: string | null
-          servico_quantidades?: Json | null
-          composicao_preco?: Json | null
-          desconto_descricao?: string | null
-          desconto_percentual?: number
-          desconto_valor?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "quotes_buffet_id_fkey"
+            columns: ["buffet_id"]
+            isOneToOne: false
+            referencedRelation: "quote_buffet_options"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quotes_client_id_fkey"
             columns: ["client_id"]
@@ -519,62 +566,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "quotes_buffet_id_fkey"
-            columns: ["buffet_id"]
-            isOneToOne: false
-            referencedRelation: "quote_buffet_options"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "quotes_pacote_id_fkey"
             columns: ["pacote_id"]
             isOneToOne: false
             referencedRelation: "quote_package_options"
             referencedColumns: ["id"]
-          }
+          },
         ]
-      }
-      payment_settings: {
-        Row: {
-          created_at: string
-          dia_vencimento_padrao: number
-          dias_ultima_parcela_antes_evento: number
-          dias_vencimento_opcoes: number[]
-          id: string
-          meses_apos_evento: number | null
-          numero_parcelas_fixo: number | null
-          percentual_minimo_sinal: number
-          tipo_parcelamento: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          dia_vencimento_padrao?: number
-          dias_ultima_parcela_antes_evento?: number
-          dias_vencimento_opcoes?: number[]
-          id?: string
-          meses_apos_evento?: number | null
-          numero_parcelas_fixo?: number | null
-          percentual_minimo_sinal?: number
-          tipo_parcelamento?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          dia_vencimento_padrao?: number
-          dias_ultima_parcela_antes_evento?: number
-          dias_vencimento_opcoes?: number[]
-          id?: string
-          meses_apos_evento?: number | null
-          numero_parcelas_fixo?: number | null
-          percentual_minimo_sinal?: number
-          tipo_parcelamento?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       user_roles: {
         Row: {
