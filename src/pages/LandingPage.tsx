@@ -8,6 +8,7 @@ import { PricingSection } from '@/components/landing/PricingSection';
 import { FAQSection } from '@/components/landing/FAQSection';
 import { CTASection } from '@/components/landing/CTASection';
 import { Footer } from '@/components/landing/Footer';
+import { CookieConsent } from '@/components/landing/CookieConsent';
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -39,6 +40,7 @@ export default function LandingPage() {
         <CTASection />
       </main>
       <Footer />
+      <CookieConsent />
     </div>
   );
 }
