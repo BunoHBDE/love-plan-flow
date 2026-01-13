@@ -418,7 +418,16 @@ export type Database = {
           updated_at: string
           validade: string | null
           valor_sinal: number
-          valor_total: number
+          valor_total: number 
+          espaco_id?: string | null
+          buffet_id?: string | null
+          servico_ids?: string[] | null
+          pacote_id?: string | null
+          servico_quantidades?: Json | null
+          composicao_preco?: Json | null
+          desconto_descricao?: string | null
+          desconto_percentual?: number
+          desconto_valor?: number
         }
         Insert: {
           ano_evento?: string | null
@@ -447,6 +456,15 @@ export type Database = {
           validade?: string | null
           valor_sinal?: number
           valor_total?: number
+          espaco_id?: string | null
+          buffet_id?: string | null
+          servico_ids?: string[] | null
+          pacote_id?: string | null
+          servico_quantidades?: Json | null
+          composicao_preco?: Json | null
+          desconto_descricao?: string | null
+          desconto_percentual?: number
+          desconto_valor?: number
         }
         Update: {
           ano_evento?: string | null
@@ -475,6 +493,15 @@ export type Database = {
           validade?: string | null
           valor_sinal?: number
           valor_total?: number
+          espaco_id?: string | null
+          buffet_id?: string | null
+          servico_ids?: string[] | null
+          pacote_id?: string | null
+          servico_quantidades?: Json | null
+          composicao_preco?: Json | null
+          desconto_descricao?: string | null
+          desconto_percentual?: number
+          desconto_valor?: number
         }
         Relationships: [
           {
@@ -484,6 +511,27 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "quotes_espaco_id_fkey"
+            columns: ["espaco_id"]
+            isOneToOne: false
+            referencedRelation: "quote_space_prices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_buffet_id_fkey"
+            columns: ["buffet_id"]
+            isOneToOne: false
+            referencedRelation: "quote_buffet_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_pacote_id_fkey"
+            columns: ["pacote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_package_options"
+            referencedColumns: ["id"]
+          }
         ]
       }
       payment_settings: {

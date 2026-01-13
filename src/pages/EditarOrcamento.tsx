@@ -35,12 +35,12 @@ import {
   Download,
   User,
   Calendar,
-  Package,
+  Package as PackageIcon,
   FileText,
   ChevronDown,
   Loader2,
-  DollarSign,
   Trash2,
+  Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
@@ -48,13 +48,26 @@ import { cn } from "@/lib/utils";
 import { useQuotesOptimized as useQuotes, type Quote } from "@/hooks/useQuotesOptimized";
 import { PaymentTermsForm, type PaymentTermsData, type Parcela } from "@/components/quotes/PaymentTermsForm";
 import { ExtrasForm, type ExtraItem, calcularTotalExtras } from "@/components/quotes/ExtrasForm";
-import { 
-  calcularPrecoDetalhado, 
-  getDiaSemana, 
+import { DiscountForm, type DiscountData } from "@/components/quotes/DiscountForm";
+import { SpaceSelection } from "@/components/quotes/SpaceSelection";
+import { BuffetSelection } from "@/components/quotes/BuffetSelection";
+import { ServicesSelection } from "@/components/quotes/ServicesSelection";
+import { PackageSelection } from "@/components/quotes/PackageSelection";
+import { QuotePriceSummary } from "@/components/quotes/QuotePriceSummary";
+import { useSpaceSettings } from "@/hooks/useSpaceSettings";
+import { useBuffetSettings } from "@/hooks/useBuffetSettings";
+import { useServiceSettings } from "@/hooks/useServiceSettings";
+import { usePackageSettings } from "@/hooks/usePackageSettings";
+import {
+  calcularPrecoEspaco,
+  calcularPrecoBuffet,
+  calcularPrecoServico,
+  calcularComposicaoPreco,
+  getDiaSemana,
   getAnoFromDate,
-  formatCurrency as formatCurrencyUtil,
-  type ComposicaoPreco 
-} from "@/lib/pricing";
+  formatCurrency,
+} from "@/lib/pricingCalculator";
+import type { QuoteItem, QuoteComposicao } from "@/types/quote.types";
 
 const statusLabels: Record<string, string> = {
   rascunho: "Rascunho",
@@ -89,16 +102,14 @@ const tiposEvento = [
   { value: "aniversario", label: "Aniversário" },
 ];
 
-const pacotes = [
-  { value: "harmonia", label: "Harmonia" },
-  { value: "jardim", label: "Jardim dos Sonhos" },
-  { value: "essencia", label: "Essência" },
-  { value: "florescer", label: "Florescer" },
-];
-
-const menusBuffet = [
-  { value: "massas", label: "Massas" },
-  { value: "brasileirinho", label: "Brasileirinho" },
+const diasSemana = [
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+  "Domingo",
 ];
 
 export default function EditarOrcamento() {
@@ -107,28 +118,54 @@ export default function EditarOrcamento() {
   const { toast } = useToast();
   const { getQuoteById, updateQuote, deleteQuote } = useQuotes();
   
+  // Settings hooks
+  const { spaces } = useSpaceSettings();
+  const { buffets } = useBuffetSettings();
+  const { services } = useServiceSettings();
+  const { packages } = usePackageSettings();
+
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [quoteData, setQuoteData] = useState<Quote | null>(null);
-  
-  // Editable fields
-  const [guestCount, setGuestCount] = useState(0);
-  const [weddingDate, setWeddingDate] = useState("");
-  const [canalEntrada, setCanalEntrada] = useState("");
+
+  // Event data
   const [tipoEvento, setTipoEvento] = useState("");
-  const [pacote, setPacote] = useState("");
-  const [menuBuffet, setMenuBuffet] = useState<string | null>(null);
+  const [canalEntrada, setCanalEntrada] = useState("");
+  const [dataStatus, setDataStatus] = useState<"com_data" | "sem_data">("sem_data");
+  const [dataEvento, setDataEvento] = useState("");
   const [diaSemana, setDiaSemana] = useState<string | null>(null);
+  const [anoEvento, setAnoEvento] = useState<string>(new Date().getFullYear().toString());
+  const [validadeOrcamento, setValidadeOrcamento] = useState("");
+  const [nConvidados, setNConvidados] = useState(0);
   const [status, setStatus] = useState("rascunho");
+
+  // Quote selections (new system)
+  const [espacoId, setEspacoId] = useState<string | null>(null);
+  const [buffetId, setBuffetId] = useState<string | null>(null);
+  const [servicoIds, setServicoIds] = useState<string[]>([]);
+  const [serviceQuantities, setServiceQuantities] = useState<Record<string, number>>({});
+  const [pacoteId, setPacoteId] = useState<string | null>(null);
+
+  // Price composition
+  const [composicao, setComposicao] = useState<QuoteComposicao | null>(null);
+
+  // Observations
   const [observacoesInternas, setObservacoesInternas] = useState("");
   const [observacoesCliente, setObservacoesCliente] = useState("");
-  const [validUntil, setValidUntil] = useState("");
-  const [valorOrcamento, setValorOrcamento] = useState(0);
-  const [composicaoPreco, setComposicaoPreco] = useState<ComposicaoPreco | null>(null);
-  const [anoEvento, setAnoEvento] = useState<string>(new Date().getFullYear().toString());
 
-  // Payment terms state
+  // Extras
+  const [extras, setExtras] = useState<ExtraItem[]>([]);
+
+  // Discount
+  const [discount, setDiscount] = useState<DiscountData>({
+    descricao: "",
+    percentual: 0,
+    valor: 0,
+  });
+
+  // Payment terms
   const [paymentTerms, setPaymentTerms] = useState<PaymentTermsData>({
     percentualSinal: 10,
     valorSinal: 0,
@@ -138,9 +175,6 @@ export default function EditarOrcamento() {
   });
   const [hasPaymentErrors, setHasPaymentErrors] = useState(false);
 
-  // Extras state
-  const [extras, setExtras] = useState<ExtraItem[]>([]);
-
   // Load quote data
   useEffect(() => {
     const loadQuote = async () => {
@@ -149,26 +183,51 @@ export default function EditarOrcamento() {
       const quote = await getQuoteById(id);
       if (quote) {
         setQuoteData(quote);
-        setGuestCount(quote.n_convidados);
-        setWeddingDate(quote.data_evento || "");
+        
+        // Basic info
+        setNConvidados(quote.n_convidados);
+        setDataEvento(quote.data_evento || "");
+        setDataStatus(quote.data_status as "com_data" | "sem_data" || "sem_data");
         setCanalEntrada(quote.canal_entrada || "");
         setTipoEvento(quote.tipo_evento || "");
-        setPacote(quote.pacote);
-        setMenuBuffet(quote.menu_buffet);
         setDiaSemana(quote.dia_semana);
         setStatus(quote.status);
         setObservacoesInternas(quote.observacoes_internas || "");
         setObservacoesCliente(quote.observacoes_cliente || "");
-        setValidUntil(quote.validade || "");
-        setValorOrcamento(Number(quote.valor_total));
-        
+        setValidadeOrcamento(quote.validade || "");
+
         // Set ano evento
         if (quote.data_evento) {
           setAnoEvento(getAnoFromDate(quote.data_evento));
         } else if (quote.ano_evento) {
           setAnoEvento(quote.ano_evento);
         }
+
+        // New pricing system fields
+        setEspacoId(quote.espaco_id || null);
+        setBuffetId(quote.buffet_id || null);
+        setServicoIds(quote.servico_ids || []);
+        setPacoteId(quote.pacote_id || null);
         
+        // Service quantities
+        if (quote.servico_quantidades) {
+          setServiceQuantities(quote.servico_quantidades as Record<string, number>);
+        }
+
+        // Composição de preço salva
+        if (quote.composicao_preco) {
+          setComposicao(quote.composicao_preco as QuoteComposicao);
+        }
+
+        // Discount
+        if (quote.desconto_valor && quote.desconto_valor > 0) {
+          setDiscount({
+            descricao: quote.desconto_descricao || "",
+            percentual: quote.desconto_percentual || 0,
+            valor: quote.desconto_valor || 0,
+          });
+        }
+
         // Load payment terms
         const parcelasJson = quote.parcelas_json as any[] | null;
         if (parcelasJson && parcelasJson.length > 0) {
@@ -201,45 +260,81 @@ export default function EditarOrcamento() {
     loadQuote();
   }, [id]);
 
-  // Recalculate price with detailed composition
+  // Calculate price when selections change (only in edit mode)
   useEffect(() => {
-    const ano = weddingDate ? getAnoFromDate(weddingDate) : anoEvento;
+    if (!isEditing) return;
     
-    if (pacote && diaSemana && guestCount > 0) {
-      const composicao = calcularPrecoDetalhado(pacote, diaSemana, guestCount, menuBuffet, ano);
-      if (composicao) {
-        setComposicaoPreco(composicao);
-        setValorOrcamento(composicao.total);
-      } else {
-        setComposicaoPreco(null);
+    // Precisa ter pelo menos um item selecionado e número de convidados
+    if ((!espacoId && !buffetId && servicoIds.length === 0) || nConvidados <= 0) {
+      setComposicao(null);
+      return;
+    }
+
+    const itens: QuoteItem[] = [];
+
+    // Calcular preço do espaço (se selecionado)
+    if (espacoId && diaSemana) {
+      const espaco = spaces.find((s) => s.id === espacoId);
+      if (espaco) {
+        const precoEspaco = calcularPrecoEspaco(espaco, diaSemana, nConvidados);
+        if (precoEspaco) {
+          itens.push(precoEspaco);
+        }
       }
-    } else {
-      setComposicaoPreco(null);
     }
-  }, [pacote, diaSemana, guestCount, menuBuffet, weddingDate, anoEvento]);
 
-  // Update diaSemana and anoEvento when weddingDate changes
+    // Calcular preço do buffet (se selecionado)
+    if (buffetId) {
+      const buffet = buffets.find((b) => b.id === buffetId);
+      if (buffet) {
+        const precoBuffet = calcularPrecoBuffet(buffet, nConvidados);
+        if (precoBuffet) {
+          itens.push(precoBuffet);
+        }
+      }
+    }
+
+    // Calcular preço dos serviços (se selecionados)
+    servicoIds.forEach((servicoId) => {
+      const servico = services.find((s) => s.id === servicoId);
+      if (servico) {
+        const preco = servico.precos?.[0];
+        let quantidade = nConvidados;
+        
+        if (preco && preco.tipo === 'variavel') {
+          const unidade = preco.unidade?.toLowerCase() || '';
+          const isPessoaUnidade = unidade === 'pessoa' || unidade === 'pessoas' || 
+                                  unidade === 'convidado' || unidade === 'convidados';
+          
+          if (!isPessoaUnidade) {
+            quantidade = serviceQuantities[servicoId] || 1;
+          }
+        }
+        
+        const precoServico = calcularPrecoServico(servico, quantidade);
+        if (precoServico) {
+          itens.push(precoServico);
+        }
+      }
+    });
+
+    // Buscar pacote (se selecionado)
+    const pacote = pacoteId ? packages.find((p) => p.id === pacoteId) : null;
+
+    // Calcular composição final
+    const novaComposicao = calcularComposicaoPreco(itens, pacote || null, extras, nConvidados);
+    setComposicao(novaComposicao);
+  }, [isEditing, espacoId, buffetId, servicoIds, serviceQuantities, pacoteId, diaSemana, nConvidados, extras, spaces, buffets, services, packages]);
+
+  // Update diaSemana when dataEvento changes
   useEffect(() => {
-    if (weddingDate) {
-      const dia = getDiaSemana(weddingDate);
-      if (dia) setDiaSemana(dia);
-      setAnoEvento(getAnoFromDate(weddingDate));
+    if (dataStatus === "com_data" && dataEvento) {
+      const dia = getDiaSemana(dataEvento);
+      setDiaSemana(dia);
+      const year = getAnoFromDate(dataEvento);
+      setAnoEvento(year);
     }
-  }, [weddingDate]);
-
-  // Reset menu when package changes
-  useEffect(() => {
-    if (pacote !== "essencia" && pacote !== "florescer") {
-      setMenuBuffet(null);
-    }
-  }, [pacote]);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
+  }, [dataEvento, dataStatus]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
@@ -248,23 +343,88 @@ export default function EditarOrcamento() {
 
   const handleSave = async () => {
     if (!quoteData) return;
-    
-    const totalExtras = calcularTotalExtras(extras, guestCount);
-    const valorFinal = valorOrcamento + totalExtras;
-    
+
+    // Validation
+    if (!espacoId && !buffetId && servicoIds.length === 0 && !pacoteId) {
+      toast({
+        title: "Selecione ao menos um item",
+        description: "Selecione espaço, buffet, serviços ou pacote.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (nConvidados <= 0) {
+      toast({
+        title: "Número de convidados inválido",
+        description: "Informe um número maior que zero.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (espacoId && !diaSemana) {
+      toast({
+        title: "Defina o dia da semana",
+        description: "O dia da semana é necessário para calcular o preço do espaço.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!composicao || composicao.total_geral <= 0) {
+      toast({
+        title: "Valor inválido",
+        description: "O orçamento precisa ter um valor calculado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (hasPaymentErrors) {
+      toast({
+        title: "Erro nas condições de pagamento",
+        description: "Corrija os erros antes de salvar o orçamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
+    const valorTotalFinal = composicao.total_geral - (discount?.valor || 0);
+
     const success = await updateQuote(quoteData.id, {
-      n_convidados: guestCount,
-      data_evento: weddingDate || null,
-      canal_entrada: canalEntrada || null,
       tipo_evento: tipoEvento || null,
-      pacote,
-      menu_buffet: menuBuffet,
+      data_status: dataStatus,
+      data_evento: dataStatus === "com_data" && dataEvento ? dataEvento : null,
       dia_semana: diaSemana,
+      ano_evento: anoEvento,
+      n_convidados: nConvidados,
+      
+      // New pricing system
+      espaco_id: espacoId,
+      buffet_id: buffetId,
+      servico_ids: servicoIds.length > 0 ? servicoIds : null,
+      pacote_id: pacoteId,
+      servico_quantidades: servicoIds.length > 0 ? serviceQuantities : null,
+      composicao_preco: composicao,
+      
+      // Discount
+      desconto_descricao: discount?.descricao || null,
+      desconto_percentual: discount?.percentual || 0,
+      desconto_valor: discount?.valor || 0,
+      
+      // Legacy fields for compatibility
+      pacote: pacoteId || "",
+      menu_buffet: buffetId || null,
+      valor_total: valorTotalFinal,
+      
+      canal_entrada: canalEntrada || null,
       status,
       observacoes_internas: observacoesInternas || null,
       observacoes_cliente: observacoesCliente || null,
-      validade: validUntil || null,
-      valor_total: valorFinal,
+      validade: validadeOrcamento || null,
       percentual_sinal: paymentTerms.percentualSinal,
       valor_sinal: paymentTerms.valorSinal,
       numero_parcelas: paymentTerms.numeroParcelas,
@@ -272,9 +432,15 @@ export default function EditarOrcamento() {
       parcelas_json: paymentTerms.parcelas,
       extras_json: extras,
     });
-    
+
+    setIsSaving(false);
+
     if (success) {
       setIsEditing(false);
+      toast({
+        title: "Orçamento atualizado!",
+        description: "As alterações foram salvas com sucesso.",
+      });
     }
   };
 
@@ -287,20 +453,19 @@ export default function EditarOrcamento() {
 
   const handleDelete = async () => {
     if (!quoteData) return;
-    
+
     setIsDeleting(true);
     const success = await deleteQuote(quoteData.id);
     setIsDeleting(false);
-    
+
     if (success) {
       navigate("/orcamentos");
     }
   };
 
   const handleDownloadPDF = () => {
-    if (!quoteData) return;
+    if (!quoteData || !composicao) return;
 
-    // Parse payment terms from quote data
     const parcelasJson = quoteData.parcelas_json as any[] | null;
     const paymentTermsData = parcelasJson && parcelasJson.length > 0
       ? {
@@ -315,7 +480,6 @@ export default function EditarOrcamento() {
         }
       : undefined;
 
-    // Parse extras from quote data
     const extrasJson = quoteData.extras_json as any[] | null;
     const extrasData = extrasJson && extrasJson.length > 0
       ? extrasJson.map((e: any) => ({
@@ -325,34 +489,64 @@ export default function EditarOrcamento() {
         }))
       : undefined;
 
-    const totalExtras = calcularTotalExtras(extras, guestCount);
-    const valorFinal = valorOrcamento + totalExtras;
+    const valorFinal = composicao.total_geral - (discount?.valor || 0);
+
+    const items = composicao.itens.map((item) => ({
+      description: item.nome,
+      value: item.valor_total,
+      tipo: item.tipo,
+      tipo_preco: item.tipo_preco,
+    }));
 
     generateQuotePDF({
       id: quoteData.quote_number,
       clientName: quoteData.client?.nome || "Cliente",
-      guestCount,
-      weddingDate,
+      guestCount: nConvidados,
+      weddingDate: dataEvento,
       totalValue: valorFinal,
       status: status as any,
       createdAt: quoteData.created_at.split("T")[0],
-      validUntil,
-      items: [
-        { description: `Pacote ${pacote}`, value: valorOrcamento },
-      ],
+      validUntil: validadeOrcamento,
+      items,
       paymentTerms: paymentTermsData,
-      composicao: composicaoPreco ? {
-        espaco: composicaoPreco.espaco,
-        decoracao: composicaoPreco.decoracao,
-        buffet: composicaoPreco.buffet,
-        custoConvidadoAdicional: composicaoPreco.custoConvidadoAdicional,
-        ano: composicaoPreco.detalhes.ano,
-        buffetNome: composicaoPreco.detalhes.buffetNome,
+      composicao: {
+        itens: composicao.itens,
+        subtotal_fixo: composicao.subtotal_fixo,
+        desconto_fixo: composicao.desconto_fixo,
+        total_fixo: composicao.total_fixo,
+        subtotal_variavel: composicao.subtotal_variavel,
+        desconto_variavel: composicao.desconto_variavel,
+        total_variavel: composicao.total_variavel,
+        total_extras: composicao.total_extras,
+        total_geral: composicao.total_geral,
+      },
+      desconto: discount.valor > 0 ? {
+        descricao: discount.descricao,
+        percentual: discount.percentual,
+        valor: discount.valor,
       } : undefined,
-      pacoteNome: composicaoPreco?.detalhes.pacoteNome,
       extras: extrasData,
     });
   };
+
+  // Get available days based on configured spaces
+  const getDiasDisponiveis = () => {
+    const spacesDoAno = spaces.filter((s) => s.ano === anoEvento);
+    if (spacesDoAno.length === 0) return diasSemana;
+
+    const diasSet = new Set<string>();
+    spacesDoAno.forEach((space) => {
+      space.precos_por_dia?.forEach((preco) => {
+        preco.dias.forEach((dia) => diasSet.add(dia));
+      });
+    });
+
+    return diasSemana.filter((dia) => diasSet.has(dia));
+  };
+
+  const diasDisponiveis = getDiasDisponiveis();
+  const currentYear = new Date().getFullYear();
+  const anos = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
 
   if (loading) {
     return (
@@ -377,6 +571,8 @@ export default function EditarOrcamento() {
       </MainLayout>
     );
   }
+
+  const valorTotal = composicao ? composicao.total_geral - (discount?.valor || 0) : Number(quoteData.valor_total);
 
   return (
     <MainLayout>
@@ -432,58 +628,61 @@ export default function EditarOrcamento() {
           </div>
 
           <div className="flex items-center gap-2">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza que deseja excluir o orçamento <strong>{quoteData.quote_number}</strong>? 
-                    Esta ação não pode ser desfeita.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Excluindo...
-                      </>
-                    ) : (
-                      "Excluir"
-                    )}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <Button variant="outline" onClick={handleDownloadPDF}>
-              <Download className="h-4 w-4 mr-2" />
-              Baixar PDF
-            </Button>
             {isEditing ? (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
                   Cancelar
                 </Button>
-                <Button variant="gold" onClick={handleSave} disabled={hasPaymentErrors}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Salvar
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Salvar Alterações
+                    </>
+                  )}
                 </Button>
               </>
             ) : (
-              <Button variant="gold" onClick={() => setIsEditing(true)}>
-                Editar
-              </Button>
+              <>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. O orçamento será permanentemente excluído.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? "Excluindo..." : "Excluir"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button variant="outline" onClick={handleDownloadPDF}>
+                  <Download className="h-4 w-4 mr-2" />
+                  PDF
+                </Button>
+                <Button onClick={() => setIsEditing(true)}>
+                  Editar
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -497,7 +696,7 @@ export default function EditarOrcamento() {
                 <User className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-display font-semibold">Dados do Cliente</h2>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground text-sm">Nome</Label>
@@ -524,7 +723,7 @@ export default function EditarOrcamento() {
                 <Calendar className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-display font-semibold">Dados do Evento</h2>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground text-sm">Canal de Entrada</Label>
@@ -573,11 +772,14 @@ export default function EditarOrcamento() {
                   {isEditing ? (
                     <Input
                       type="date"
-                      value={weddingDate}
-                      onChange={(e) => setWeddingDate(e.target.value)}
+                      value={dataEvento}
+                      onChange={(e) => {
+                        setDataEvento(e.target.value);
+                        setDataStatus(e.target.value ? "com_data" : "sem_data");
+                      }}
                     />
                   ) : (
-                    <p className="font-medium">{formatDate(weddingDate)}</p>
+                    <p className="font-medium">{formatDate(dataEvento)}</p>
                   )}
                 </div>
                 <div>
@@ -586,115 +788,172 @@ export default function EditarOrcamento() {
                     <Input
                       type="number"
                       min="1"
-                      value={guestCount}
-                      onChange={(e) => setGuestCount(parseInt(e.target.value) || 0)}
+                      value={nConvidados}
+                      onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
                     />
                   ) : (
-                    <p className="font-medium">{guestCount}</p>
+                    <p className="font-medium">{nConvidados}</p>
                   )}
                 </div>
+                {dataStatus === "sem_data" && isEditing && (
+                  <>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Ano do Evento</Label>
+                      <Select value={anoEvento} onValueChange={setAnoEvento}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o ano" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {anos.map((ano) => (
+                            <SelectItem key={ano} value={ano}>
+                              {ano}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-sm">Dia da Semana</Label>
+                      <Select
+                        value={diaSemana || ""}
+                        onValueChange={(v) => setDiaSemana(v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o dia" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {diasDisponiveis.map((dia) => (
+                            <SelectItem key={dia} value={dia}>
+                              {dia}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
                 <div>
                   <Label className="text-muted-foreground text-sm">Validade</Label>
                   {isEditing ? (
                     <Input
                       type="date"
-                      value={validUntil}
-                      onChange={(e) => setValidUntil(e.target.value)}
+                      value={validadeOrcamento}
+                      onChange={(e) => setValidadeOrcamento(e.target.value)}
                     />
                   ) : (
-                    <p className="font-medium">{formatDate(validUntil)}</p>
+                    <p className="font-medium">{formatDate(validadeOrcamento)}</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Package Info */}
-            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-              <div className="flex items-center gap-2 mb-4">
-                <Package className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Pacote e Serviços</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-sm">Pacote</Label>
-                  {isEditing ? (
-                    <Select value={pacote} onValueChange={setPacote}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pacotes.map((p) => (
-                          <SelectItem key={p.value} value={p.value}>
-                            {p.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="font-medium">
-                      {pacotes.find((p) => p.value === pacote)?.label || "-"}
-                    </p>
-                  )}
+            {/* Items Selection (editing mode) */}
+            {isEditing && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+                <div className="flex items-center gap-2 mb-6">
+                  <PackageIcon className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-display font-semibold">Itens do Orçamento</h2>
                 </div>
-                {(pacote === "essencia" || pacote === "florescer") && (
-                  <div>
-                    <Label className="text-muted-foreground text-sm">Menu Buffet</Label>
-                    {isEditing ? (
-                      <Select value={menuBuffet || ""} onValueChange={setMenuBuffet}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {menusBuffet.map((m) => (
-                            <SelectItem key={m.value} value={m.value}>
-                              {m.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="font-medium">
-                        {menusBuffet.find((m) => m.value === menuBuffet)?.label || "-"}
-                      </p>
-                    )}
-                  </div>
-                )}
-                <div>
-                  <Label className="text-muted-foreground text-sm">Dia da Semana</Label>
-                  {isEditing ? (
-                    <Select value={diaSemana || ""} onValueChange={setDiaSemana}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sabado">Sábado</SelectItem>
-                        <SelectItem value="domingo">Domingo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="font-medium">
-                      {diaSemana === "sabado" ? "Sábado" : diaSemana === "domingo" ? "Domingo" : "-"}
-                    </p>
-                  )}
+
+                <div className="space-y-6">
+                  <SpaceSelection
+                    spaces={spaces}
+                    selectedSpaceId={espacoId}
+                    onSpaceChange={setEspacoId}
+                    diaSemana={diaSemana}
+                    anoEvento={anoEvento}
+                  />
+
+                  <BuffetSelection
+                    buffets={buffets}
+                    selectedBuffetId={buffetId}
+                    onBuffetChange={setBuffetId}
+                    anoEvento={anoEvento}
+                  />
+
+                  <ServicesSelection
+                    services={services}
+                    selectedServiceIds={servicoIds}
+                    serviceQuantities={serviceQuantities}
+                    onServicesChange={setServicoIds}
+                    onQuantityChange={(serviceId, quantity) => {
+                      setServiceQuantities(prev => ({
+                        ...prev,
+                        [serviceId]: quantity
+                      }));
+                    }}
+                    anoEvento={anoEvento}
+                  />
+
+                  <PackageSelection
+                    packages={packages}
+                    selectedPackageId={pacoteId}
+                    onPackageChange={setPacoteId}
+                    anoEvento={anoEvento}
+                  />
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Items Display (view mode) */}
+            {!isEditing && composicao && composicao.itens.length > 0 && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+                <div className="flex items-center gap-2 mb-4">
+                  <PackageIcon className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-display font-semibold">Itens do Orçamento</h2>
+                </div>
+
+                <div className="space-y-2">
+                  {composicao.itens.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex justify-between items-center p-3 bg-muted/50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{item.nome}</p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {item.tipo} • {item.tipo_preco === 'fixo' ? 'Preço Fixo' : 'Preço Variável'}
+                        </p>
+                      </div>
+                      <span className="font-semibold text-primary">
+                        {formatCurrency(item.valor_total)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Extras */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
               <div className="flex items-center gap-2 mb-4">
-                <DollarSign className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Valores Extras</h2>
+                <Plus className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">Extras</h2>
               </div>
-              
-              <ExtrasForm 
-                extras={extras} 
-                onChange={setExtras} 
+
+              <ExtrasForm
+                extras={extras}
+                onChange={setExtras}
                 disabled={!isEditing}
-                guestCount={guestCount}
+                guestCount={nConvidados}
               />
             </div>
+
+            {/* Discount (editing mode) */}
+            {isEditing && composicao && composicao.total_geral > 0 && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+                <div className="flex items-center gap-2 mb-4">
+                  <PackageIcon className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-display font-semibold">Desconto</h2>
+                </div>
+
+                <DiscountForm
+                  valorTotal={composicao.total_geral}
+                  discount={discount}
+                  onChange={setDiscount}
+                />
+              </div>
+            )}
 
             {/* Observations */}
             <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
@@ -702,7 +961,7 @@ export default function EditarOrcamento() {
                 <FileText className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-display font-semibold">Observações</h2>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <Label className="text-muted-foreground text-sm">Observações Internas</Label>
@@ -733,30 +992,35 @@ export default function EditarOrcamento() {
               </div>
             </div>
 
-            {/* Payment Terms - Only show when editing */}
-            {isEditing && (
-              <PaymentTermsForm
-                valorTotal={valorOrcamento + calcularTotalExtras(extras, guestCount)}
-                dataEvento={weddingDate || null}
-                onChange={setPaymentTerms}
-                onValidationChange={setHasPaymentErrors}
-              />
+            {/* Payment Terms (editing mode) */}
+            {isEditing && composicao && composicao.total_geral > 0 && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+                <div className="flex items-center gap-2 mb-4">
+                  <h2 className="text-lg font-display font-semibold">Condições de Pagamento</h2>
+                </div>
+                <PaymentTermsForm
+                  valorTotal={composicao.total_geral - (discount?.valor || 0)}
+                  dataEvento={dataStatus === "com_data" ? dataEvento : null}
+                  onChange={setPaymentTerms}
+                  onValidationChange={setHasPaymentErrors}
+                />
+              </div>
             )}
 
-            {/* Payment Terms Summary - Show when not editing */}
+            {/* Payment Terms Summary (view mode) */}
             {!isEditing && paymentTerms.parcelas.length > 0 && (
               <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
                 <div className="flex items-center gap-2 mb-4">
                   <FileText className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-display font-semibold">Condições de Pagamento</h2>
                 </div>
-                
+
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-2 bg-primary/10 rounded border border-primary/20">
                     <span className="font-medium text-sm">Sinal ({paymentTerms.percentualSinal}%)</span>
                     <span className="font-semibold text-primary">{formatCurrency(paymentTerms.valorSinal)}</span>
                   </div>
-                  
+
                   {paymentTerms.parcelas.map((parcela) => (
                     <div key={parcela.numero} className="flex justify-between items-center p-2 bg-secondary/30 rounded">
                       <span className="text-sm">Parcela {parcela.numero}</span>
@@ -773,101 +1037,48 @@ export default function EditarOrcamento() {
 
           {/* Sidebar - Summary */}
           <div className="space-y-6">
-            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up sticky top-6">
-              <h2 className="text-lg font-display font-semibold mb-4">Resumo do Orçamento</h2>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">Cliente</span>
-                  <span className="font-medium text-sm">{quoteData.client?.nome || "-"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">Data do Evento</span>
-                  <span className="font-medium text-sm">
-                    {weddingDate ? formatDate(weddingDate) : `${diaSemana === "sabado" ? "Sábado" : "Domingo"} - ${anoEvento}`}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">Convidados</span>
-                  <span className="font-medium text-sm">{guestCount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground text-sm">Pacote</span>
-                  <span className="font-medium text-sm">
-                    {composicaoPreco?.detalhes.pacoteNome || pacotes.find((p) => p.value === pacote)?.label || "-"}
-                  </span>
-                </div>
-                {composicaoPreco?.detalhes.buffetNome && (
+            {composicao && composicao.total_geral > 0 && (
+              <div className="animate-slide-up sticky top-6">
+                <QuotePriceSummary
+                  composicao={composicao}
+                  nConvidados={nConvidados}
+                  discount={discount}
+                />
+              </div>
+            )}
+
+            {/* Simple Summary when no composicao */}
+            {(!composicao || composicao.total_geral === 0) && (
+              <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up sticky top-6">
+                <h2 className="text-lg font-display font-semibold mb-4">Resumo do Orçamento</h2>
+
+                <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">Buffet</span>
-                    <span className="font-medium text-sm">{composicaoPreco.detalhes.buffetNome}</span>
+                    <span className="text-muted-foreground text-sm">Cliente</span>
+                    <span className="font-medium text-sm">{quoteData.client?.nome || "-"}</span>
                   </div>
-                )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-sm">Data do Evento</span>
+                    <span className="font-medium text-sm">
+                      {dataEvento ? formatDate(dataEvento) : `${diaSemana || "-"} - ${anoEvento}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-sm">Convidados</span>
+                    <span className="font-medium text-sm">{nConvidados}</span>
+                  </div>
 
-                {/* Composição do Valor */}
-                {composicaoPreco && (
-                  <div className="pt-4 space-y-2">
-                    <h3 className="text-sm font-semibold text-primary">Composição do Valor</h3>
-                    
-                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground text-xs">Espaço ({composicaoPreco.detalhes.ano})</span>
-                        <span className="font-medium text-sm">{formatCurrency(composicaoPreco.espaco)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground text-xs">Decoração</span>
-                        <span className="font-medium text-sm">{formatCurrency(composicaoPreco.decoracao)}</span>
-                      </div>
-                      {composicaoPreco.buffet !== null && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground text-xs">Buffet ({composicaoPreco.detalhes.buffetNome})</span>
-                          <span className="font-medium text-sm">{formatCurrency(composicaoPreco.buffet)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex justify-between items-center pt-2 border-t border-primary/20">
-                      <span className="font-medium text-sm">Convidado Adicional</span>
-                      <span className="font-semibold text-primary text-sm">
-                        {formatCurrency(composicaoPreco.custoConvidadoAdicional)}
+                  <div className="border-t-2 border-primary/20 pt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold">Total</span>
+                      <span className="text-2xl font-display font-bold text-primary">
+                        {formatCurrency(valorTotal)}
                       </span>
                     </div>
                   </div>
-                )}
-
-                {/* Extras no resumo */}
-                {extras.length > 0 && (
-                  <div className="pt-4 space-y-2">
-                    <h3 className="text-sm font-semibold text-primary">Valores Extras</h3>
-                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                      {extras.map((extra) => {
-                        const valorCalculado = extra.porConvidado 
-                          ? extra.valor * guestCount 
-                          : extra.valor;
-                        return (
-                          <div key={extra.id} className="flex justify-between items-center">
-                            <span className="text-muted-foreground text-xs">
-                              {extra.descricao}
-                              {extra.porConvidado && ` (×${guestCount})`}
-                            </span>
-                            <span className="font-medium text-sm">{formatCurrency(valorCalculado)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                
-                <div className="border-t-2 border-primary/20 pt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold">Total</span>
-                    <span className="text-2xl font-display font-bold text-gold">
-                      {formatCurrency(valorOrcamento + calcularTotalExtras(extras, guestCount))}
-                    </span>
-                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

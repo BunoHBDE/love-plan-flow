@@ -71,6 +71,7 @@ export interface QuoteInsert {
   dia_vencimento?: number;
   parcelas_json?: any; // ✅ Aceita qualquer tipo
   extras_json?: any;   // ✅ Aceita qualquer tipo
+  canal_entrada?: string | null;
 }
 
 // ==========================================

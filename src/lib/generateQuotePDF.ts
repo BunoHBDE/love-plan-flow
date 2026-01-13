@@ -1,8 +1,15 @@
 import jsPDF from "jspdf";
 
 interface QuoteItem {
-  description: string;
-  value: number;
+  id: string;
+  nome: string;
+  tipo: string;
+  tipo_preco: string;
+  valor_total: number;
+  valor_fixo?: number;
+  valor_inicial?: number;
+  valor_por_unidade?: number;
+  unidade?: string;
 }
 
 interface Parcela {
@@ -19,27 +26,27 @@ interface PaymentTerms {
 }
 
 interface ComposicaoPreco {
-  espaco?: number;
-  decoracao?: number;
-  buffet?: number | null;
-  custoConvidadoAdicional?: number;
-  ano?: string;
-  buffetNome?: string | null;
-  itens?: any[];
-  subtotal_fixo?: number;
-  desconto_fixo?: number;
-  total_fixo?: number;
-  subtotal_variavel?: number;
-  desconto_variavel?: number;
-  total_variavel?: number;
-  total_extras?: number;
-  total_geral?: number;
+  itens: QuoteItem[];
+  subtotal_fixo: number;
+  desconto_fixo: number;
+  total_fixo: number;
+  subtotal_variavel: number;
+  desconto_variavel: number;
+  total_variavel: number;
+  total_extras: number;
+  total_geral: number;
 }
 
 interface ExtraItem {
   descricao: string;
   valor: number;
   porConvidado?: boolean;
+}
+
+interface DescontoData {
+  descricao: string;
+  percentual: number;
+  valor: number;
 }
 
 interface QuoteData {
@@ -51,11 +58,10 @@ interface QuoteData {
   status: string;
   createdAt: string;
   validUntil: string;
-  items: QuoteItem[];
   paymentTerms?: PaymentTerms;
   composicao?: ComposicaoPreco;
-  pacoteNome?: string;
   extras?: ExtraItem[];
+  desconto?: DescontoData;
 }
 
 const formatCurrency = (value: number): string => {
@@ -80,15 +86,16 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   // Paleta de cores sofisticada
   const colors = {
-    primary: [75, 42, 34] as [number, number, number], // Marrom Escuro
-    gold: [201, 168, 106] as [number, number, number], // Dourado
-    lightGold: [218, 195, 149] as [number, number, number], // Dourado Claro
-    text: [60, 50, 42] as [number, number, number], // Texto Principal
-    textLight: [107, 90, 74] as [number, number, number], // Texto Secundário
-    bg: [252, 249, 243] as [number, number, number], // Fundo Claro
-    bgAlt: [247, 242, 234] as [number, number, number], // Fundo Alternativo
+    primary: [75, 42, 34] as [number, number, number],
+    gold: [201, 168, 106] as [number, number, number],
+    lightGold: [218, 195, 149] as [number, number, number],
+    text: [60, 50, 42] as [number, number, number],
+    textLight: [107, 90, 74] as [number, number, number],
+    bg: [252, 249, 243] as [number, number, number],
+    bgAlt: [247, 242, 234] as [number, number, number],
     white: [255, 255, 255] as [number, number, number],
-    divider: [230, 220, 205] as [number, number, number], // Divisor
+    divider: [230, 220, 205] as [number, number, number],
+    green: [34, 139, 34] as [number, number, number],
   };
 
   let yPosition = 0;
@@ -97,16 +104,13 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   // CABEÇALHO ELEGANTE COM DEGRADÊ
   // ============================================
 
-  // Fundo do cabeçalho com efeito visual
   doc.setFillColor(...colors.primary);
   doc.rect(0, 0, pageWidth, 70, "F");
 
-  // Bordas decorativas douradas
   doc.setFillColor(...colors.gold);
   doc.rect(0, 68, pageWidth, 2, "F");
   doc.rect(0, 0, pageWidth, 2, "F");
 
-  // Detalhes decorativos laterais
   doc.setFillColor(...colors.lightGold);
   for (let i = 0; i < 8; i++) {
     doc.circle(5, 10 + i * 7, 1, "F");
@@ -115,13 +119,11 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   yPosition = 20;
 
-  // Nome da empresa
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...colors.gold);
   doc.text("SÍTIO CANTO DA MATA", pageWidth / 2, yPosition, { align: "center" });
 
-  // Linha decorativa sob o nome
   doc.setDrawColor(...colors.gold);
   doc.setLineWidth(0.5);
   const lineWidth = 60;
@@ -129,14 +131,12 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   yPosition += 12;
 
-  // Título "ORÇAMENTO" destacado
   doc.setFontSize(28);
   doc.setTextColor(...colors.white);
   doc.text("ORÇAMENTO", pageWidth / 2, yPosition, { align: "center" });
 
   yPosition += 10;
 
-  // Número do orçamento em caixa destacada
   doc.setFillColor(...colors.gold);
   const idText = `Nº ${quote.id}`;
   const idWidth = doc.getTextWidth(idText) + 10;
@@ -149,21 +149,18 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   yPosition = 85;
 
   // ============================================
-  // INFORMAÇÕES DO CLIENTE - Card Moderno
+  // INFORMAÇÕES DO CLIENTE
   // ============================================
 
-  // Card com sombra simulada
   doc.setFillColor(240, 240, 240);
   doc.roundedRect(margin - 1, yPosition + 1, contentWidth + 2, 38, 3, 3, "F");
 
   doc.setFillColor(...colors.white);
   doc.roundedRect(margin, yPosition, contentWidth, 38, 3, 3, "F");
 
-  // Barra lateral decorativa
   doc.setFillColor(...colors.gold);
   doc.rect(margin, yPosition, 4, 38, "F");
 
-  // Título da seção
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...colors.primary);
@@ -171,14 +168,12 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   yPosition += 18;
 
-  // Informações em grid organizado
   doc.setFontSize(10);
   doc.setTextColor(...colors.text);
 
   const infoStartX = margin + 10;
   const col2Start = pageWidth / 2 + 5;
 
-  // Linha 1
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...colors.textLight);
   doc.text("Cliente:", infoStartX, yPosition);
@@ -195,7 +190,6 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   yPosition += 8;
 
-  // Linha 2
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...colors.textLight);
   doc.text("Nº Convidados:", infoStartX, yPosition);
@@ -206,18 +200,16 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   yPosition += 25;
 
   // ============================================
-  // COMPOSIÇÃO DO VALOR - Tabela Moderna
+  // COMPOSIÇÃO DO VALOR - ITENS
   // ============================================
 
-  // Header da seção com ícone decorativo
   doc.setFillColor(...colors.primary);
   doc.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, "F");
 
   doc.setTextColor(...colors.gold);
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  const composicaoTitle = quote.pacoteNome ? `${quote.pacoteNome.toUpperCase()}` : "COMPOSIÇÃO DO VALOR";
-  doc.text(composicaoTitle, margin + 5, yPosition + 7);
+  doc.text("COMPOSIÇÃO DO VALOR", margin + 5, yPosition + 7);
 
   yPosition += 18;
 
@@ -233,60 +225,28 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   yPosition += 13;
 
-  // Items da composição
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...colors.text);
   doc.setFontSize(10);
 
   let itemIndex = 0;
 
-  if (quote.composicao) {
-    // Espaço
-    if (itemIndex % 2 === 0) {
-      doc.setFillColor(...colors.bg);
-      doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
-    }
-    doc.text(`Espaço — ${quote.composicao.ano}`, margin + 5, yPosition);
-    doc.setFont("helvetica", "bold");
-    doc.text(formatCurrency(quote.composicao.espaco), pageWidth - margin - 5, yPosition, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    yPosition += 9;
-    itemIndex++;
-
-    // Decoração
-    if (itemIndex % 2 === 0) {
-      doc.setFillColor(...colors.bg);
-      doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
-    }
-    doc.text("Decoração", margin + 5, yPosition);
-    doc.setFont("helvetica", "bold");
-    doc.text(formatCurrency(quote.composicao.decoracao), pageWidth - margin - 5, yPosition, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    yPosition += 9;
-    itemIndex++;
-
-    // Buffet
-    if (quote.composicao.buffet !== null) {
+  // Renderizar itens da composição
+  if (quote.composicao && quote.composicao.itens && quote.composicao.itens.length > 0) {
+    quote.composicao.itens.forEach((item) => {
       if (itemIndex % 2 === 0) {
         doc.setFillColor(...colors.bg);
         doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
       }
-      doc.text(`Buffet — ${quote.composicao.buffetNome || "Menu"}`, margin + 5, yPosition);
+
+      // Nome do item com tipo entre parênteses
+      const tipoLabel = item.tipo === 'espaco' ? 'Espaço' : 
+                        item.tipo === 'buffet' ? 'Buffet' : 
+                        item.tipo === 'servico' ? 'Serviço' : item.tipo;
+      
+      doc.text(`${item.nome} (${tipoLabel})`, margin + 5, yPosition);
       doc.setFont("helvetica", "bold");
-      doc.text(formatCurrency(quote.composicao.buffet), pageWidth - margin - 5, yPosition, { align: "right" });
-      doc.setFont("helvetica", "normal");
-      yPosition += 9;
-      itemIndex++;
-    }
-  } else {
-    quote.items.forEach((item) => {
-      if (itemIndex % 2 === 0) {
-        doc.setFillColor(...colors.bg);
-        doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
-      }
-      doc.text(item.description, margin + 5, yPosition);
-      doc.setFont("helvetica", "bold");
-      doc.text(formatCurrency(item.value), pageWidth - margin - 5, yPosition, { align: "right" });
+      doc.text(formatCurrency(item.valor_total), pageWidth - margin - 5, yPosition, { align: "right" });
       doc.setFont("helvetica", "normal");
       yPosition += 9;
       itemIndex++;
@@ -331,27 +291,59 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   yPosition += 5;
 
-  // Linha divisória elegante
+  // Linha divisória
   doc.setDrawColor(...colors.gold);
   doc.setLineWidth(1);
   doc.line(margin, yPosition, pageWidth - margin, yPosition);
 
-  yPosition += 12;
+  yPosition += 10;
+
+  // ============================================
+  // SUBTOTAL, DESCONTO E TOTAL
+  // ============================================
+
+  const hasDesconto = quote.desconto && quote.desconto.valor > 0;
+
+  if (hasDesconto) {
+    // Subtotal (antes do desconto)
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...colors.textLight);
+    doc.text("Subtotal:", margin + 5, yPosition);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...colors.text);
+    const subtotal = quote.composicao?.total_geral || (quote.totalValue + quote.desconto.valor);
+    doc.text(formatCurrency(subtotal), pageWidth - margin - 5, yPosition, { align: "right" });
+
+    yPosition += 8;
+
+    // Desconto
+    doc.setFillColor(240, 255, 240);
+    doc.rect(margin, yPosition - 4, contentWidth, 10, "F");
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...colors.green);
+    const descontoLabel = quote.desconto.descricao 
+      ? `Desconto (${quote.desconto.descricao}):`
+      : `Desconto (${quote.desconto.percentual.toFixed(1)}%):`;
+    doc.text(descontoLabel, margin + 5, yPosition + 2);
+    doc.setFont("helvetica", "bold");
+    doc.text(`- ${formatCurrency(quote.desconto.valor)}`, pageWidth - margin - 5, yPosition + 2, { align: "right" });
+
+    yPosition += 15;
+  }
 
   // Total destacado em card
   const totalBoxWidth = 95;
   const totalBoxHeight = 18;
   const totalBoxX = pageWidth - margin - totalBoxWidth;
 
-  // Sombra do card de total
   doc.setFillColor(200, 200, 200);
   doc.roundedRect(totalBoxX + 1, yPosition - totalBoxHeight / 2 + 1, totalBoxWidth, totalBoxHeight, 3, 3, "F");
 
-  // Card de total com gradiente simulado
   doc.setFillColor(...colors.primary);
   doc.roundedRect(totalBoxX, yPosition - totalBoxHeight / 2, totalBoxWidth, totalBoxHeight, 3, 3, "F");
 
-  // Borda dourada
   doc.setDrawColor(...colors.gold);
   doc.setLineWidth(1.5);
   doc.roundedRect(totalBoxX, yPosition - totalBoxHeight / 2, totalBoxWidth, totalBoxHeight, 3, 3, "S");
@@ -365,25 +357,7 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   doc.setTextColor(...colors.gold);
   doc.text(formatCurrency(quote.totalValue), pageWidth - margin - 7, yPosition + 1, { align: "right" });
 
-  yPosition += 20;
-
-  // Info adicional em box destacado
-  if (quote.composicao) {
-    doc.setFillColor(...colors.bgAlt);
-    doc.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, "F");
-
-    doc.setTextColor(...colors.textLight);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `Convidado adicional: ${formatCurrency(quote.composicao.custoConvidadoAdicional)}`,
-      margin + 5,
-      yPosition + 7,
-    );
-    yPosition += 15;
-  }
-
-  yPosition += 10;
+  yPosition += 25;
 
   // ============================================
   // CONDIÇÕES DE PAGAMENTO
@@ -396,7 +370,6 @@ export const generateQuotePDF = (quote: QuoteData): void => {
       yPosition = 20;
     }
 
-    // Header da seção
     doc.setFillColor(...colors.primary);
     doc.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, "F");
 
@@ -438,7 +411,6 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
     yPosition += 13;
 
-    // Linhas das parcelas
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...colors.text);
     doc.setFontSize(9);
@@ -459,7 +431,6 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
     yPosition += 3;
 
-    // Total das parcelas
     const totalParcelas = quote.paymentTerms.parcelas.reduce((sum, p) => sum + p.valor, 0);
 
     doc.setDrawColor(...colors.divider);
@@ -486,7 +457,6 @@ export const generateQuotePDF = (quote: QuoteData): void => {
     yPosition = 20;
   }
 
-  // Header da seção
   doc.setFillColor(...colors.primary);
   doc.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, "F");
 
@@ -497,10 +467,8 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   yPosition += 18;
 
-  // Datas em boxes
   const dateBoxWidth = (contentWidth - 10) / 2;
 
-  // Box data de emissão
   doc.setFillColor(...colors.bg);
   doc.roundedRect(margin, yPosition, dateBoxWidth, 10, 2, 2, "F");
   doc.setTextColor(...colors.textLight);
@@ -511,7 +479,6 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   doc.setTextColor(...colors.text);
   doc.text(formatDate(quote.createdAt), margin + 5, yPosition + 8);
 
-  // Box válido até
   doc.setFillColor(...colors.bg);
   doc.roundedRect(margin + dateBoxWidth + 10, yPosition, dateBoxWidth, 10, 2, 2, "F");
   doc.setTextColor(...colors.textLight);
@@ -524,7 +491,6 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   yPosition += 18;
 
-  // Termos e condições
   doc.setFontSize(9);
   doc.setTextColor(...colors.textLight);
   doc.setFont("helvetica", "normal");
@@ -542,23 +508,20 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   });
 
   // ============================================
-  // RODAPÉ ELEGANTE
+  // RODAPÉ
   // ============================================
 
   const footerY = pageHeight - 25;
 
-  // Linha decorativa
   doc.setDrawColor(...colors.gold);
   doc.setLineWidth(1.5);
   doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
 
-  // Detalhes decorativos
   doc.setFillColor(...colors.gold);
   doc.circle(margin, footerY - 5, 2, "F");
   doc.circle(pageWidth - margin, footerY - 5, 2, "F");
   doc.circle(pageWidth / 2, footerY - 5, 2, "F");
 
-  // Mensagem de agradecimento
   doc.setFontSize(10);
   doc.setTextColor(...colors.primary);
   doc.setFont("helvetica", "italic");
@@ -569,7 +532,6 @@ export const generateQuotePDF = (quote: QuoteData): void => {
     { align: "center" },
   );
 
-  // Info de geração
   doc.setFontSize(8);
   doc.setTextColor(...colors.textLight);
   doc.setFont("helvetica", "normal");

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Await, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -401,7 +401,7 @@ export default function NovoOrcamento() {
     // Calcular valor total final com desconto
     const valorTotalFinal = composicao.total_geral - (discount?.valor || 0);
 
-    const quoteData = await createQuote({
+    const quote = await createQuote({
       client_id: clienteId,
       tipo_evento: tipoEvento || null,
       data_status: dataStatus,
@@ -443,8 +443,6 @@ export default function NovoOrcamento() {
       parcelas_json: paymentTerms.parcelas,
       extras_json: extras,
     });
-
-    const quote = await createQuote(quoteData as any);
 
     setIsSaving(false);
 
