@@ -9,12 +9,26 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { formatPhone } from '@/lib/masks';
 import { PasswordStrength } from './PasswordStrength';
+import { supabase } from '@/integrations/supabase/client';
+
+// Phone format validation regex: (XX) XXXXX-XXXX or (XX) XXXX-XXXX
+const phoneFormatRegex = /^\(\d{2}\) \d{4,5}-\d{4}$/;
 
 const schema = z.object({
-  name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').max(100),
-  email: z.string().email('Email inválido').max(255),
-  whatsapp: z.string().min(10, 'WhatsApp inválido').max(20),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').max(72),
+  name: z.string()
+    .min(5, 'Nome deve ter no mínimo 5 caracteres')
+    .max(100, 'Nome deve ter no máximo 100 caracteres'),
+  email: z.string()
+    .min(1, 'Email é obrigatório')
+    .email('Email inválido - deve conter @')
+    .max(255, 'Email deve ter no máximo 255 caracteres')
+    .refine(val => val.includes('@'), {
+      message: 'Email deve conter @',
+    }),
+  whatsapp: z.string().max(20).optional(),
+  password: z.string()
+    .min(6, 'Senha deve ter no mínimo 6 caracteres')
+    .max(72, 'Senha deve ter no máximo 72 caracteres'),
   allowContact: z.boolean().default(true),
   acceptTerms: z.boolean().refine(val => val === true, {
     message: 'Você precisa aceitar os termos para continuar',
@@ -22,6 +36,23 @@ const schema = z.object({
   acceptPrivacy: z.boolean().refine(val => val === true, {
     message: 'Você precisa aceitar a política de privacidade',
   }),
+}).superRefine((data, ctx) => {
+  // If allowContact is checked, whatsapp must be valid
+  if (data.allowContact) {
+    if (!data.whatsapp || data.whatsapp.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'WhatsApp é obrigatório quando você aceita receber contato',
+        path: ['whatsapp'],
+      });
+    } else if (!phoneFormatRegex.test(data.whatsapp)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'WhatsApp deve estar no formato (XX) XXXXX-XXXX',
+        path: ['whatsapp'],
+      });
+    }
+  }
 });
 
 type FormData = z.infer<typeof schema>;
@@ -50,17 +81,37 @@ export function Step1CreateAccount({ onComplete, isSubmitting, defaultValues }: 
 
   const handleSubmit = async (data: FormData) => {
     try {
+      // Check if email is already registered
+      const { data: existingUsers } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', data.email.toLowerCase())
+        .limit(1);
+
+      if (existingUsers && existingUsers.length > 0) {
+        form.setError('email', {
+          type: 'manual',
+          message: 'Este email já está cadastrado. Faça login ou use outro email.',
+        });
+        return;
+      }
+
       await onComplete({
         name: data.name,
         email: data.email,
         password: data.password,
-        whatsapp: data.whatsapp,
+        whatsapp: data.whatsapp || '',
         allowContact: data.allowContact,
       });
     } catch (error: any) {
       let message = 'Erro ao criar conta. Tente novamente.';
       if (error?.message?.includes('already registered')) {
         message = 'Este email já está cadastrado. Faça login ou use outro email.';
+        form.setError('email', {
+          type: 'manual',
+          message,
+        });
+        return;
       }
       toast({
         title: 'Erro',
