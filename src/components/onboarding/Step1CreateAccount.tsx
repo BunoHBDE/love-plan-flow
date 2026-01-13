@@ -8,6 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { formatPhone } from '@/lib/masks';
+import { PasswordStrength } from './PasswordStrength';
 
 const schema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').max(100),
@@ -155,6 +156,7 @@ export function Step1CreateAccount({ onComplete, isSubmitting, defaultValues }: 
                     {...field} 
                   />
                 </FormControl>
+                <PasswordStrength password={field.value} />
                 <FormMessage />
               </FormItem>
             )}
