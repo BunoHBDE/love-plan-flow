@@ -47,7 +47,7 @@ export function LandingNavbar() {
               <Link to="/auth">Entrar</Link>
             </Button>
             <Button variant="gold" asChild>
-              <Link to="/auth?mode=signup">Começar Grátis</Link>
+              <Link to="/cadastro">Começar Grátis</Link>
             </Button>
           </div>
 
@@ -82,7 +82,7 @@ export function LandingNavbar() {
                   <Link to="/auth">Entrar</Link>
                 </Button>
                 <Button variant="gold" asChild className="w-full">
-                  <Link to="/auth?mode=signup">Começar Grátis</Link>
+                  <Link to="/cadastro">Começar Grátis</Link>
                 </Button>
               </div>
             </div>

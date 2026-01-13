@@ -182,6 +182,12 @@ export default function Auth() {
                   </Button>
                 </form>
               </Form>
+              <p className="text-center text-sm text-muted-foreground mt-6">
+                Não tem uma conta?{' '}
+                <a href="/cadastro" className="text-accent hover:underline font-medium">
+                  Criar conta grátis
+                </a>
+              </p>
             </CardContent>
           </>
         )}
