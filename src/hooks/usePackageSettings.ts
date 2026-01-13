@@ -70,7 +70,9 @@ async function createPackage(packageData: CreatePackageData): Promise<PackageDat
       itens_pacote: packageData.itens_pacote as any,
       desconto_percentual: packageData.desconto_percentual,
       desconto_percentual_variavel: packageData.desconto_percentual_variavel,
-    })
+      preco_base: 0,
+      preco_final: 0,
+    } as any)
     .select()
     .single();
 

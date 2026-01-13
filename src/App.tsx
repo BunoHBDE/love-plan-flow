@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { queryClient } from "./lib/queryClient";
 
 // Pages
+import LandingPage from "./pages/LandingPage";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Clientes from "./pages/Clientes";
@@ -31,13 +32,14 @@ const App = () => (
             <Toaster />
             <Sonner />
             <Routes>
-              {/* Rotas públicas - SEM proteção */}
+              {/* Rota pública - Landing Page */}
+              <Route path="/" element={<LandingPage />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/login" element={<Auth />} />
               
-              {/* Rotas protegidas - COM ProtectedRoute */}
+              {/* Rotas protegidas - Dashboard e funcionalidades */}
               <Route 
-                path="/" 
+                path="/dashboard" 
                 element={
                   <ProtectedRoute>
                     <Index />
@@ -117,7 +119,7 @@ const App = () => (
                 } 
               />
 
-              {/* Catch-all - redireciona para home (que exigirá login) */}
+              {/* Catch-all - redireciona para landing */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </TooltipProvider>
