@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { SUBSCRIPTION_PRICES } from '@/hooks/useSubscription';
+import { FadeInUp, ScaleIn } from './AnimatedSection';
 
 const features = [
   'Orçamentos ilimitados em PDF',
@@ -26,10 +28,10 @@ export function PricingSection() {
     : SUBSCRIPTION_PRICES.monthly.amount.toFixed(2);
 
   return (
-    <section id="precos" className="py-16 md:py-24 bg-card">
+    <section id="precos" className="py-16 md:py-24 bg-card overflow-hidden">
       <div className="container mx-auto px-4">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
+        <FadeInUp className="text-center max-w-2xl mx-auto mb-12">
           <h2 className="text-2xl md:text-4xl font-bold text-primary mb-4">
             Plano simples,{' '}
             <span className="text-gradient-gold">preço justo</span>
@@ -37,10 +39,10 @@ export function PricingSection() {
           <p className="text-muted-foreground text-lg">
             Comece com 14 dias grátis. Sem compromisso, cancele quando quiser.
           </p>
-        </div>
+        </FadeInUp>
 
         {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-4 mb-10">
+        <FadeInUp delay={0.1} className="flex items-center justify-center gap-4 mb-10">
           <button
             onClick={() => setBillingPeriod('monthly')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -66,11 +68,14 @@ export function PricingSection() {
               </span>
             )}
           </button>
-        </div>
+        </FadeInUp>
 
         {/* Pricing Card */}
-        <div className="max-w-md mx-auto">
-          <div className="relative rounded-2xl bg-background border-2 border-accent shadow-gold p-8 animate-scale-in">
+        <ScaleIn delay={0.2} className="max-w-md mx-auto">
+          <motion.div
+            layout
+            className="relative rounded-2xl bg-background border-2 border-accent shadow-gold p-8"
+          >
             {/* Popular Badge */}
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
               <div className="flex items-center gap-1.5 bg-gradient-gold text-primary-foreground px-4 py-1.5 rounded-full text-sm font-medium shadow-gold">
@@ -80,7 +85,13 @@ export function PricingSection() {
             </div>
 
             {/* Price */}
-            <div className="text-center mb-8 pt-4">
+            <motion.div 
+              key={billingPeriod}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="text-center mb-8 pt-4"
+            >
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-muted-foreground text-lg">R$</span>
                 <span className="text-5xl font-bold text-primary">{monthlyEquivalent.split('.')[0]}</span>
@@ -88,24 +99,35 @@ export function PricingSection() {
                 <span className="text-muted-foreground">/mês</span>
               </div>
               {billingPeriod === 'yearly' && (
-                <p className="text-sm text-secondary mt-2 font-medium">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm text-secondary mt-2 font-medium"
+                >
                   {SUBSCRIPTION_PRICES.yearly.savings}
-                </p>
+                </motion.p>
               )}
               {billingPeriod === 'yearly' && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Cobrado anualmente: R$ {SUBSCRIPTION_PRICES.yearly.amount.toFixed(2)}
                 </p>
               )}
-            </div>
+            </motion.div>
 
             {/* Features */}
             <ul className="space-y-3 mb-8">
-              {features.map((feature) => (
-                <li key={feature} className="flex items-start gap-3">
+              {features.map((feature, index) => (
+                <motion.li
+                  key={feature}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: 0.3 + index * 0.05 }}
+                  className="flex items-start gap-3"
+                >
                   <Check size={18} className="text-secondary mt-0.5 flex-shrink-0" />
                   <span className="text-foreground">{feature}</span>
-                </li>
+                </motion.li>
               ))}
             </ul>
 
@@ -119,8 +141,8 @@ export function PricingSection() {
             <p className="text-center text-xs text-muted-foreground mt-4">
               Sem cartão de crédito para iniciar o trial
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </ScaleIn>
       </div>
     </section>
   );
