@@ -32,7 +32,7 @@ export default function Cadastro() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
-  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     name: '',
     email: '',
@@ -48,11 +48,21 @@ export default function Cadastro() {
     socialContact: '',
   });
 
+  // Cooldown timer effect
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    
+    const timer = setInterval(() => {
+      setResendCooldown(prev => prev - 1);
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   const handleResendEmail = async () => {
-    if (!onboardingData.email) return;
+    if (!onboardingData.email || resendCooldown > 0) return;
     
     setIsResendingEmail(true);
-    setResendSuccess(false);
     
     const { error } = await supabase.auth.resend({
       type: 'signup',
@@ -65,8 +75,7 @@ export default function Cadastro() {
     setIsResendingEmail(false);
     
     if (!error) {
-      setResendSuccess(true);
-      setTimeout(() => setResendSuccess(false), 5000);
+      setResendCooldown(60); // 60 seconds cooldown
     }
   };
   
@@ -220,7 +229,7 @@ export default function Cadastro() {
                   <Button
                     variant="outline"
                     onClick={handleResendEmail}
-                    disabled={isResendingEmail || resendSuccess}
+                    disabled={isResendingEmail || resendCooldown > 0}
                     className="gap-2"
                   >
                     {isResendingEmail ? (
@@ -228,10 +237,10 @@ export default function Cadastro() {
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Reenviando...
                       </>
-                    ) : resendSuccess ? (
+                    ) : resendCooldown > 0 ? (
                       <>
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                        Email reenviado!
+                        Reenviar em {resendCooldown}s
                       </>
                     ) : (
                       <>
