@@ -40,12 +40,9 @@ export function BenefitsSection() {
         </FadeInUp>
 
         {/* Benefits Grid */}
-        <StaggerContainer 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8"
-          staggerDelay={0.15}
-        >
-          {benefits.map((benefit) => (
-            <StaggerItem key={benefit.title}>
+        <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+          {benefits.map((benefit, index) => (
+            <StaggerItem key={benefit.title} index={index}>
               <div className="group h-full p-6 md:p-8 rounded-2xl bg-card border border-border hover:border-accent hover:shadow-soft transition-all duration-300">
                 <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center mb-4 group-hover:bg-accent/30 group-hover:scale-110 transition-all duration-300">
                   <benefit.icon size={24} className="text-accent" />
