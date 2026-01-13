@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -29,6 +29,7 @@ type AuthView = 'login' | 'forgot-password' | 'reset-sent';
 export default function Auth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authView, setAuthView] = useState<AuthView>('login');
+  const [showPassword, setShowPassword] = useState(false);
   const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -143,11 +144,25 @@ export default function Auth() {
                       <FormItem>
                         <FormLabel>Senha</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="password" 
-                            placeholder="••••••••" 
-                            {...field} 
-                          />
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? 'text' : 'password'} 
+                              placeholder="••••••••" 
+                              className="pr-10"
+                              {...field} 
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-5 w-5" />
+                              ) : (
+                                <Eye className="h-5 w-5" />
+                              )}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
