@@ -21,7 +21,7 @@ export function LandingNavbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <span className="text-xl md:text-2xl font-semibold text-primary">
-              EventosPro
+              Ayllah
             </span>
           </Link>
 

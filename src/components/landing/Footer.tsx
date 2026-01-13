@@ -9,7 +9,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Logo */}
           <div className="text-lg font-semibold text-primary">
-            EventosPro
+            Ayllah
           </div>
 
           {/* Links */}
@@ -24,7 +24,7 @@ export function Footer() {
 
           {/* Copyright */}
           <p className="text-sm text-muted-foreground">
-            © {currentYear} EventosPro. Todos os direitos reservados.
+            © {currentYear} Ayllah. Todos os direitos reservados.
           </p>
         </div>
       </div>
