@@ -13,10 +13,11 @@ type QuoteRow = Database['public']['Tables']['quotes']['Row'];
 type QuoteInsertDB = Database['public']['Tables']['quotes']['Insert'];
 type QuoteUpdateDB = Database['public']['Tables']['quotes']['Update'];
 
-export interface Quote extends QuoteRow {
+// Interface customizada que combina os dados do banco com client join
+export interface Quote extends Omit<QuoteRow, 'espaco_id' | 'buffet_id' | 'servico_ids' | 'pacote_id' | 'servico_quantidades' | 'composicao_preco' | 'desconto_descricao' | 'desconto_percentual' | 'desconto_valor'> {
   client?: any;
   
-  // ✅ Novos campos que podem não estar nos tipos do Supabase ainda
+  // ✅ Campos que podem ser nulos ou não existir
   espaco_id?: string | null;
   buffet_id?: string | null;
   servico_ids?: string[] | null;

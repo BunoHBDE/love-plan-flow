@@ -150,13 +150,7 @@ export default function Orcamentos() {
         }))
       : undefined;
 
-    // ✅ NOVO: Extrair dados da composição
-    const items = composicaoPreco?.itens?.map((item: any) => ({
-      description: item.nome,
-      value: item.valor_total,
-      tipo: item.tipo,
-      tipo_preco: item.tipo_preco,
-    })) || [];
+    // ✅ NOVO: Extrair dados da composição (já incluído em composicao.itens)
 
     generateQuotePDF({
       id: quote.quote_number,
@@ -167,7 +161,6 @@ export default function Orcamentos() {
       status: quote.status as any,
       createdAt: quote.created_at.split("T")[0],
       validUntil: quote.validade || "",
-      items,
       paymentTerms,
       // ✅ NOVO: Passar composição completa
       composicao: composicaoPreco ? {
