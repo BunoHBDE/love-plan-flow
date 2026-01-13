@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { formatPhone } from '@/lib/masks';
 import { PasswordStrength } from './PasswordStrength';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,6 +66,7 @@ interface Step1Props {
 
 export function Step1CreateAccount({ onComplete, isSubmitting, defaultValues }: Step1Props) {
   const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
   
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -200,12 +202,25 @@ export function Step1CreateAccount({ onComplete, isSubmitting, defaultValues }: 
               <FormItem>
                 <FormLabel>Senha</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="password" 
-                    placeholder="Mínimo 6 caracteres" 
-                    className="h-12"
-                    {...field} 
-                  />
+                  <div className="relative">
+                    <Input 
+                      type={showPassword ? 'text' : 'password'} 
+                      placeholder="Mínimo 6 caracteres" 
+                      className="h-12 pr-10"
+                      {...field} 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
                 </FormControl>
                 <PasswordStrength password={field.value} />
                 <FormMessage />
