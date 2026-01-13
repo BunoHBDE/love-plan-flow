@@ -116,6 +116,57 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_data: {
+        Row: {
+          allow_contact: boolean | null
+          completed_at: string | null
+          created_at: string
+          event_type: string | null
+          id: string
+          main_challenge: string | null
+          quotes_per_month: string | null
+          social_contact: string | null
+          space_name: string | null
+          space_type: string | null
+          updated_at: string
+          user_id: string
+          user_role: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          allow_contact?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          main_challenge?: string | null
+          quotes_per_month?: string | null
+          social_contact?: string | null
+          space_name?: string | null
+          space_type?: string | null
+          updated_at?: string
+          user_id: string
+          user_role?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          allow_contact?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          main_challenge?: string | null
+          quotes_per_month?: string | null
+          social_contact?: string | null
+          space_name?: string | null
+          space_type?: string | null
+          updated_at?: string
+          user_id?: string
+          user_role?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       payment_settings: {
         Row: {
           created_at: string

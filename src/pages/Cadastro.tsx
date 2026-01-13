@@ -96,8 +96,8 @@ export default function Cadastro() {
     const finalData = { ...onboardingData, ...data };
     updateData(data);
 
-    // Save onboarding data to profile
     if (user) {
+      // Save to profiles table
       await supabase
         .from('profiles')
         .update({
@@ -105,10 +105,29 @@ export default function Cadastro() {
           whatsapp: finalData.whatsapp,
         })
         .eq('id', user.id);
+
+      // Save onboarding data for analytics
+      await supabase
+        .from('onboarding_data')
+        .upsert({
+          user_id: user.id,
+          whatsapp: finalData.whatsapp,
+          allow_contact: finalData.allowContact,
+          space_name: finalData.spaceName,
+          space_type: finalData.spaceType,
+          user_role: finalData.userRole,
+          main_challenge: finalData.mainChallenge,
+          quotes_per_month: finalData.quotesPerMonth,
+          event_type: finalData.eventType,
+          social_contact: finalData.socialContact,
+          completed_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id',
+        });
     }
 
     setIsSubmitting(false);
-    navigate('/');
+    navigate('/dashboard');
   };
 
   if (loading) {
