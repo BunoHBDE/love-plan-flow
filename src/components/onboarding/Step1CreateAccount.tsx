@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { formatPhone } from '@/lib/masks';
 
 const schema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').max(100),
@@ -131,7 +132,8 @@ export function Step1CreateAccount({ onComplete, isSubmitting, defaultValues }: 
                     type="tel" 
                     placeholder="(11) 99999-9999" 
                     className="h-12"
-                    {...field} 
+                    value={field.value}
+                    onChange={(e) => field.onChange(formatPhone(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage />
