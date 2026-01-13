@@ -108,7 +108,7 @@ export function PricingSection() {
 
             {/* CTA */}
             <Button variant="gold" size="lg" className="w-full" asChild>
-              <Link to="/auth?mode=signup">
+              <Link to="/cadastro">
                 Começar 14 dias grátis
               </Link>
             </Button>
