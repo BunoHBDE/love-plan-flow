@@ -29,6 +29,7 @@ export interface OnboardingData {
 export default function Cadastro() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     name: '',
     email: '',
@@ -132,7 +133,24 @@ export default function Cadastro() {
     }
 
     setIsSubmitting(false);
-    navigate('/dashboard');
+    
+    // Show email confirmation message
+    setShowEmailConfirmation(true);
+    
+    // Try to auto-login with the credentials from onboarding
+    if (finalData.email && finalData.password) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: finalData.email,
+        password: finalData.password,
+      });
+      
+      // If login succeeds, redirect to dashboard after a short delay
+      if (!signInError) {
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 3000);
+      }
+    }
   };
 
   if (loading) {
@@ -148,51 +166,78 @@ export default function Cadastro() {
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-lg">
-          {currentStep === 1 && (
-            <Step1CreateAccount 
-              onComplete={handleStep1Complete}
-              isSubmitting={isSubmitting}
-              defaultValues={onboardingData}
-            />
-          )}
-          {currentStep === 2 && (
-            <Step2SpaceProfile 
-              onComplete={handleStep2Complete}
-              defaultValues={onboardingData}
-            />
-          )}
-          {currentStep === 3 && (
-            <Step3BusinessOperation 
-              onComplete={handleStep3Complete}
-              isSubmitting={isSubmitting}
-              defaultValues={onboardingData}
-            />
-          )}
+          {showEmailConfirmation ? (
+            <div className="text-center space-y-6">
+              <div className="mx-auto w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground mb-2">Confirme seu email</h2>
+                <p className="text-muted-foreground">
+                  Enviamos um link de confirmação para <span className="font-medium text-foreground">{onboardingData.email}</span>.
+                </p>
+                <p className="text-muted-foreground mt-2">
+                  Por favor, verifique sua caixa de entrada e clique no link para ativar sua conta.
+                </p>
+              </div>
+              <div className="pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Você será redirecionado automaticamente...
+                </p>
+                <Loader2 className="h-5 w-5 animate-spin text-accent mx-auto mt-3" />
+              </div>
+            </div>
+          ) : (
+            <>
+              {currentStep === 1 && (
+                <Step1CreateAccount 
+                  onComplete={handleStep1Complete}
+                  isSubmitting={isSubmitting}
+                  defaultValues={onboardingData}
+                />
+              )}
+              {currentStep === 2 && (
+                <Step2SpaceProfile 
+                  onComplete={handleStep2Complete}
+                  defaultValues={onboardingData}
+                />
+              )}
+              {currentStep === 3 && (
+                <Step3BusinessOperation 
+                  onComplete={handleStep3Complete}
+                  isSubmitting={isSubmitting}
+                  defaultValues={onboardingData}
+                />
+              )}
 
-          {/* Step indicator */}
-          <div className="flex justify-center gap-2 mt-8">
-            {[1, 2, 3].map((step) => (
-              <div
-                key={step}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  step === currentStep 
-                    ? 'w-8 bg-accent' 
-                    : step < currentStep 
-                      ? 'w-2 bg-accent/50' 
-                      : 'w-2 bg-border'
-                }`}
-              />
-            ))}
-          </div>
+              {/* Step indicator */}
+              <div className="flex justify-center gap-2 mt-8">
+                {[1, 2, 3].map((step) => (
+                  <div
+                    key={step}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      step === currentStep 
+                        ? 'w-8 bg-accent' 
+                        : step < currentStep 
+                          ? 'w-2 bg-accent/50' 
+                          : 'w-2 bg-border'
+                    }`}
+                  />
+                ))}
+              </div>
 
-          {/* Login link on step 1 */}
-          {currentStep === 1 && (
-            <p className="text-center text-sm text-muted-foreground mt-6">
-              Já tem uma conta?{' '}
-              <a href="/auth" className="text-accent hover:underline font-medium">
-                Fazer login
-              </a>
-            </p>
+              {/* Login link on step 1 */}
+              {currentStep === 1 && (
+                <p className="text-center text-sm text-muted-foreground mt-6">
+                  Já tem uma conta?{' '}
+                  <a href="/auth" className="text-accent hover:underline font-medium">
+                    Fazer login
+                  </a>
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>
