@@ -11,7 +11,7 @@ export function CTASection() {
             Pronto para transformar a gestão do seu espaço?
           </h2>
           <p className="text-primary-foreground/80 text-lg mb-8 max-w-xl mx-auto">
-            Junte-se a centenas de gestores de eventos que já simplificaram seu dia a dia com o EventosPro.
+            Junte-se a centenas de gestores de eventos que já simplificaram seu dia a dia com a Ayllah.
           </p>
           <Button 
             variant="gold" 
