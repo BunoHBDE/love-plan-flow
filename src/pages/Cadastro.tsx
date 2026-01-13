@@ -64,7 +64,7 @@ export default function Cadastro() {
 
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
@@ -81,6 +81,11 @@ export default function Cadastro() {
 
     if (error) {
       throw error;
+    }
+
+    // Check if user already exists (Supabase returns user with empty identities)
+    if (signUpData?.user?.identities?.length === 0) {
+      throw new Error('User already registered');
     }
 
     setCurrentStep(2);
