@@ -41,7 +41,7 @@ export function HeroSection() {
           <FadeInUp delay={0.3}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
               <Button variant="gold" size="xl" asChild>
-                <Link to="/auth?mode=signup" className="flex items-center gap-2">
+                <Link to="/cadastro" className="flex items-center gap-2">
                   Experimente 14 dias grátis
                   <ArrowRight size={20} />
                 </Link>

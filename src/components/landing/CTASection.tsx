@@ -25,7 +25,7 @@ export function CTASection() {
               asChild
               className="shadow-gold"
             >
-              <Link to="/auth?mode=signup" className="flex items-center gap-2">
+              <Link to="/cadastro" className="flex items-center gap-2">
                 Começar Meu Teste Grátis
                 <ArrowRight size={20} />
               </Link>

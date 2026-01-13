@@ -13,6 +13,7 @@ import { queryClient } from "./lib/queryClient";
 import LandingPage from "./pages/LandingPage";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Cadastro from "./pages/Cadastro";
 import Clientes from "./pages/Clientes";
 import Visitas from "./pages/Visitas";
 import Orcamentos from "./pages/Orcamentos";
@@ -32,10 +33,11 @@ const App = () => (
             <Toaster />
             <Sonner />
             <Routes>
-              {/* Rota pública - Landing Page */}
+              {/* Rotas públicas */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/login" element={<Auth />} />
+              <Route path="/cadastro" element={<Cadastro />} />
               
               {/* Rotas protegidas - Dashboard e funcionalidades */}
               <Route 
