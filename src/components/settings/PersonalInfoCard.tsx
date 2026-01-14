@@ -4,14 +4,15 @@
  * Card simplificado com dados essenciais do usuário:
  * - Avatar
  * - Nome
- * - Email (somente leitura)
+ * - Email (somente leitura) + opção de alterar
  */
 
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { User, Mail, Camera, Loader2, Upload, X } from "lucide-react";
+import { User, Mail, Camera, Loader2, Upload, X, Pencil } from "lucide-react";
 import type { ProfileData } from "@/constants/settings";
 
 interface PersonalInfoCardProps {
@@ -24,6 +25,12 @@ interface PersonalInfoCardProps {
   onAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveAvatar: () => void;
   onTriggerAvatarUpload: () => void;
+
+  // Email
+  newEmail: string;
+  onNewEmailChange: (value: string) => void;
+  isChangingEmail: boolean;
+  onEmailChange: () => void;
 }
 
 export function PersonalInfoCard({
@@ -34,7 +41,13 @@ export function PersonalInfoCard({
   onAvatarChange,
   onRemoveAvatar,
   onTriggerAvatarUpload,
+  newEmail,
+  onNewEmailChange,
+  isChangingEmail,
+  onEmailChange,
 }: PersonalInfoCardProps) {
+  const [showEmailEdit, setShowEmailEdit] = useState(false);
+
   return (
     <Card>
       <CardHeader>
@@ -116,16 +129,72 @@ export function PersonalInfoCard({
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 Email
               </Label>
-              <Input
-                id="email"
-                type="email"
-                value={data.email}
-                disabled
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">
-                O email não pode ser alterado pois está vinculado à sua conta.
-              </p>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="email"
+                  type="email"
+                  value={data.email}
+                  disabled
+                  className="bg-muted flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowEmailEdit(!showEmailEdit)}
+                  title="Alterar email"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Formulário de alteração de email */}
+              {showEmailEdit && (
+                <div className="mt-3 p-4 border rounded-lg bg-muted/30 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="newEmail">Novo email</Label>
+                    <Input
+                      id="newEmail"
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => onNewEmailChange(e.target.value)}
+                      placeholder="Digite o novo email"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Um email de confirmação será enviado para o novo endereço. 
+                    A alteração só será efetivada após a confirmação.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowEmailEdit(false);
+                        onNewEmailChange("");
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={onEmailChange}
+                      disabled={isChangingEmail || !newEmail}
+                    >
+                      {isChangingEmail ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        "Alterar Email"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

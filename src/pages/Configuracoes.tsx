@@ -88,6 +88,12 @@ export default function Configuracoes() {
     togglePasswordVisibility,
     handlePasswordChange,
 
+    // Alteração de email
+    newEmail,
+    setNewEmail,
+    isChangingEmail,
+    handleEmailChange,
+
     // Logout
     handleSignOut,
   } = useProfileSettings();
@@ -108,6 +114,11 @@ export default function Configuracoes() {
             onAvatarChange={handleAvatarChange}
             onRemoveAvatar={removeAvatar}
             onTriggerAvatarUpload={triggerAvatarUpload}
+            // Email
+            newEmail={newEmail}
+            onNewEmailChange={setNewEmail}
+            isChangingEmail={isChangingEmail}
+            onEmailChange={handleEmailChange}
             // Senha
             passwordData={passwordData}
             showPasswords={showPasswords}
