@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AuthRedirectHandler } from "@/components/auth/AuthRedirectHandler";
 import { queryClient } from "./lib/queryClient";
 
 // Pages
@@ -36,6 +37,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <AuthRedirectHandler />
             <Routes>
               {/* Rotas públicas */}
               <Route path="/" element={<LandingPage />} />
