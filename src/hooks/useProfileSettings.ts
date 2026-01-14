@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatCEP } from "@/lib/masks";
+import { z } from "zod";
 import {
   ProfileData,
   PasswordData,
@@ -20,6 +21,14 @@ import {
   INITIAL_PASSWORD_VISIBILITY,
 } from "@/constants/settings";
 import { isPasswordValid } from "@/lib/passwordUtils";
+
+// Schema de validação de email
+const emailSchema = z
+  .string()
+  .trim()
+  .min(1, { message: "O email não pode estar vazio" })
+  .email({ message: "Formato de email inválido" })
+  .max(255, { message: "O email deve ter no máximo 255 caracteres" });
 
 export function useProfileSettings() {
   const { user, signOut } = useAuth();
@@ -425,12 +434,17 @@ export function useProfileSettings() {
   // ==========================================
 
   const handleEmailChange = async () => {
-    if (!newEmail || !newEmail.includes("@")) {
-      toast.error("Insira um email válido");
+    // Validação com zod
+    const validation = emailSchema.safeParse(newEmail);
+    
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
       return;
     }
 
-    if (newEmail === user?.email) {
+    const validatedEmail = validation.data;
+
+    if (validatedEmail.toLowerCase() === user?.email?.toLowerCase()) {
       toast.error("O novo email é igual ao atual");
       return;
     }
