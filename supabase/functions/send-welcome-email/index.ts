@@ -190,7 +190,7 @@ serve(async (req) => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "Ayllah <onboarding@resend.dev>",
+      from: "Ayllah <contato@ayllah.com>",
       to: [email],
       subject: "🎉 Seu trial de 14 dias começou! Bem-vindo ao Ayllah",
       html: emailHtml,
