@@ -26,6 +26,7 @@ import Disponibilidade from "./pages/Disponibilidade";
 import Contratos from "./pages/Contratos";
 import Pagamentos from "./pages/Pagamentos";
 import Configuracoes from "./pages/Configuracoes";
+import RedefinirSenha from "./pages/RedefinirSenha";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="/termos" element={<Termos />} />
               <Route path="/privacidade" element={<Privacidade />} />
               <Route path="/cookies" element={<Cookies />} />
+              <Route path="/redefinir-senha" element={<RedefinirSenha />} />
               
               {/* Rotas protegidas - Dashboard e funcionalidades */}
               <Route 
