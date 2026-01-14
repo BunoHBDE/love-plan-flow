@@ -13,12 +13,16 @@ interface SubscriptionContextValue {
   loading: boolean;
   error: string | null;
   isTrialing: boolean;
+  isAppTrial: boolean;
   isActive: boolean;
   isCanceled: boolean;
+  canStartTrial: boolean;
+  isStartingTrial: boolean;
   trialDaysRemaining: number;
   priceType: 'monthly' | 'yearly' | null;
   hasAccess: boolean; // True if user has active subscription or is trialing
   checkSubscription: () => Promise<void>;
+  startTrial: () => Promise<any>;
   createCheckout: (priceType: 'monthly' | 'yearly') => Promise<any>;
   openCustomerPortal: () => Promise<any>;
 }
@@ -28,7 +32,7 @@ const SubscriptionContext = createContext<SubscriptionContextValue | null>(null)
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const subscriptionData = useSubscription();
   
-  // User has access if they have an active subscription or are in trial
+  // User has access if they have an active subscription or are in trial (app or Stripe)
   const hasAccess = subscriptionData.isActive || subscriptionData.isTrialing;
 
   return (

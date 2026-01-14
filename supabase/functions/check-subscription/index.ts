@@ -38,13 +38,14 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Verificar override no profiles ANTES do Stripe
+    // Verificar profile: override E trial do app
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('subscription_override')
+      .select('subscription_override, trial_started_at, trial_ends_at')
       .eq('id', user.id)
       .single();
 
+    // 1. Verificar override primeiro
     if (profile?.subscription_override === true) {
       logStep("Subscription override found, granting access", { userId: user.id });
       return new Response(JSON.stringify({
@@ -54,13 +55,42 @@ serve(async (req) => {
         current_period_end: null,
         cancel_at_period_end: false,
         price_id: null,
+        app_trial: false,
+        can_start_trial: false,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    // Continua verificação normal do Stripe
+    // 2. Verificar trial gerenciado pelo app
+    const now = new Date();
+    const trialEndsAt = profile?.trial_ends_at ? new Date(profile.trial_ends_at) : null;
+    const trialStartedAt = profile?.trial_started_at ? new Date(profile.trial_started_at) : null;
+    const hasAppTrial = trialStartedAt !== null;
+    const isAppTrialActive = trialEndsAt !== null && trialEndsAt > now;
+
+    if (isAppTrialActive && profile) {
+      logStep("App trial is active", { 
+        trial_started_at: profile.trial_started_at,
+        trial_ends_at: profile.trial_ends_at 
+      });
+      return new Response(JSON.stringify({
+        subscribed: true,
+        status: 'trialing',
+        trial_end: profile.trial_ends_at,
+        current_period_end: null,
+        cancel_at_period_end: false,
+        price_id: null,
+        app_trial: true,
+        can_start_trial: false,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // 3. Continua verificação normal do Stripe
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
@@ -79,6 +109,8 @@ serve(async (req) => {
         current_period_end: null,
         cancel_at_period_end: false,
         price_id: null,
+        app_trial: false,
+        can_start_trial: !hasAppTrial, // Pode iniciar trial se nunca iniciou
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -103,6 +135,8 @@ serve(async (req) => {
         current_period_end: null,
         cancel_at_period_end: false,
         price_id: null,
+        app_trial: false,
+        can_start_trial: !hasAppTrial, // Pode iniciar trial se nunca iniciou
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -133,6 +167,8 @@ serve(async (req) => {
       current_period_end: currentPeriodEnd,
       cancel_at_period_end: subscription.cancel_at_period_end,
       price_id: priceId,
+      app_trial: false,
+      can_start_trial: false, // Já tem assinatura Stripe
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
