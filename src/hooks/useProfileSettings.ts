@@ -22,13 +22,20 @@ import {
 } from "@/constants/settings";
 import { isPasswordValid } from "@/lib/passwordUtils";
 
-// Schema de validação de email
+// Schemas de validação
 const emailSchema = z
   .string()
   .trim()
   .min(1, { message: "O email não pode estar vazio" })
   .email({ message: "Formato de email inválido" })
   .max(255, { message: "O email deve ter no máximo 255 caracteres" });
+
+const nomeSchema = z
+  .string()
+  .trim()
+  .min(2, { message: "O nome deve ter pelo menos 2 caracteres" })
+  .max(100, { message: "O nome deve ter no máximo 100 caracteres" })
+  .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, { message: "O nome deve conter apenas letras, espaços, hífens e apóstrofos" });
 
 export function useProfileSettings() {
   const { user, signOut } = useAuth();
@@ -303,6 +310,13 @@ export function useProfileSettings() {
 
   const handleSave = async () => {
     if (!user?.id) return;
+
+    // Validação do nome
+    const nomeValidation = nomeSchema.safeParse(profileData.nome);
+    if (!nomeValidation.success) {
+      toast.error(nomeValidation.error.errors[0].message);
+      return;
+    }
 
     setIsSaving(true);
 
