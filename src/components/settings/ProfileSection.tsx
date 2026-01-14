@@ -22,6 +22,12 @@ interface ProfileSectionProps {
   onRemoveAvatar: () => void;
   onTriggerAvatarUpload: () => void;
 
+  // Alteração de email
+  newEmail: string;
+  onNewEmailChange: (value: string) => void;
+  isChangingEmail: boolean;
+  onEmailChange: () => void;
+
   // Alteração de senha
   passwordData: PasswordData;
   showPasswords: PasswordVisibility;
@@ -39,6 +45,10 @@ export function ProfileSection({
   onAvatarChange,
   onRemoveAvatar,
   onTriggerAvatarUpload,
+  newEmail,
+  onNewEmailChange,
+  isChangingEmail,
+  onEmailChange,
   passwordData,
   showPasswords,
   isChangingPassword,
@@ -56,6 +66,10 @@ export function ProfileSection({
         onAvatarChange={onAvatarChange}
         onRemoveAvatar={onRemoveAvatar}
         onTriggerAvatarUpload={onTriggerAvatarUpload}
+        newEmail={newEmail}
+        onNewEmailChange={onNewEmailChange}
+        isChangingEmail={isChangingEmail}
+        onEmailChange={onEmailChange}
       />
 
       <PasswordChangeCard

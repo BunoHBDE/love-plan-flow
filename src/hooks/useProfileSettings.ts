@@ -51,6 +51,10 @@ export function useProfileSettings() {
   const [showPasswords, setShowPasswords] = useState<PasswordVisibility>(INITIAL_PASSWORD_VISIBILITY);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // Alteração de email
+  const [newEmail, setNewEmail] = useState("");
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+
   // ==========================================
   // CARREGAR DADOS DO PERFIL
   // ==========================================
@@ -417,6 +421,51 @@ export function useProfileSettings() {
   };
 
   // ==========================================
+  // HANDLERS - ALTERAÇÃO DE EMAIL
+  // ==========================================
+
+  const handleEmailChange = async () => {
+    if (!newEmail || !newEmail.includes("@")) {
+      toast.error("Insira um email válido");
+      return;
+    }
+
+    if (newEmail === user?.email) {
+      toast.error("O novo email é igual ao atual");
+      return;
+    }
+
+    setIsChangingEmail(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+
+      if (error) {
+        console.error("Email update error:", error);
+        if (error.message.includes("already registered")) {
+          toast.error("Este email já está em uso por outra conta");
+        } else {
+          toast.error("Erro ao alterar email. Tente novamente.");
+        }
+        return;
+      }
+
+      toast.success(
+        "Email de confirmação enviado! Verifique sua caixa de entrada do novo email para confirmar a alteração.",
+        { duration: 8000 }
+      );
+      setNewEmail("");
+    } catch (error) {
+      console.error("Email change error:", error);
+      toast.error("Erro ao alterar email");
+    } finally {
+      setIsChangingEmail(false);
+    }
+  };
+
+  // ==========================================
   // HANDLERS - LOGOUT
   // ==========================================
 
@@ -465,6 +514,12 @@ export function useProfileSettings() {
     handlePasswordInputChange,
     togglePasswordVisibility,
     handlePasswordChange,
+
+    // Alteração de email
+    newEmail,
+    setNewEmail,
+    isChangingEmail,
+    handleEmailChange,
 
     // Logout
     handleSignOut,
