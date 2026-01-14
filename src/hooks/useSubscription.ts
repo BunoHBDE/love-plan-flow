@@ -26,6 +26,8 @@ export interface SubscriptionData {
   current_period_end: string | null;
   cancel_at_period_end: boolean;
   price_id: string | null;
+  app_trial: boolean;
+  can_start_trial: boolean;
 }
 
 export function useSubscription() {
@@ -33,6 +35,7 @@ export function useSubscription() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isStartingTrial, setIsStartingTrial] = useState(false);
 
   const checkSubscription = useCallback(async () => {
     if (!session) {
@@ -79,6 +82,36 @@ export function useSubscription() {
 
     return () => clearInterval(interval);
   }, [session, checkSubscription]);
+
+  const startTrial = async () => {
+    if (!session) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    try {
+      setIsStartingTrial(true);
+      
+      const { data, error: fnError } = await supabase.functions.invoke('start-trial');
+
+      if (fnError) {
+        throw new Error(fnError.message);
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Refresh subscription state
+      await checkSubscription();
+
+      return data;
+    } catch (err) {
+      console.error('Error starting trial:', err);
+      throw err;
+    } finally {
+      setIsStartingTrial(false);
+    }
+  };
 
   const createCheckout = async (priceType: 'monthly' | 'yearly') => {
     if (!session) {
@@ -138,8 +171,10 @@ export function useSubscription() {
 
   // Helper functions
   const isTrialing = subscription?.status === 'trialing';
+  const isAppTrial = subscription?.app_trial === true;
   const isActive = subscription?.subscribed === true;
   const isCanceled = subscription?.cancel_at_period_end === true;
+  const canStartTrial = subscription?.can_start_trial === true;
 
   const getTrialDaysRemaining = () => {
     if (!subscription?.trial_end) return 0;
@@ -161,11 +196,15 @@ export function useSubscription() {
     loading,
     error,
     isTrialing,
+    isAppTrial,
     isActive,
     isCanceled,
+    canStartTrial,
+    isStartingTrial,
     trialDaysRemaining: getTrialDaysRemaining(),
     priceType: getPriceType(),
     checkSubscription,
+    startTrial,
     createCheckout,
     openCustomerPortal,
   };

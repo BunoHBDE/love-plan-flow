@@ -245,6 +245,8 @@ export type Database = {
           phone: string | null
           rg: string | null
           subscription_override: boolean | null
+          trial_ends_at: string | null
+          trial_started_at: string | null
           updated_at: string
           whatsapp: string | null
         }
@@ -283,6 +285,8 @@ export type Database = {
           phone?: string | null
           rg?: string | null
           subscription_override?: boolean | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
@@ -321,6 +325,8 @@ export type Database = {
           phone?: string | null
           rg?: string | null
           subscription_override?: boolean | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string
           whatsapp?: string | null
         }

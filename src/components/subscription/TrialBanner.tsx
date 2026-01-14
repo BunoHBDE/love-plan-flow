@@ -2,7 +2,7 @@
  * BANNER DE TRIAL
  * 
  * Exibe um aviso sobre os dias restantes do período de trial.
- * Aparece apenas para usuários em trial.
+ * Aparece apenas para usuários em trial (app ou Stripe).
  */
 
 import { Clock, Sparkles } from "lucide-react";
@@ -11,7 +11,7 @@ import { useSubscriptionContext } from "@/contexts/SubscriptionContext";
 import { useNavigate } from "react-router-dom";
 
 export function TrialBanner() {
-  const { isTrialing, trialDaysRemaining, loading } = useSubscriptionContext();
+  const { isTrialing, isAppTrial, trialDaysRemaining, loading } = useSubscriptionContext();
   const navigate = useNavigate();
 
   // Só exibe para usuários em trial
@@ -55,7 +55,9 @@ export function TrialBanner() {
             <p className="text-sm text-muted-foreground">
               {isUrgent 
                 ? "Assine agora para não perder acesso às funcionalidades"
-                : "Aproveite para explorar todas as funcionalidades premium"}
+                : isAppTrial 
+                  ? "Aproveite para explorar todas as funcionalidades premium - sem cartão!"
+                  : "Aproveite para explorar todas as funcionalidades premium"}
             </p>
           </div>
         </div>
