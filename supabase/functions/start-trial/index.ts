@@ -49,7 +49,7 @@ serve(async (req) => {
     // Check if user already has a trial
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
-      .select("trial_started_at, trial_ends_at")
+      .select("trial_started_at, trial_ends_at, full_name")
       .eq("id", user.id)
       .single();
 
@@ -97,6 +97,42 @@ serve(async (req) => {
       trial_ends_at: trialEnd.toISOString(),
       trial_days: TRIAL_DAYS
     });
+
+    // Send welcome email in background (don't block the response)
+    const sendWelcomeEmail = async () => {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+        const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+        
+        const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-welcome-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseAnonKey}`,
+          },
+          body: JSON.stringify({
+            email: user.email,
+            name: profile?.full_name || user.user_metadata?.full_name || "",
+            trialDays: TRIAL_DAYS,
+            trialEndsAt: trialEnd.toISOString(),
+          }),
+        });
+        
+        if (!emailResponse.ok) {
+          const errorData = await emailResponse.json();
+          logStep("Failed to send welcome email", { error: errorData });
+        } else {
+          logStep("Welcome email sent successfully");
+        }
+      } catch (emailError) {
+        logStep("Error sending welcome email", { 
+          error: emailError instanceof Error ? emailError.message : String(emailError) 
+        });
+      }
+    };
+
+    // Fire and forget - don't block the response
+    sendWelcomeEmail();
 
     return new Response(
       JSON.stringify({
