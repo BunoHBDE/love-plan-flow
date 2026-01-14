@@ -905,6 +905,10 @@ export default function EditarOrcamento() {
                   selectedPackageId={pacoteId}
                   onPackageChange={setPacoteId}
                   anoEvento={anoEvento}
+                  onAutoSelectSpace={setEspacoId}
+                  onAutoSelectBuffet={setBuffetId}
+                  onAutoSelectServices={setServicoIds}
+
                 />
               </div>
             </div>

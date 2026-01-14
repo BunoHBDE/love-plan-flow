@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -16,6 +17,11 @@ interface PackageSelectionProps {
   onPackageChange: (packageId: string | null) => void;
   anoEvento: string;
   disabled?: boolean;
+  
+  // ✨ NOVO: Callbacks para auto-selecionar itens
+  onAutoSelectSpace?: (spaceId: string | null) => void;
+  onAutoSelectBuffet?: (buffetId: string | null) => void;
+  onAutoSelectServices?: (serviceIds: string[]) => void;
 }
 
 export function PackageSelection({
@@ -24,12 +30,57 @@ export function PackageSelection({
   onPackageChange,
   anoEvento,
   disabled = false,
+  onAutoSelectSpace,
+  onAutoSelectBuffet,
+  onAutoSelectServices,
 }: PackageSelectionProps) {
   // Filtrar pacotes pelo ano do evento
   const pacotesDoAno = packages.filter((p) => p.ano === anoEvento);
 
   // Encontrar pacote selecionado
   const selectedPackage = pacotesDoAno.find((p) => p.id === selectedPackageId);
+
+  // ✨ NOVO: Auto-selecionar itens quando o pacote muda
+  useEffect(() => {
+    if (!selectedPackageId || !selectedPackage) {
+      onAutoSelectSpace?.(null);
+      onAutoSelectBuffet?.(null);
+      onAutoSelectServices?.([]);
+      return;
+    }
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🎁 Pacote selecionado:', selectedPackage.nome);
+    console.log('📦 Auto-selecionando itens do pacote...');
+
+    // Auto-selecionar ESPAÇO
+    if (selectedPackage.itens_pacote.espacos && 
+        selectedPackage.itens_pacote.espacos.length > 0 &&
+        onAutoSelectSpace) {
+      const espacoId = selectedPackage.itens_pacote.espacos[0];
+      console.log('  ✅ Espaço:', espacoId);
+      onAutoSelectSpace(espacoId);
+    }
+
+    // Auto-selecionar BUFFET
+    if (selectedPackage.itens_pacote.buffets && 
+        selectedPackage.itens_pacote.buffets.length > 0 &&
+        onAutoSelectBuffet) {
+      const buffetId = selectedPackage.itens_pacote.buffets[0];
+      console.log('  ✅ Buffet:', buffetId);
+      onAutoSelectBuffet(buffetId);
+    }
+
+    // Auto-selecionar SERVIÇOS
+    if (selectedPackage.itens_pacote.servicos && 
+        selectedPackage.itens_pacote.servicos.length > 0 &&
+        onAutoSelectServices) {
+      console.log('  ✅ Serviços:', selectedPackage.itens_pacote.servicos.length);
+      onAutoSelectServices(selectedPackage.itens_pacote.servicos);
+    }
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  }, [selectedPackageId, selectedPackage, onAutoSelectSpace, onAutoSelectBuffet, onAutoSelectServices]);
 
   return (
     <div className="space-y-4">
@@ -112,6 +163,14 @@ export function PackageSelection({
                     <p>• {selectedPackage.itens_pacote.servicos.length} serviço(s)</p>
                   )}
                 </div>
+              </div>
+
+              {/* ✨ NOVO: Aviso de auto-seleção */}
+              <div className="pt-2 border-t border-amber-200 dark:border-amber-800">
+                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <span className="text-base">⚡</span>
+                  Os itens do pacote serão selecionados automaticamente
+                </p>
               </div>
             </div>
           </div>

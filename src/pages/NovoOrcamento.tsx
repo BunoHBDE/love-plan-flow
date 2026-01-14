@@ -807,6 +807,9 @@ export default function NovoOrcamento() {
                   selectedPackageId={pacoteId}
                   onPackageChange={setPacoteId}
                   anoEvento={anoEvento}
+                  onAutoSelectSpace={setEspacoId}
+                  onAutoSelectBuffet={setBuffetId}
+                  onAutoSelectServices={setServicoIds}
                 />
               </div>
             </div>
