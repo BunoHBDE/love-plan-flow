@@ -1,23 +1,18 @@
 /**
- * COMPONENTE DE INFORMAÇÕES PESSOAIS (EXPANDIDO)
+ * COMPONENTE DE INFORMAÇÕES DE CADASTRO
  * 
- * Card completo com todos os campos de cadastro do usuário:
- * - Avatar e email
- * - Dados pessoais (nome, CPF, data de nascimento, gênero, nacionalidade)
- * - Contato (celular)
- * - Endereço completo com busca automática de CEP
+ * Card simplificado com dados essenciais do usuário:
+ * - Avatar
+ * - Nome
+ * - Email (somente leitura)
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Mail, MapPin, Camera, Loader2, Upload, X } from "lucide-react";
-import { formatPhone, formatCPF, formatCEP } from "@/lib/masks";
+import { User, Mail, Camera, Loader2, Upload, X } from "lucide-react";
 import type { ProfileData } from "@/constants/settings";
-import { NATIONALITIES, BRAZILIAN_STATES } from "@/constants/settings";
 
 interface PersonalInfoCardProps {
   data: ProfileData;
@@ -29,10 +24,6 @@ interface PersonalInfoCardProps {
   onAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveAvatar: () => void;
   onTriggerAvatarUpload: () => void;
-  
-  // CEP
-  isLoadingCep: boolean;
-  onCepLookup: (cep: string) => void;
 }
 
 export function PersonalInfoCard({
@@ -43,17 +34,15 @@ export function PersonalInfoCard({
   onAvatarChange,
   onRemoveAvatar,
   onTriggerAvatarUpload,
-  isLoadingCep,
-  onCepLookup,
 }: PersonalInfoCardProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <User className="h-5 w-5 text-primary" />
-          Informações Pessoais
+          Dados de Cadastro
         </CardTitle>
-        <CardDescription>Seus dados de cadastro</CardDescription>
+        <CardDescription>Suas informações básicas de conta</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Avatar e Email */}
@@ -110,187 +99,33 @@ export function PersonalInfoCard({
             </Button>
           </div>
           
-          {/* Email (readonly) */}
-          <div className="flex-1 space-y-2 w-full">
-            <Label htmlFor="email" className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={data.email}
-              disabled
-              className="bg-muted"
-            />
-            <p className="text-xs text-muted-foreground">
-              O email não pode ser alterado pois está vinculado à sua conta.
-            </p>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Dados Básicos */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="nome">Nome completo *</Label>
-            <Input
-              id="nome"
-              value={data.nome}
-              onChange={(e) => onChange("nome", e.target.value)}
-              placeholder="Seu nome completo"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="cpf">CPF</Label>
-            <Input
-              id="cpf"
-              value={data.cpf}
-              onChange={(e) => onChange("cpf", formatCPF(e.target.value))}
-              placeholder="000.000.000-00"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="birthDate">Data de nascimento</Label>
-            <Input
-              id="birthDate"
-              type="text"
-              value={data.birthDate}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Remover tudo exceto números
-                const numbers = value.replace(/\D/g, "");
-                
-                // Formatar: dd/mm/aaaa
-                let formatted = numbers;
-                if (numbers.length >= 2) {
-                  formatted = numbers.slice(0, 2);
-                  if (numbers.length >= 3) {
-                    formatted += "/" + numbers.slice(2, 4);
-                  }
-                  if (numbers.length >= 5) {
-                    formatted += "/" + numbers.slice(4, 8);
-                  }
-                }
-                
-                onChange("birthDate", formatted);
-              }}
-              placeholder="dd/mm/aaaa"
-              maxLength={10}
-            />
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Contato */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="whatsapp">Celular</Label>
-            <Input
-              id="whatsapp"
-              value={data.whatsapp}
-              onChange={(e) => onChange("whatsapp", formatPhone(e.target.value))}
-              placeholder="(00) 00000-0000"
-            />
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Endereço */}
-        <div className="space-y-4">
-          <Label className="flex items-center gap-2 text-base font-medium">
-            <MapPin className="h-4 w-4 text-primary" />
-            Endereço
-          </Label>
-          
-          <div className="grid gap-4 sm:grid-cols-3">
+          {/* Nome e Email */}
+          <div className="flex-1 space-y-4 w-full">
             <div className="space-y-2">
-              <Label htmlFor="addressCep">CEP</Label>
-              <div className="relative">
-                <Input
-                  id="addressCep"
-                  value={data.addressCep}
-                  onChange={(e) => onChange("addressCep", formatCEP(e.target.value))}
-                  onBlur={(e) => onCepLookup(e.target.value)}
-                  placeholder="00000-000"
-                  disabled={isLoadingCep}
-                />
-                {isLoadingCep && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-              </div>
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="addressStreet">Rua</Label>
+              <Label htmlFor="nome">Nome completo *</Label>
               <Input
-                id="addressStreet"
-                value={data.addressStreet}
-                onChange={(e) => onChange("addressStreet", e.target.value)}
-                placeholder="Nome da rua"
+                id="nome"
+                value={data.nome}
+                onChange={(e) => onChange("nome", e.target.value)}
+                placeholder="Seu nome completo"
               />
             </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-4">
+            
             <div className="space-y-2">
-              <Label htmlFor="addressNumber">Número</Label>
+              <Label htmlFor="email" className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                Email
+              </Label>
               <Input
-                id="addressNumber"
-                value={data.addressNumber}
-                onChange={(e) => onChange("addressNumber", e.target.value)}
-                placeholder="Nº"
+                id="email"
+                type="email"
+                value={data.email}
+                disabled
+                className="bg-muted"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="addressComplement">Complemento</Label>
-              <Input
-                id="addressComplement"
-                value={data.addressComplement}
-                onChange={(e) => onChange("addressComplement", e.target.value)}
-                placeholder="Apto, Bloco..."
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="addressNeighborhood">Bairro</Label>
-              <Input
-                id="addressNeighborhood"
-                value={data.addressNeighborhood}
-                onChange={(e) => onChange("addressNeighborhood", e.target.value)}
-                placeholder="Bairro"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="addressCity">Cidade</Label>
-              <Input
-                id="addressCity"
-                value={data.addressCity}
-                onChange={(e) => onChange("addressCity", e.target.value)}
-                placeholder="Cidade"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="addressState">Estado</Label>
-              <Select
-                value={data.addressState}
-                onValueChange={(value) => onChange("addressState", value)}
-              >
-                <SelectTrigger id="addressState">
-                  <SelectValue placeholder="UF" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BRAZILIAN_STATES.map((state) => (
-                    <SelectItem key={state} value={state}>
-                      {state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <p className="text-xs text-muted-foreground">
+                O email não pode ser alterado pois está vinculado à sua conta.
+              </p>
             </div>
           </div>
         </div>

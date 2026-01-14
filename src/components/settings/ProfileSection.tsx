@@ -1,8 +1,8 @@
 /**
  * SEÇÃO DE PERFIL
  * 
- * Agrupa os cards relacionados ao perfil pessoal do usuário:
- * - Informações pessoais
+ * Agrupa os cards relacionados ao perfil do usuário:
+ * - Dados de cadastro (nome, email, avatar)
  * - Alteração de senha
  */
 
@@ -22,10 +22,6 @@ interface ProfileSectionProps {
   onRemoveAvatar: () => void;
   onTriggerAvatarUpload: () => void;
 
-  // CEP lookup
-  isLoadingCep: boolean;
-  onCepLookup: (cep: string) => void;
-
   // Alteração de senha
   passwordData: PasswordData;
   showPasswords: PasswordVisibility;
@@ -43,8 +39,6 @@ export function ProfileSection({
   onAvatarChange,
   onRemoveAvatar,
   onTriggerAvatarUpload,
-  isLoadingCep,
-  onCepLookup,
   passwordData,
   showPasswords,
   isChangingPassword,
@@ -62,8 +56,6 @@ export function ProfileSection({
         onAvatarChange={onAvatarChange}
         onRemoveAvatar={onRemoveAvatar}
         onTriggerAvatarUpload={onTriggerAvatarUpload}
-        isLoadingCep={isLoadingCep}
-        onCepLookup={onCepLookup}
       />
 
       <PasswordChangeCard

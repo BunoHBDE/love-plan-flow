@@ -108,9 +108,6 @@ export default function Configuracoes() {
             onAvatarChange={handleAvatarChange}
             onRemoveAvatar={removeAvatar}
             onTriggerAvatarUpload={triggerAvatarUpload}
-            // CEP
-            isLoadingCep={isLoadingCep}
-            onCepLookup={handleCepLookup}
             // Senha
             passwordData={passwordData}
             showPasswords={showPasswords}
