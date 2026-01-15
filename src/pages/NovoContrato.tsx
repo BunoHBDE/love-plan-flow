@@ -55,6 +55,7 @@ import type { ExtraItem } from "@/components/quotes/ExtrasForm";
 
 // Lib
 import { replacePlaceholders, DEFAULT_CONTRACT_TEMPLATE, PLACEHOLDER_CATEGORIES } from "@/lib/contractPlaceholders";
+import { DEFAULT_CONTRACT_CSS } from "@/components/contracts/ContractEditor";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -75,7 +76,7 @@ export default function NovoContrato() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [contractContent, setContractContent] = useState<string>("");
   const [copiedPlaceholder, setCopiedPlaceholder] = useState<string | null>(null);
-
+  const [contractCss, setContractCss] = useState<string>(DEFAULT_CONTRACT_CSS);
   // Editable fields
   const [dadosCliente, setDadosCliente] = useState<DadosCliente>({
     nome: "",
@@ -349,18 +350,13 @@ export default function NovoContrato() {
             {/* Left - Editable Contract */}
             <div className="space-y-4">
               <Card className="h-[calc(100vh-140px)]">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    <span>Contrato Editável</span>
-                    <Badge variant="outline" className="font-normal">
-                      Preview em tempo real
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="h-[calc(100%-80px)]">
+                <CardContent className="h-full pt-4">
                   <ContractEditor
                     value={contractContent}
                     onChange={setContractContent}
+                    cssValue={contractCss}
+                    onCssChange={setContractCss}
+                    previewContent={previewContent}
                     placeholder="Digite o conteúdo do contrato aqui..."
                     className="h-full"
                   />
