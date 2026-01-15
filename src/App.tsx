@@ -25,6 +25,7 @@ import NovoOrcamento from "./pages/NovoOrcamento";
 import EditarOrcamento from "./pages/EditarOrcamento";
 import Disponibilidade from "./pages/Disponibilidade";
 import Contratos from "./pages/Contratos";
+import NovoContrato from "./pages/NovoContrato";
 import Pagamentos from "./pages/Pagamentos";
 import Configuracoes from "./pages/Configuracoes";
 import RedefinirSenha from "./pages/RedefinirSenha";
@@ -115,7 +116,15 @@ const App = () => (
                 } 
               />
               <Route 
-                path="/pagamentos" 
+                path="/contratos/novo" 
+                element={
+                  <ProtectedRoute>
+                    <NovoContrato />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/pagamentos"
                 element={
                   <ProtectedRoute>
                     <Pagamentos />
