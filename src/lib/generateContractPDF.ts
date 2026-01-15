@@ -2,6 +2,49 @@ import jsPDF from 'jspdf';
 import type { Contract } from '@/types/contract.types';
 import { replacePlaceholders, DEFAULT_CONTRACT_TEMPLATE } from '@/lib/contractPlaceholders';
 
+// Função para converter HTML para texto plano mantendo formatação
+function htmlToText(html: string): string {
+  // Remove scripts e styles
+  let text = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  
+  // Converte tags para quebras de linha e formatação
+  text = text
+    // Headings → MAIÚSCULAS com quebras
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n\n$1\n')
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n\n$1\n')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n$1\n')
+    
+    // Parágrafos → quebra de linha
+    .replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n')
+    
+    // Quebras de linha
+    .replace(/<br\s*\/?>/gi, '\n')
+    
+    // Listas
+    .replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n')
+    .replace(/<\/ul>/gi, '\n')
+    .replace(/<\/ol>/gi, '\n')
+    
+    // Remove tags HTML restantes
+    .replace(/<[^>]+>/g, '')
+    
+    // Decodifica entidades HTML
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    
+    // Limpa espaços extras
+    .replace(/\n\s*\n\s*\n/g, '\n\n') // Máximo 2 quebras seguidas
+    .trim();
+  
+  return text;
+}
+
 export const generateContractPDF = (contract: Contract): void => {
   const doc = new jsPDF();
   
@@ -16,6 +59,9 @@ export const generateContractPDF = (contract: Contract): void => {
     contract.dados_empresa
   );
 
+  // 🔧 CORREÇÃO: Converter HTML para texto plano
+  const plainText = htmlToText(renderedContent);
+
   // PDF settings
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -23,7 +69,7 @@ export const generateContractPDF = (contract: Contract): void => {
   let yPosition = 20;
 
   // Split content into lines
-  const lines = renderedContent.split('\n');
+  const lines = plainText.split('\n');
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -36,7 +82,7 @@ export const generateContractPDF = (contract: Contract): void => {
     }
 
     // Handle title lines (uppercase or starting with numbers)
-    if (line.match(/^[A-Z0-9\s]+$/) && line.trim().length > 0) {
+    if (line.match(/^[A-ZÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ0-9\s]+$/) && line.trim().length > 0 && line.trim().length < 80) {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
     } else if (line.match(/^\d+\.\s/)) {

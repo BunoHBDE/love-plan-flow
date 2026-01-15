@@ -45,7 +45,7 @@ export interface DadosPagamento {
   valor_sinal: number;
   numero_parcelas: number;
   dia_vencimento: number;
-  parcelas: Array<{ numero: number; valor: number; vencimento: string }>;
+  parcelas: Array<{ numero: number; valor: number; vencimento?: string; dataVencimento?: string }>;
 }
 
 export interface DadosEmpresa {

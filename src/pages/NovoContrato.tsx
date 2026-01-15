@@ -263,6 +263,10 @@ export default function NovoContrato() {
   const handleCreateContract = () => {
     if (!quote || !user?.id) return;
 
+    const modeloFinal = contractContent && contractContent.trim() !== '' 
+    ? contractContent 
+    : (getDefaultContent() || DEFAULT_CONTRACT_TEMPLATE);
+
     const contractData: ContractInsertData = {
       quote_id: quote.id,
       client_id: quote.client_id,
@@ -272,7 +276,7 @@ export default function NovoContrato() {
       dados_evento: dadosEvento,
       dados_pagamento: dadosPagamento,
       dados_empresa: dadosEmpresa,
-      modelo_contrato: contractContent,
+      modelo_contrato: modeloFinal,
     };
 
     createContract.mutate(contractData, {

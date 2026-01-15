@@ -126,7 +126,7 @@ export const replacePlaceholders = (
   result = result.replace(/{{numero_parcelas}}/g, String(dadosPagamento.numero_parcelas));
   
   const parcelasText = dadosPagamento.parcelas
-    ?.map(p => `Parcela ${p.numero}: ${formatCurrency(p.valor)} - Venc.: ${formatDate(p.vencimento)}`)
+    ?.map(p => `Parcela ${p.numero}: ${formatCurrency(p.valor)} - Venc.: ${formatDate(p.dataVencimento || p.vencimento)}`)
     .join('\n') || 'Nenhuma parcela';
   result = result.replace(/{{tabela_parcelas}}/g, parcelasText);
 
