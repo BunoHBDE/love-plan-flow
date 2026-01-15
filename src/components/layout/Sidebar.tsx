@@ -11,6 +11,7 @@ import {
   CalendarCheck,
   X,
   User,
+  ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,7 +25,7 @@ const navItems = [
   { icon: Calendar, label: "Visitas", path: "/visitas", disabled: false },
   { icon: FileText, label: "Orçamentos", path: "/orcamentos", disabled: false },
   { icon: Users, label: "Clientes", path: "/clientes", disabled: false },
-  { icon: FileText, label: "Contratos", path: "/contratos", disabled: true },
+  { icon: ScrollText, label: "Contratos", path: "/contratos", disabled: false },
   { icon: CreditCard, label: "Pagamentos", path: "/pagamentos", disabled: true },
 ];
 
