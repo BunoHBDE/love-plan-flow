@@ -1,9 +1,9 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
-import Underline from '@tiptap/extension-underline';
+import UnderlineExtension from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -41,34 +41,6 @@ const textToHtml = (text: string): string => {
     .join('');
 };
 
-// Convert HTML back to plain text for storage
-const htmlToText = (html: string): string => {
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
-  
-  // Convert h1, h2, h3 to text with double line breaks
-  temp.querySelectorAll('h1, h2, h3').forEach(h => {
-    h.innerHTML = h.innerHTML + '\n\n';
-  });
-  
-  // Convert p to text with double line breaks
-  temp.querySelectorAll('p').forEach(p => {
-    p.innerHTML = p.innerHTML + '\n\n';
-  });
-  
-  // Convert br to single line breaks
-  temp.querySelectorAll('br').forEach(br => {
-    br.replaceWith('\n');
-  });
-  
-  // Convert li to text with line breaks
-  temp.querySelectorAll('li').forEach(li => {
-    li.innerHTML = '• ' + li.innerHTML + '\n';
-  });
-  
-  return temp.textContent?.trim() || '';
-};
-
 export function ContractEditor({ 
   value, 
   onChange, 
@@ -77,6 +49,7 @@ export function ContractEditor({
   className 
 }: ContractEditorProps) {
   const initialContent = useMemo(() => textToHtml(value), []);
+  const isInternalUpdate = useRef(false);
 
   const editor = useEditor({
     extensions: [
@@ -88,7 +61,7 @@ export function ContractEditor({
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),
-      Underline,
+      UnderlineExtension,
       Placeholder.configure({
         placeholder,
         emptyEditorClass: 'is-editor-empty',
@@ -101,8 +74,13 @@ export function ContractEditor({
       },
     },
     onUpdate: ({ editor }) => {
+      isInternalUpdate.current = true;
       const html = editor.getHTML();
       onChange(html);
+      // Reset flag after a tick to allow external updates
+      setTimeout(() => {
+        isInternalUpdate.current = false;
+      }, 0);
     },
   });
 
@@ -113,13 +91,14 @@ export function ContractEditor({
     }
   }, [editor]);
 
-  // Update editor content when value changes from outside
+  // Update editor content only when value changes from OUTSIDE (e.g., template change)
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      const currentHtml = editor.getHTML();
+    if (editor && !isInternalUpdate.current) {
       const newHtml = textToHtml(value);
-      // Only update if content actually changed (prevents cursor jump)
-      if (htmlToText(currentHtml) !== htmlToText(newHtml)) {
+      const currentHtml = editor.getHTML();
+      
+      // Only update if content is truly different (template changed)
+      if (newHtml !== currentHtml) {
         editor.commands.setContent(newHtml, { emitUpdate: false });
       }
     }
