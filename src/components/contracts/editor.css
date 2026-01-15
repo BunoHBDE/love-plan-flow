@@ -1,0 +1,182 @@
+/* Tiptap Editor Base Styles */
+.tiptap-editor {
+  min-height: 100%;
+  outline: none;
+  font-family: 'Times New Roman', Georgia, serif;
+  font-size: 12pt;
+  line-height: 1.6;
+  padding: 1.5rem;
+}
+
+.tiptap-editor:focus {
+  outline: none;
+}
+
+/* Typography */
+.tiptap-editor p {
+  margin-bottom: 0.75rem;
+}
+
+.tiptap-editor h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.tiptap-editor h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.tiptap-editor h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+}
+
+.tiptap-editor ul,
+.tiptap-editor ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap-editor li {
+  margin-bottom: 0.25rem;
+}
+
+.tiptap-editor hr {
+  border: none;
+  border-top: 1px solid hsl(var(--border));
+  margin: 1.5rem 0;
+}
+
+/* Placeholder Highlighting */
+.placeholder-highlight {
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+.placeholder-cliente {
+  background-color: hsl(210 100% 90%);
+  color: hsl(210 100% 25%);
+}
+
+.placeholder-evento {
+  background-color: hsl(142 76% 90%);
+  color: hsl(142 76% 25%);
+}
+
+.placeholder-valor {
+  background-color: hsl(43 96% 90%);
+  color: hsl(43 96% 25%);
+}
+
+.placeholder-empresa {
+  background-color: hsl(280 87% 90%);
+  color: hsl(280 87% 25%);
+}
+
+.placeholder-contrato {
+  background-color: hsl(350 89% 90%);
+  color: hsl(350 89% 25%);
+}
+
+.placeholder-default {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+/* Dark mode placeholder colors */
+.dark .placeholder-cliente {
+  background-color: hsl(210 100% 20% / 0.5);
+  color: hsl(210 100% 80%);
+}
+
+.dark .placeholder-evento {
+  background-color: hsl(142 76% 20% / 0.5);
+  color: hsl(142 76% 80%);
+}
+
+.dark .placeholder-valor {
+  background-color: hsl(43 96% 20% / 0.5);
+  color: hsl(43 96% 80%);
+}
+
+.dark .placeholder-empresa {
+  background-color: hsl(280 87% 20% / 0.5);
+  color: hsl(280 87% 80%);
+}
+
+.dark .placeholder-contrato {
+  background-color: hsl(350 89% 20% / 0.5);
+  color: hsl(350 89% 80%);
+}
+
+/* Preview Styles (A4-like) */
+.contract-preview {
+  font-family: 'Times New Roman', Georgia, serif;
+  font-size: 12pt;
+  line-height: 1.6;
+  color: #333;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 20mm;
+  background: white;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  min-height: 297mm;
+}
+
+.contract-preview h1 {
+  font-size: 16pt;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+.contract-preview h2 {
+  font-size: 14pt;
+  font-weight: bold;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.contract-preview h3 {
+  font-size: 12pt;
+  font-weight: bold;
+  margin-top: 15px;
+  margin-bottom: 8px;
+}
+
+.contract-preview p {
+  text-align: justify;
+  margin-bottom: 10px;
+}
+
+.contract-preview ul,
+.contract-preview ol {
+  padding-left: 2rem;
+  margin-bottom: 10px;
+}
+
+.contract-preview hr {
+  border: none;
+  border-top: 1px solid #333;
+  margin: 20px 0;
+}
+
+/* Print styles */
+@media print {
+  .contract-preview {
+    box-shadow: none;
+    padding: 0;
+    max-width: 100%;
+  }
+}
