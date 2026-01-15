@@ -1,4 +1,5 @@
 export { ContractCard } from './ContractCard';
+export { ContractEditor } from './ContractEditor';
 export { ContractStatusDialog } from './ContractStatusDialog';
 export { ContractPreviewDialog } from './ContractPreviewDialog';
 export { CreateContractDialog } from './CreateContractDialog';

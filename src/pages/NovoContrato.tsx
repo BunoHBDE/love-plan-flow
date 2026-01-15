@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { ContractEditor } from "@/components/contracts/ContractEditor";
 import {
   Select,
   SelectContent,
@@ -357,11 +358,11 @@ export default function NovoContrato() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="h-[calc(100%-80px)]">
-                  <Textarea
+                  <ContractEditor
                     value={contractContent}
-                    onChange={(e) => setContractContent(e.target.value)}
-                    className="h-full resize-none font-mono text-sm leading-relaxed"
+                    onChange={setContractContent}
                     placeholder="Digite o conteúdo do contrato aqui..."
+                    className="h-full"
                   />
                 </CardContent>
               </Card>
