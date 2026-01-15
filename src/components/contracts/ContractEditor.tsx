@@ -104,13 +104,15 @@ export function ContractEditor({
     }
   }, [value, editor]);
 
-  // Preview content - use directly if already HTML, otherwise convert
-  const previewHtml = useMemo(() => {
+  // Preview content - calculate directly without useMemo to ensure real-time updates
+  const getPreviewHtml = (): string => {
     if (!previewContent) return '';
     // If it starts with < it's likely already HTML from the editor
     if (previewContent.trim().startsWith('<')) return previewContent;
     return textToHtml(previewContent);
-  }, [previewContent]);
+  };
+  
+  const previewHtml = getPreviewHtml();
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
