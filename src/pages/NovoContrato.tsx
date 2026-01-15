@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MainLayout } from "@/components/layout/MainLayout";
 import { SubscriptionGate } from "@/components/subscription";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -16,15 +16,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   ArrowLeft,
   FileText,
   User,
   Calendar,
   CreditCard,
   Building2,
-  Eye,
   Loader2,
   Save,
+  Copy,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,7 +53,7 @@ import type {
 import type { ExtraItem } from "@/components/quotes/ExtrasForm";
 
 // Lib
-import { replacePlaceholders, DEFAULT_CONTRACT_TEMPLATE } from "@/lib/contractPlaceholders";
+import { replacePlaceholders, DEFAULT_CONTRACT_TEMPLATE, PLACEHOLDER_CATEGORIES } from "@/lib/contractPlaceholders";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -65,7 +72,8 @@ export default function NovoContrato() {
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [showPreview, setShowPreview] = useState(false);
+  const [contractContent, setContractContent] = useState<string>("");
+  const [copiedPlaceholder, setCopiedPlaceholder] = useState<string | null>(null);
 
   // Editable fields
   const [dadosCliente, setDadosCliente] = useState<DadosCliente>({
@@ -186,27 +194,32 @@ export default function NovoContrato() {
     }
   }, [profileData]);
 
-  // Get template content
-  const selectedTemplate = useMemo(() => {
-    return templates.find(t => t.id === selectedTemplateId);
-  }, [templates, selectedTemplateId]);
+  // Set initial template content
+  useEffect(() => {
+    const defaultContent = getDefaultContent() || DEFAULT_CONTRACT_TEMPLATE;
+    setContractContent(defaultContent);
+  }, [getDefaultContent]);
 
-  const templateContent = useMemo(() => {
-    return selectedTemplate?.conteudo || getDefaultContent() || DEFAULT_CONTRACT_TEMPLATE;
-  }, [selectedTemplate, getDefaultContent]);
+  // Update contract content when template changes
+  useEffect(() => {
+    const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+    if (selectedTemplate) {
+      setContractContent(selectedTemplate.conteudo);
+    }
+  }, [selectedTemplateId, templates]);
 
   // Preview with placeholders replaced
   const previewContent = useMemo(() => {
     const contractNumber = "NOVO-CONTRATO";
     return replacePlaceholders(
-      templateContent,
+      contractContent,
       contractNumber,
       dadosCliente,
       dadosEvento,
       dadosPagamento,
       dadosEmpresa
     );
-  }, [templateContent, dadosCliente, dadosEvento, dadosPagamento, dadosEmpresa]);
+  }, [contractContent, dadosCliente, dadosEvento, dadosPagamento, dadosEmpresa]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -224,6 +237,13 @@ export default function NovoContrato() {
     }
   };
 
+  const handleCopyPlaceholder = (placeholder: string) => {
+    navigator.clipboard.writeText(placeholder);
+    setCopiedPlaceholder(placeholder);
+    setTimeout(() => setCopiedPlaceholder(null), 2000);
+    toast.success("Placeholder copiado!");
+  };
+
   const handleCreateContract = () => {
     if (!quote || !user?.id) return;
 
@@ -236,7 +256,7 @@ export default function NovoContrato() {
       dados_evento: dadosEvento,
       dados_pagamento: dadosPagamento,
       dados_empresa: dadosEmpresa,
-      modelo_contrato: templateContent,
+      modelo_contrato: contractContent,
     };
 
     createContract.mutate(contractData, {
@@ -248,47 +268,53 @@ export default function NovoContrato() {
 
   if (loading) {
     return (
-      <MainLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </MainLayout>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
   return (
-    <MainLayout>
-      <SubscriptionGate>
-        <div className="space-y-6 animate-fade-in">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <SubscriptionGate>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+          <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/contratos")}
+                className="shrink-0"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div>
-                <h1 className="text-2xl font-display font-bold text-foreground">
-                  Novo Contrato
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Orçamento: {quote?.quote_number} • {quote?.client?.nome}
-                </p>
+
+              {/* Template Selector */}
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-muted-foreground hidden sm:block" />
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger className="w-[200px] sm:w-[250px]">
+                    <SelectValue placeholder="Modelo Padrão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Modelo Padrão</SelectItem>
+                    {templates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.nome} {template.is_default && "(Padrão)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={() => setShowPreview(!showPreview)}
-              >
-                <Eye className="h-4 w-4" />
-                {showPreview ? "Ocultar Preview" : "Ver Preview"}
-              </Button>
+            <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground mr-4">
+                <span className="font-medium">{quote?.quote_number}</span>
+                <span>•</span>
+                <span>{quote?.client?.nome}</span>
+              </div>
               <Button
                 variant="gold"
                 className="gap-2"
@@ -300,253 +326,312 @@ export default function NovoContrato() {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                Criar Contrato
+                <span className="hidden sm:inline">Criar Contrato</span>
               </Button>
             </div>
           </div>
+        </header>
 
-          <div className={`grid gap-6 ${showPreview ? "lg:grid-cols-2" : "grid-cols-1"}`}>
-            {/* Form Section */}
-            <div className="space-y-6">
-              {/* Template Selection */}
-              {templates.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <FileText className="h-5 w-5" />
-                      Modelo de Contrato
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Usar modelo padrão" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {templates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            {template.nome} {template.is_default && "(Padrão)"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Client Data */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <User className="h-5 w-5" />
-                    Dados do Cliente
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-6">
+          <div className="grid lg:grid-cols-[1fr,380px] gap-6">
+            {/* Left - Editable Contract */}
+            <div className="space-y-4">
+              <Card className="h-[calc(100vh-140px)]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center justify-between">
+                    <span>Contrato Editável</span>
+                    <Badge variant="outline" className="font-normal">
+                      Preview em tempo real
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Nome</Label>
-                      <Input
-                        value={dadosCliente.nome}
-                        onChange={(e) => setDadosCliente(prev => ({ ...prev, nome: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>CPF</Label>
-                      <Input
-                        value={dadosCliente.cpf || ""}
-                        onChange={(e) => setDadosCliente(prev => ({ ...prev, cpf: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Telefone</Label>
-                      <Input
-                        value={dadosCliente.telefone}
-                        onChange={(e) => setDadosCliente(prev => ({ ...prev, telefone: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input
-                        value={dadosCliente.email || ""}
-                        onChange={(e) => setDadosCliente(prev => ({ ...prev, email: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Endereço</Label>
-                    <Textarea
-                      value={dadosCliente.endereco || ""}
-                      onChange={(e) => setDadosCliente(prev => ({ ...prev, endereco: e.target.value }))}
-                      rows={2}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Event Data */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Calendar className="h-5 w-5" />
-                    Dados do Evento
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Data do Evento</Label>
-                      <Input
-                        type="date"
-                        value={dadosEvento.data_evento || ""}
-                        onChange={(e) => setDadosEvento(prev => ({ ...prev, data_evento: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tipo de Evento</Label>
-                      <Input
-                        value={dadosEvento.tipo_evento || ""}
-                        onChange={(e) => setDadosEvento(prev => ({ ...prev, tipo_evento: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Nº de Convidados</Label>
-                      <Input
-                        type="number"
-                        value={dadosEvento.n_convidados}
-                        onChange={(e) => setDadosEvento(prev => ({ ...prev, n_convidados: Number(e.target.value) }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Pacote</Label>
-                      <Input
-                        value={dadosEvento.pacote_nome || ""}
-                        onChange={(e) => setDadosEvento(prev => ({ ...prev, pacote_nome: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Payment Data */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <CreditCard className="h-5 w-5" />
-                    Dados de Pagamento
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="space-y-1 p-3 bg-muted rounded-lg">
-                      <p className="text-xs text-muted-foreground">Valor Total</p>
-                      <p className="font-semibold text-primary">
-                        {formatCurrency(dadosPagamento.valor_total)}
-                      </p>
-                    </div>
-                    <div className="space-y-1 p-3 bg-muted rounded-lg">
-                      <p className="text-xs text-muted-foreground">Sinal ({dadosPagamento.percentual_sinal}%)</p>
-                      <p className="font-semibold">
-                        {formatCurrency(dadosPagamento.valor_sinal)}
-                      </p>
-                    </div>
-                    <div className="space-y-1 p-3 bg-muted rounded-lg">
-                      <p className="text-xs text-muted-foreground">Parcelas</p>
-                      <p className="font-semibold">
-                        {dadosPagamento.numero_parcelas}x
-                      </p>
-                    </div>
-                  </div>
-
-                  {dadosPagamento.parcelas.length > 0 && (
-                    <div className="mt-4">
-                      <Label className="text-sm">Detalhamento das Parcelas</Label>
-                      <div className="mt-2 text-sm bg-muted rounded-lg p-3 space-y-1">
-                        {dadosPagamento.parcelas.map((parcela, index) => (
-                          <div key={index} className="flex justify-between">
-                            <span>Parcela {parcela.numero}</span>
-                            <span>{formatCurrency(parcela.valor)} - {formatDate(parcela.vencimento)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Company Data */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Building2 className="h-5 w-5" />
-                    Dados da Empresa
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Razão Social</Label>
-                      <Input
-                        value={dadosEmpresa.nome || ""}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, nome: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>CNPJ</Label>
-                      <Input
-                        value={dadosEmpresa.cnpj || ""}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, cnpj: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Telefone</Label>
-                      <Input
-                        value={dadosEmpresa.telefone || ""}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, telefone: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input
-                        value={dadosEmpresa.email || ""}
-                        onChange={(e) => setDadosEmpresa(prev => ({ ...prev, email: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Endereço</Label>
-                    <Textarea
-                      value={dadosEmpresa.endereco || ""}
-                      onChange={(e) => setDadosEmpresa(prev => ({ ...prev, endereco: e.target.value }))}
-                      rows={2}
-                    />
-                  </div>
+                <CardContent className="h-[calc(100%-80px)]">
+                  <Textarea
+                    value={contractContent}
+                    onChange={(e) => setContractContent(e.target.value)}
+                    className="h-full resize-none font-mono text-sm leading-relaxed"
+                    placeholder="Digite o conteúdo do contrato aqui..."
+                  />
                 </CardContent>
               </Card>
             </div>
 
-            {/* Preview Section */}
-            {showPreview && (
-              <Card className="lg:sticky lg:top-4 h-fit">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Eye className="h-5 w-5" />
-                    Preview do Contrato
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[calc(100vh-300px)] rounded-lg border p-4">
-                    <div 
-                      className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{ __html: previewContent.replace(/\n/g, '<br />') }}
-                    />
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            )}
+            {/* Right - Configurations & Placeholders */}
+            <div className="space-y-4">
+              <ScrollArea className="h-[calc(100vh-140px)]">
+                <div className="space-y-4 pr-4">
+                  {/* Contract Info */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Informações do Orçamento
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Orçamento:</span>
+                        <span className="font-medium">{quote?.quote_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Cliente:</span>
+                        <span className="font-medium">{quote?.client?.nome}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Data do Evento:</span>
+                        <span className="font-medium">{formatDate(quote?.data_evento)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Valor Total:</span>
+                        <span className="font-medium text-primary">{formatCurrency(Number(quote?.valor_total || 0))}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Data Configuration */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Configurações do Contrato
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Accordion type="multiple" className="w-full">
+                        {/* Client Data */}
+                        <AccordionItem value="cliente">
+                          <AccordionTrigger className="text-sm py-2">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              Dados do Cliente
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-3 pt-2">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Nome</Label>
+                              <Input
+                                value={dadosCliente.nome}
+                                onChange={(e) => setDadosCliente(prev => ({ ...prev, nome: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">CPF</Label>
+                              <Input
+                                value={dadosCliente.cpf || ""}
+                                onChange={(e) => setDadosCliente(prev => ({ ...prev, cpf: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Telefone</Label>
+                              <Input
+                                value={dadosCliente.telefone}
+                                onChange={(e) => setDadosCliente(prev => ({ ...prev, telefone: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Email</Label>
+                              <Input
+                                value={dadosCliente.email || ""}
+                                onChange={(e) => setDadosCliente(prev => ({ ...prev, email: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Endereço</Label>
+                              <Textarea
+                                value={dadosCliente.endereco || ""}
+                                onChange={(e) => setDadosCliente(prev => ({ ...prev, endereco: e.target.value }))}
+                                rows={2}
+                                className="text-sm"
+                              />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+
+                        {/* Event Data */}
+                        <AccordionItem value="evento">
+                          <AccordionTrigger className="text-sm py-2">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              Dados do Evento
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-3 pt-2">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Data do Evento</Label>
+                              <Input
+                                type="date"
+                                value={dadosEvento.data_evento || ""}
+                                onChange={(e) => setDadosEvento(prev => ({ ...prev, data_evento: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Tipo de Evento</Label>
+                              <Input
+                                value={dadosEvento.tipo_evento || ""}
+                                onChange={(e) => setDadosEvento(prev => ({ ...prev, tipo_evento: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Nº de Convidados</Label>
+                              <Input
+                                type="number"
+                                value={dadosEvento.n_convidados}
+                                onChange={(e) => setDadosEvento(prev => ({ ...prev, n_convidados: Number(e.target.value) }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Pacote</Label>
+                              <Input
+                                value={dadosEvento.pacote_nome || ""}
+                                onChange={(e) => setDadosEvento(prev => ({ ...prev, pacote_nome: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+
+                        {/* Payment Data */}
+                        <AccordionItem value="pagamento">
+                          <AccordionTrigger className="text-sm py-2">
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="h-4 w-4" />
+                              Dados de Pagamento
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-3 pt-2">
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div className="p-2 bg-muted rounded">
+                                <p className="text-xs text-muted-foreground">Valor Total</p>
+                                <p className="font-medium text-primary">{formatCurrency(dadosPagamento.valor_total)}</p>
+                              </div>
+                              <div className="p-2 bg-muted rounded">
+                                <p className="text-xs text-muted-foreground">Sinal ({dadosPagamento.percentual_sinal}%)</p>
+                                <p className="font-medium">{formatCurrency(dadosPagamento.valor_sinal)}</p>
+                              </div>
+                            </div>
+                            <div className="p-2 bg-muted rounded text-sm">
+                              <p className="text-xs text-muted-foreground mb-1">Parcelas</p>
+                              <p className="font-medium">{dadosPagamento.numero_parcelas}x</p>
+                            </div>
+                            {dadosPagamento.parcelas.length > 0 && (
+                              <div className="text-xs bg-muted rounded p-2 space-y-1 max-h-32 overflow-y-auto">
+                                {dadosPagamento.parcelas.map((parcela, index) => (
+                                  <div key={index} className="flex justify-between">
+                                    <span>Parcela {parcela.numero}</span>
+                                    <span>{formatCurrency(parcela.valor)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </AccordionContent>
+                        </AccordionItem>
+
+                        {/* Company Data */}
+                        <AccordionItem value="empresa">
+                          <AccordionTrigger className="text-sm py-2">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              Dados da Empresa
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-3 pt-2">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Razão Social</Label>
+                              <Input
+                                value={dadosEmpresa.nome || ""}
+                                onChange={(e) => setDadosEmpresa(prev => ({ ...prev, nome: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">CNPJ</Label>
+                              <Input
+                                value={dadosEmpresa.cnpj || ""}
+                                onChange={(e) => setDadosEmpresa(prev => ({ ...prev, cnpj: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Telefone</Label>
+                              <Input
+                                value={dadosEmpresa.telefone || ""}
+                                onChange={(e) => setDadosEmpresa(prev => ({ ...prev, telefone: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Email</Label>
+                              <Input
+                                value={dadosEmpresa.email || ""}
+                                onChange={(e) => setDadosEmpresa(prev => ({ ...prev, email: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Endereço</Label>
+                              <Textarea
+                                value={dadosEmpresa.endereco || ""}
+                                onChange={(e) => setDadosEmpresa(prev => ({ ...prev, endereco: e.target.value }))}
+                                rows={2}
+                                className="text-sm"
+                              />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    </CardContent>
+                  </Card>
+
+                  {/* Placeholders */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Placeholders Disponíveis
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Accordion type="multiple" className="w-full">
+                        {PLACEHOLDER_CATEGORIES.map((category) => (
+                          <AccordionItem key={category.label} value={category.label}>
+                            <AccordionTrigger className="text-sm py-2">
+                              {category.label}
+                            </AccordionTrigger>
+                            <AccordionContent className="space-y-1 pt-1">
+                              {category.placeholders.map((placeholder) => (
+                                <button
+                                  key={placeholder.key}
+                                  onClick={() => handleCopyPlaceholder(placeholder.key)}
+                                  className="w-full flex items-center justify-between p-2 rounded hover:bg-muted transition-colors text-left group"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate">{placeholder.label}</p>
+                                    <code className="text-[10px] text-muted-foreground">{placeholder.key}</code>
+                                  </div>
+                                  {copiedPlaceholder === placeholder.key ? (
+                                    <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                  )}
+                                </button>
+                              ))}
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    </CardContent>
+                  </Card>
+                </div>
+              </ScrollArea>
+            </div>
           </div>
         </div>
-      </SubscriptionGate>
-    </MainLayout>
+      </div>
+    </SubscriptionGate>
   );
 }
