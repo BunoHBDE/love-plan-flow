@@ -145,8 +145,8 @@ export function ContractEditor({
           </TabsTrigger>
         </TabsList>
 
-        <div className="flex-1 min-h-0">
-          <TabsContent value="edit" className="h-full m-0 data-[state=inactive]:hidden">
+        <div className="flex-1 min-h-0 relative">
+          <TabsContent value="edit" className="absolute inset-0 m-0 data-[state=inactive]:hidden">
             <div className="h-full flex flex-col border rounded-md bg-card overflow-hidden">
               <EditorToolbar editor={editor} />
               <ScrollArea className="flex-1">
@@ -155,15 +155,15 @@ export function ContractEditor({
             </div>
           </TabsContent>
           
-          <TabsContent value="preview" className="h-full m-0 data-[state=inactive]:hidden">
-            <ScrollArea className="h-full border rounded-md bg-slate-100 dark:bg-slate-900 overflow-auto">
+          <TabsContent value="preview" className="absolute inset-0 m-0 data-[state=inactive]:hidden">
+            <div className="h-full border rounded-md bg-slate-100 dark:bg-slate-900 overflow-auto">
               <div className="p-4">
                 <div 
                   className="contract-preview"
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
         </div>
       </Tabs>
