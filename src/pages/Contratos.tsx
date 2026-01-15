@@ -53,7 +53,7 @@ export default function Contratos() {
   
   // Filtros
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ContractStatus[]>([]);
+  const [statusFilter, setStatusFilter] = useState<ContractStatus[]>(["pendente"]);
   const [sortBy, setSortBy] = useState<SortOption>("date");
   
   // Estados dos dialogs
