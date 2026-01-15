@@ -116,6 +116,111 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_templates: {
+        Row: {
+          conteudo: string
+          created_at: string
+          id: string
+          is_default: boolean | null
+          nome: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          nome: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          nome?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      contracts: {
+        Row: {
+          assinado_por: string | null
+          client_id: string
+          contract_number: string
+          created_at: string
+          created_by: string
+          dados_cliente: Json
+          dados_empresa: Json
+          dados_evento: Json
+          dados_pagamento: Json
+          data_assinatura: string | null
+          data_conclusao: string | null
+          data_evento: string | null
+          id: string
+          modelo_contrato: string | null
+          quote_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assinado_por?: string | null
+          client_id: string
+          contract_number: string
+          created_at?: string
+          created_by: string
+          dados_cliente: Json
+          dados_empresa: Json
+          dados_evento: Json
+          dados_pagamento: Json
+          data_assinatura?: string | null
+          data_conclusao?: string | null
+          data_evento?: string | null
+          id?: string
+          modelo_contrato?: string | null
+          quote_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assinado_por?: string | null
+          client_id?: string
+          contract_number?: string
+          created_at?: string
+          created_by?: string
+          dados_cliente?: Json
+          dados_empresa?: Json
+          dados_evento?: Json
+          dados_pagamento?: Json
+          data_assinatura?: string | null
+          data_conclusao?: string | null
+          data_evento?: string | null
+          id?: string
+          modelo_contrato?: string | null
+          quote_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_data: {
         Row: {
           allow_contact: boolean | null
