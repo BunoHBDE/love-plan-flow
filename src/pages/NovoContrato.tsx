@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { SubscriptionGate } from "@/components/subscription";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,9 @@ export default function NovoContrato() {
   });
   const [dadosEmpresa, setDadosEmpresa] = useState<DadosEmpresa>({});
 
+  // Track if we've already loaded the quote
+  const loadedQuoteRef = useRef<string | null>(null);
+
   // Load quote data
   useEffect(() => {
     const loadQuote = async () => {
@@ -101,6 +104,12 @@ export default function NovoContrato() {
         navigate("/contratos");
         return;
       }
+
+      // Prevent duplicate loading
+      if (loadedQuoteRef.current === quoteId) {
+        return;
+      }
+      loadedQuoteRef.current = quoteId;
 
       setLoading(true);
       const quoteData = await getQuoteById(quoteId);
@@ -171,7 +180,8 @@ export default function NovoContrato() {
     };
 
     loadQuote();
-  }, [quoteId, getQuoteById, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteId]);
 
   // Pre-fill company data from profile
   useEffect(() => {
