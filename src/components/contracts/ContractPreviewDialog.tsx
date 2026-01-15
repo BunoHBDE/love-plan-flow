@@ -48,9 +48,11 @@ export function ContractPreviewDialog({
         </DialogHeader>
 
         <ScrollArea className="h-[60vh] pr-4">
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg border whitespace-pre-wrap font-mono text-sm">
-            {renderedContent}
-          </div>
+          {/* 🔧 CORREÇÃO: Renderizar HTML ao invés de texto */}
+          <div 
+            className="contract-preview bg-white dark:bg-gray-900 p-6 rounded-lg border"
+            dangerouslySetInnerHTML={{ __html: renderedContent }}
+          />
         </ScrollArea>
 
         <DialogFooter>
