@@ -37,8 +37,11 @@ export function useSubscription() {
   const [error, setError] = useState<string | null>(null);
   const [isStartingTrial, setIsStartingTrial] = useState(false);
 
+  // Use session token as stable dependency instead of session object
+  const sessionToken = session?.access_token;
+
   const checkSubscription = useCallback(async () => {
-    if (!session) {
+    if (!sessionToken) {
       setSubscription(null);
       setLoading(false);
       return;
@@ -66,7 +69,7 @@ export function useSubscription() {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [sessionToken]);
 
   useEffect(() => {
     checkSubscription();
@@ -74,14 +77,14 @@ export function useSubscription() {
 
   // Refresh subscription every 60 seconds
   useEffect(() => {
-    if (!session) return;
+    if (!sessionToken) return;
 
     const interval = setInterval(() => {
       checkSubscription();
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [session, checkSubscription]);
+  }, [sessionToken, checkSubscription]);
 
   const startTrial = async () => {
     if (!session) {
