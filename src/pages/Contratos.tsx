@@ -18,11 +18,11 @@ import { ContractFilters } from "@/components/contracts/ContractFilters";
 import { ContractTableView } from "@/components/contracts/ContractTableView";
 import { ContractStatusDialog } from "@/components/contracts/ContractStatusDialog";
 import { ContractPreviewDialog } from "@/components/contracts/ContractPreviewDialog";
-import { CreateContractDialog } from "@/components/contracts/CreateContractDialog";
+import { QuotesPendingContractDialog } from "@/components/contracts/QuotesPendingContractDialog";
 import { DeleteContractDialog } from "@/components/contracts/DeleteContractDialog";
 
 // Tipos
-import type { Contract, ContractStatus, ContractInsertData } from "@/types/contract.types";
+import type { Contract, ContractStatus } from "@/types/contract.types";
 
 // Lib
 import { generateContractPDF } from "@/lib/generateContractPDF";
@@ -42,7 +42,6 @@ export default function Contratos() {
   const { 
     contracts, 
     isLoading, 
-    createContract, 
     updateContractStatus, 
     deleteContract 
   } = useContracts();
@@ -57,7 +56,7 @@ export default function Contratos() {
   const [sortBy, setSortBy] = useState<SortOption>("date");
   
   // Estados dos dialogs
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isQuotesDialogOpen, setIsQuotesDialogOpen] = useState(false);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
@@ -147,14 +146,6 @@ export default function Contratos() {
     });
   }, [updateContractStatus]);
 
-  const handleCreateContract = useCallback((data: ContractInsertData) => {
-    createContract.mutate(data, {
-      onSuccess: () => {
-        setIsCreateDialogOpen(false);
-      }
-    });
-  }, [createContract]);
-
   const handleDeleteContract = useCallback(() => {
     if (deletingContract) {
       deleteContract.mutate(deletingContract.id, {
@@ -197,7 +188,7 @@ export default function Contratos() {
                 variant="gold" 
                 size="lg" 
                 className="gap-2"
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={() => setIsQuotesDialogOpen(true)}
               >
                 <Plus className="h-5 w-5" />
                 Novo Contrato
@@ -258,12 +249,10 @@ export default function Contratos() {
 
           {/* ==================== DIALOGS ==================== */}
           
-          {/* Criar Contrato */}
-          <CreateContractDialog
-            open={isCreateDialogOpen}
-            onOpenChange={setIsCreateDialogOpen}
-            onCreate={handleCreateContract}
-            isLoading={createContract.isPending}
+          {/* Selecionar Orçamento */}
+          <QuotesPendingContractDialog
+            open={isQuotesDialogOpen}
+            onOpenChange={setIsQuotesDialogOpen}
           />
 
           {/* Atualizar Status */}
