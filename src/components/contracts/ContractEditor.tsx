@@ -104,15 +104,14 @@ export function ContractEditor({
     }
   }, [value, editor]);
 
-  // Preview content - calculate directly without useMemo to ensure real-time updates
-  const getPreviewHtml = (): string => {
+  // Preview content - CORRIGIDO: usar useMemo para tornar reativo
+  // Recalcula sempre que previewContent mudar
+  const previewHtml = useMemo(() => {
     if (!previewContent) return '';
     // If it starts with < it's likely already HTML from the editor
     if (previewContent.trim().startsWith('<')) return previewContent;
     return textToHtml(previewContent);
-  };
-  
-  const previewHtml = getPreviewHtml();
+  }, [previewContent]); // ✅ Dependência em previewContent garante reatividade
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
