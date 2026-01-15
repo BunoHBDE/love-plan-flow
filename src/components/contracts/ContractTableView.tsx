@@ -119,21 +119,21 @@ function ContractCard({
       </div>
 
       {/* Info Grid */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+      <div className="space-y-2 text-sm">
         <div className="flex items-center gap-2">
-          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+          <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           <span className="text-foreground">
             {formatDate(contract.data_evento)}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+          <Users className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           <span className="text-foreground">
-            {contract.dados_evento.n_convidados} conv.
+            {contract.dados_evento.n_convidados} convidados
           </span>
         </div>
-        <div className="col-span-2 flex items-center gap-2">
-          <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           <span className="font-semibold text-primary">
             {formatCurrency(contract.dados_pagamento.valor_total)}
           </span>
@@ -177,8 +177,8 @@ export function ContractTableView({
 
   return (
     <>
-      {/* MOBILE/TABLET: Cards */}
-      <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* MOBILE: Cards */}
+      <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
         {contracts.map((contract) => (
           <ContractCard
             key={contract.id}
@@ -190,7 +190,7 @@ export function ContractTableView({
       </div>
 
       {/* DESKTOP: Tabela */}
-      <div className="hidden lg:block bg-card rounded-xl shadow-soft border border-border overflow-hidden animate-fade-in">
+      <div className="hidden md:block bg-card rounded-xl shadow-soft border border-border overflow-hidden animate-fade-in">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
