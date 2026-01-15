@@ -17,6 +17,13 @@ import {
   Undo,
   Redo,
   Minus,
+  Braces,
+  User,
+  Calendar,
+  DollarSign,
+  Building2,
+  FileText,
+  ChevronDown,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -24,6 +31,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { PLACEHOLDER_CATEGORIES } from '@/lib/contractPlaceholders';
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -59,8 +77,20 @@ function ToolbarButton({ onClick, isActive, disabled, tooltip, children }: Toolb
   );
 }
 
+const categoryIcons: Record<string, React.ReactNode> = {
+  'Cliente': <User className="h-4 w-4" />,
+  'Evento': <Calendar className="h-4 w-4" />,
+  'Valores': <DollarSign className="h-4 w-4" />,
+  'Empresa': <Building2 className="h-4 w-4" />,
+  'Contrato': <FileText className="h-4 w-4" />,
+};
+
 export function EditorToolbar({ editor, className }: EditorToolbarProps) {
   if (!editor) return null;
+
+  const insertPlaceholder = (placeholder: string) => {
+    editor.chain().focus().insertContent(placeholder).run();
+  };
 
   return (
     <div className={cn("flex items-center gap-0.5 p-1 border-b bg-muted/30 rounded-t-md flex-wrap", className)}>
@@ -189,6 +219,49 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
       >
         <Minus className="h-4 w-4" />
       </ToolbarButton>
+
+      <Separator orientation="vertical" className="mx-1 h-6" />
+
+      {/* Placeholders Dropdown */}
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 gap-1 px-2">
+                <Braces className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs">Inserir Variável</span>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Inserir placeholder
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto">
+          {PLACEHOLDER_CATEGORIES.map((category, index) => (
+            <DropdownMenuGroup key={category.label}>
+              {index > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel className="flex items-center gap-2 text-xs">
+                {categoryIcons[category.label]}
+                {category.label}
+              </DropdownMenuLabel>
+              {category.placeholders.map((placeholder) => (
+                <DropdownMenuItem
+                  key={placeholder.key}
+                  onClick={() => insertPlaceholder(placeholder.key)}
+                  className="flex flex-col items-start gap-0.5 cursor-pointer"
+                >
+                  <span className="font-medium text-sm">{placeholder.label}</span>
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {placeholder.key}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
