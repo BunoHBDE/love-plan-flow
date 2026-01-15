@@ -95,7 +95,8 @@ export default function NovoContrato() {
 
   // Track if we've already loaded the quote
   const loadedQuoteRef = useRef<string | null>(null);
-
+  const hasInitialized = useRef(false);
+  
   // Load quote data
   useEffect(() => {
     const loadQuote = async () => {
@@ -206,9 +207,14 @@ export default function NovoContrato() {
 
   // Set initial template content
   useEffect(() => {
-    const defaultContent = getDefaultContent() || DEFAULT_CONTRACT_TEMPLATE;
-    setContractContent(defaultContent);
+    if (!hasInitialized.current) {
+      const defaultContent = getDefaultContent() || DEFAULT_CONTRACT_TEMPLATE;
+      setContractContent(defaultContent);
+      hasInitialized.current = true;
+    }
   }, [getDefaultContent]);
+
+
 
   // Update contract content when template changes
   useEffect(() => {
