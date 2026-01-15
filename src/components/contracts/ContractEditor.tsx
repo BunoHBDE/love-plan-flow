@@ -104,9 +104,11 @@ export function ContractEditor({
     }
   }, [value, editor]);
 
-  // Preview content with styling
+  // Preview content - use directly if already HTML, otherwise convert
   const previewHtml = useMemo(() => {
     if (!previewContent) return '';
+    // If it starts with < it's likely already HTML from the editor
+    if (previewContent.trim().startsWith('<')) return previewContent;
     return textToHtml(previewContent);
   }, [previewContent]);
 
