@@ -177,8 +177,8 @@ export function ContractTableView({
 
   return (
     <>
-      {/* MOBILE: Cards */}
-      <div className="md:hidden space-y-3">
+      {/* MOBILE/TABLET: Cards */}
+      <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
         {contracts.map((contract) => (
           <ContractCard
             key={contract.id}
@@ -190,7 +190,7 @@ export function ContractTableView({
       </div>
 
       {/* DESKTOP: Tabela */}
-      <div className="hidden md:block bg-card rounded-xl shadow-soft border border-border overflow-hidden animate-fade-in">
+      <div className="hidden lg:block bg-card rounded-xl shadow-soft border border-border overflow-hidden animate-fade-in">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
