@@ -1,24 +1,10 @@
-/**
- * PÁGINA: Novo Orçamento (V2 - Simplificada)
- * 
- * Design no padrão ERP (Conta Azul, Bling):
- * - Formulário em página única
- * - Tabela de itens editável inline
- * - Pagamento com toggle padrão/customizado
- * - Menos campos obrigatórios
- */
-
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -36,439 +22,675 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  ArrowLeft,
-  Save,
-  Send,
-  Eye,
-  Plus,
-  Trash2,
   Search,
   User,
   Calendar,
-  Users,
-  Package,
-  Home,
-  UtensilsCrossed,
-  Wrench,
-  Gift,
-  ChevronDown,
-  ChevronUp,
-  Percent,
-  DollarSign,
-  CreditCard,
+  Package as PackageIcon,
   FileText,
-  X,
+  ArrowLeft,
+  Save,
+  Plus,
   Loader2,
-  Check,
-  AlertCircle,
-  Phone,
-  Mail,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
+import { useClientsOptimized as useClients, type Client, type ClientInsert } from "@/hooks/useClientsOptimized";
+import { useQuotesOptimized as useQuotes } from "@/hooks/useQuotesOptimized";
+import { PaymentTermsForm, type PaymentTermsData } from "@/components/quotes/PaymentTermsForm";
+import { ExtrasForm, type ExtraItem, calcularTotalExtras } from "@/components/quotes/ExtrasForm";
+import { DiscountForm, type DiscountData } from "@/components/quotes/DiscountForm";
+import { QuoteItemsSection, type QuoteItemsSelections, initialQuoteItemsSelections } from "@/components/quotes/QuoteItemsSection";
+import { QuotePriceSummary } from "@/components/quotes/QuotePriceSummary";
+import { useSpaceSettings } from "@/hooks/useSpaceSettings";
+import { useBuffetSettings } from "@/hooks/useBuffetSettings";
+import { useServiceSettings } from "@/hooks/useServiceSettings";
+import { usePackageSettings } from "@/hooks/usePackageSettings";
+import { usePaymentSettings } from "@/hooks/usePaymentSettings";
+import {
+  calcularPrecoEspaco,
+  calcularPrecoBuffet,
+  calcularPrecoServico,
+  calcularComposicaoPreco,
+  getDiaSemana,
+  getAnoFromDate,
+} from "@/lib/pricingCalculator";
+import type { QuoteItem, QuoteComposicao } from "@/types/quote.types";
 
-// ============================================================================
-// TIPOS
-// ============================================================================
-
-type ItemType = 'espaco' | 'buffet' | 'servico' | 'pacote' | 'extra';
-type PaymentMode = 'default' | 'custom';
-type QuoteStatus = 'rascunho' | 'enviado';
-
-interface QuoteItem {
-  id: string;
-  tipo: ItemType;
-  nome: string;
-  descricao?: string;
-  quantidade: number;
-  valorUnitario: number;
-  unidade?: string;
-}
-
-interface Cliente {
-  id: string;
-  nome: string;
-  email?: string;
-  telefone?: string;
-}
-
-// ============================================================================
-// CONSTANTES
-// ============================================================================
-
-const TIPOS_EVENTO = [
-  { value: 'casamento', label: 'Casamento' },
-  { value: 'debutante', label: 'Debutante' },
-  { value: 'corporativo', label: 'Corporativo' },
-  { value: 'aniversario', label: 'Aniversário' },
-  { value: 'formatura', label: 'Formatura' },
-  { value: 'outro', label: 'Outro' },
+const tiposEvento = [
+  { value: "casamento", label: "Casamento" },
+  { value: "debutante", label: "Debutante" },
+  { value: "corporativo", label: "Corporativo" },
+  { value: "aniversario", label: "Aniversário" },
 ];
 
-const ITEM_CONFIG: Record<ItemType, { icon: React.ElementType; label: string; color: string }> = {
-  espaco: { icon: Home, label: 'Espaço', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  buffet: { icon: UtensilsCrossed, label: 'Buffet', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-  servico: { icon: Wrench, label: 'Serviço', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
-  pacote: { icon: Package, label: 'Pacote', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  extra: { icon: Gift, label: 'Extra', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400' },
-};
-
-// Mock de clientes para demonstração
-const MOCK_CLIENTES: Cliente[] = [
-  { id: '1', nome: 'Maria Silva', email: 'maria@email.com', telefone: '(11) 99999-0001' },
-  { id: '2', nome: 'João Santos', email: 'joao@email.com', telefone: '(11) 99999-0002' },
-  { id: '3', nome: 'Ana Oliveira', email: 'ana@email.com', telefone: '(11) 99999-0003' },
+const diasSemana = [
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+  "Domingo",
 ];
 
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-};
-
-const generateId = () => `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-// ============================================================================
-// COMPONENTE PRINCIPAL
-// ============================================================================
-
-export default function NovoOrcamentoV2() {
+export default function NovoOrcamento() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
-  // ============================================================================
-  // ESTADO
-  // ============================================================================
-  
-  // Status
-  const [isSaving, setIsSaving] = useState(false);
-  
+  // Hooks de dados
+  const { searchClients, createClient } = useClients();
+  const { createQuote } = useQuotes();
+  const { spaces } = useSpaceSettings();
+  const { buffets } = useBuffetSettings();
+  const { services } = useServiceSettings();
+  const { packages } = usePackageSettings();
+  const { settings: paymentSettings } = usePaymentSettings();
+
+  // =============================================================================
+  // ESTADOS
+  // =============================================================================
+
   // Cliente
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [clienteSearch, setClienteSearch] = useState('');
-  const [showClienteResults, setShowClienteResults] = useState(false);
-  
+  const [clienteId, setClienteId] = useState<string | null>(null);
+  const [termoBuscaCliente, setTermoBuscaCliente] = useState("");
+  const [listaResultadosCliente, setListaResultadosCliente] = useState<Client[]>([]);
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Dados do cliente selecionado
+  const [nomeCliente, setNomeCliente] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [cpf, setCpf] = useState("");
+
   // Evento
-  const [tipoEvento, setTipoEvento] = useState('');
-  const [dataStatus, setDataStatus] = useState<'com_data' | 'sem_data'>('sem_data');
-  const [dataEvento, setDataEvento] = useState('');
-  const [nConvidados, setNConvidados] = useState<number>(0);
-  
-  // Itens
-  const [itens, setItens] = useState<QuoteItem[]>([]);
-  const [itemDialogOpen, setItemDialogOpen] = useState(false);
-  const [itemDialogType, setItemDialogType] = useState<ItemType>('servico');
-  
-  // Desconto
-  const [descontoTipo, setDescontoTipo] = useState<'percentual' | 'valor'>('percentual');
-  const [descontoValor, setDescontoValor] = useState(0);
-  
-  // Pagamento
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('default');
-  const [percentualSinal, setPercentualSinal] = useState(30);
-  const [numeroParcelas, setNumeroParcelas] = useState(6);
-  
+  const [tipoEvento, setTipoEvento] = useState("");
+  const [dataStatus, setDataStatus] = useState<"com_data" | "sem_data">("sem_data");
+  const [dataEvento, setDataEvento] = useState("");
+  const [diaSemana, setDiaSemana] = useState<string | null>(null);
+  const [anoEvento, setAnoEvento] = useState<string>(() => {
+    return new Date().getFullYear().toString();
+  });
+  const [validadeOrcamento, setValidadeOrcamento] = useState("");
+  const [nConvidados, setNConvidados] = useState(0);
+
+  // NOVO: Seleções de itens (unificado)
+  const [itemSelections, setItemSelections] = useState<QuoteItemsSelections>(
+    initialQuoteItemsSelections
+  );
+
+  // Composição de preço (calculado)
+  const [composicao, setComposicao] = useState<QuoteComposicao | null>(null);
+
   // Observações
-  const [obsOpen, setObsOpen] = useState(false);
-  const [observacoesInternas, setObservacoesInternas] = useState('');
-  const [observacoesCliente, setObservacoesCliente] = useState('');
-  
-  // Validade
-  const [validade, setValidade] = useState('30');
+  const [observacoesInternas, setObservacoesInternas] = useState("");
+  const [observacoesCliente, setObservacoesCliente] = useState("");
 
-  // ============================================================================
-  // CÁLCULOS
-  // ============================================================================
-  
-  const totais = useMemo(() => {
-    const subtotal = itens.reduce((acc, item) => acc + (item.quantidade * item.valorUnitario), 0);
-    const descontoCalculado = descontoTipo === 'percentual' 
-      ? (subtotal * descontoValor / 100)
-      : descontoValor;
-    const total = Math.max(0, subtotal - descontoCalculado);
-    const valorSinal = total * percentualSinal / 100;
-    const saldoRestante = total - valorSinal;
-    const valorParcela = numeroParcelas > 0 ? saldoRestante / numeroParcelas : 0;
+  // Extras
+  const [extras, setExtras] = useState<ExtraItem[]>([]);
 
+  // Desconto manual
+  const [discount, setDiscount] = useState<DiscountData>({
+    descricao: "",
+    percentual: 0,
+    valor: 0,
+  });
+
+  // Condições de pagamento
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermsData>({
+    percentualSinal: paymentSettings?.percentual_minimo_sinal || 10,
+    valorSinal: 0,
+    numeroParcelas: 1,
+    diaVencimento: paymentSettings?.dia_vencimento_padrao || 10,
+    parcelas: [],
+  });
+  const [hasPaymentErrors, setHasPaymentErrors] = useState(false);
+
+  // =============================================================================
+  // EFEITOS
+  // =============================================================================
+
+  // Pre-fill data do evento da URL
+  useEffect(() => {
+    const dataEventoParam = searchParams.get("data_evento");
+    if (dataEventoParam) {
+      setDataStatus("com_data");
+      setDataEvento(dataEventoParam);
+    }
+  }, [searchParams]);
+
+  // Atualizar configurações de pagamento quando carregarem
+  useEffect(() => {
+    if (paymentSettings) {
+      setPaymentTerms((prev) => ({
+        ...prev,
+        percentualSinal: paymentSettings.percentual_minimo_sinal,
+        diaVencimento: paymentSettings.dia_vencimento_padrao,
+      }));
+    }
+  }, [paymentSettings]);
+
+  // Atualizar dia da semana quando data muda
+  useEffect(() => {
+    if (dataStatus === "com_data" && dataEvento) {
+      const dia = getDiaSemana(dataEvento);
+      setDiaSemana(dia);
+      const year = getAnoFromDate(dataEvento);
+      setAnoEvento(year);
+    }
+  }, [dataEvento, dataStatus]);
+
+  // Validade padrão (30 dias)
+  useEffect(() => {
+    const defaultValidity = new Date();
+    defaultValidity.setDate(defaultValidity.getDate() + 30);
+    setValidadeOrcamento(defaultValidity.toISOString().split("T")[0]);
+  }, []);
+
+  // =============================================================================
+  // CÁLCULO DE PREÇOS (useMemo para performance)
+  // =============================================================================
+
+  // Encontrar pacote selecionado
+  const selectedPackage = useMemo(() => {
+    if (!itemSelections.pacoteId) return null;
+    return packages.find((p) => p.id === itemSelections.pacoteId) || null;
+  }, [itemSelections.pacoteId, packages]);
+
+  // Calcular composição de preço
+  useEffect(() => {
+    const { espacoId, buffetId, servicoIds, serviceQuantities } = itemSelections;
+
+    // Precisa ter pelo menos um item e número de convidados
+    if ((!espacoId && !buffetId && servicoIds.length === 0) || nConvidados <= 0) {
+      setComposicao(null);
+      return;
+    }
+
+    const itens: QuoteItem[] = [];
+
+    // Calcular preço do espaço
+    if (espacoId && diaSemana) {
+      const espaco = spaces.find((s) => s.id === espacoId);
+      if (espaco) {
+        const precoEspaco = calcularPrecoEspaco(espaco, diaSemana, nConvidados);
+        if (precoEspaco) {
+          itens.push(precoEspaco);
+        }
+      }
+    }
+
+    // Calcular preço do buffet
+    if (buffetId) {
+      const buffet = buffets.find((b) => b.id === buffetId);
+      if (buffet) {
+        const precoBuffet = calcularPrecoBuffet(buffet, nConvidados);
+        if (precoBuffet) {
+          itens.push(precoBuffet);
+        }
+      }
+    }
+
+    // Calcular preço dos serviços
+    servicoIds.forEach((servicoId) => {
+      const servico = services.find((s) => s.id === servicoId);
+      if (servico) {
+        const preco = servico.precos?.[0];
+        let quantidade = nConvidados;
+
+        if (preco && preco.tipo === "variavel") {
+          const unidade = preco.unidade?.toLowerCase() || "";
+          const isPessoaUnidade =
+            unidade === "pessoa" ||
+            unidade === "pessoas" ||
+            unidade === "convidado" ||
+            unidade === "convidados";
+
+          if (!isPessoaUnidade) {
+            quantidade = serviceQuantities[servicoId] || 1;
+          }
+        }
+
+        const precoServico = calcularPrecoServico(servico, quantidade);
+        if (precoServico) {
+          itens.push(precoServico);
+        }
+      }
+    });
+
+    // Calcular composição final com pacote (se houver)
+    const novaComposicao = calcularComposicaoPreco(
+      itens,
+      selectedPackage,
+      extras,
+      nConvidados
+    );
+    setComposicao(novaComposicao);
+  }, [
+    itemSelections,
+    diaSemana,
+    nConvidados,
+    extras,
+    spaces,
+    buffets,
+    services,
+    selectedPackage,
+  ]);
+
+  // Package info para o resumo
+  const packageInfoForSummary = useMemo(() => {
+    if (!selectedPackage) return null;
     return {
-      subtotal,
-      desconto: descontoCalculado,
-      total,
-      valorSinal,
-      saldoRestante,
-      valorParcela,
+      nome: selectedPackage.nome,
+      descontoFixo: selectedPackage.desconto_percentual,
+      descontoVariavel: selectedPackage.desconto_percentual_variavel,
+      itensIds: [
+        ...itemSelections.packageLockedItems.servicoIds,
+        itemSelections.packageLockedItems.espacoId,
+        itemSelections.packageLockedItems.buffetId,
+      ].filter(Boolean) as string[],
     };
-  }, [itens, descontoTipo, descontoValor, percentualSinal, numeroParcelas]);
+  }, [selectedPackage, itemSelections.packageLockedItems]);
 
-  // Busca de clientes filtrada
-  const clientesFiltrados = useMemo(() => {
-    if (clienteSearch.length < 2) return [];
-    const term = clienteSearch.toLowerCase();
-    return MOCK_CLIENTES.filter(c => 
-      c.nome.toLowerCase().includes(term) ||
-      c.email?.toLowerCase().includes(term)
-    ).slice(0, 5);
-  }, [clienteSearch]);
-
-  // ============================================================================
+  // =============================================================================
   // HANDLERS
-  // ============================================================================
-  
-  const handleSelectCliente = (c: Cliente) => {
-    setCliente(c);
-    setClienteSearch('');
-    setShowClienteResults(false);
-  };
+  // =============================================================================
 
-  const handleAddItem = (tipo: ItemType) => {
-    setItemDialogType(tipo);
-    setItemDialogOpen(true);
-  };
-
-  const handleConfirmAddItem = (nome: string, valor: number, quantidade: number, unidade?: string) => {
-    const newItem: QuoteItem = {
-      id: generateId(),
-      tipo: itemDialogType,
-      nome,
-      quantidade,
-      valorUnitario: valor,
-      unidade,
-    };
-    setItens(prev => [...prev, newItem]);
-    setItemDialogOpen(false);
-  };
-
-  const handleRemoveItem = (id: string) => {
-    setItens(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleUpdateItemQtd = (id: string, qtd: number) => {
-    setItens(prev => prev.map(item => 
-      item.id === id ? { ...item, quantidade: qtd } : item
-    ));
-  };
-
-  const handleSave = async (status: QuoteStatus) => {
-    // Validações mínimas
-    if (!cliente) {
+  const handleBuscarCliente = async () => {
+    if (!termoBuscaCliente.trim()) {
       toast({
-        title: 'Selecione um cliente',
-        description: 'É necessário selecionar um cliente para salvar o orçamento.',
-        variant: 'destructive',
+        title: "Digite algo para buscar",
+        variant: "destructive",
       });
       return;
     }
 
-    if (status === 'enviado' && itens.length === 0) {
+    setIsSearching(true);
+    const resultados = await searchClients(termoBuscaCliente);
+    setListaResultadosCliente(resultados);
+    setIsSearching(false);
+
+    if (resultados.length === 0) {
       toast({
-        title: 'Adicione itens',
-        description: 'Adicione pelo menos um item para enviar o orçamento.',
-        variant: 'destructive',
+        title: "Nenhum cliente encontrado",
+        description: "Tente outro termo de busca ou cadastre um novo cliente.",
+      });
+    }
+  };
+
+  const handleSelecionarCliente = (cliente: Client) => {
+    setClienteId(cliente.id);
+    setNomeCliente(cliente.nome);
+    setEmail(cliente.email || "");
+    setTelefone(cliente.telefone);
+    setCpf(cliente.cpf || "");
+    setListaResultadosCliente([]);
+    setTermoBuscaCliente("");
+
+    toast({
+      title: "Cliente selecionado",
+      description: cliente.nome,
+    });
+  };
+
+  const handleClientCreated = async (clientData: ClientFormData & { id: string }) => {
+    const newClient: ClientInsert = {
+      nome: clientData.name,
+      email: clientData.email || null,
+      telefone: clientData.phone,
+      cpf: clientData.cpf || null,
+      cep: clientData.address.cep || null,
+      rua: clientData.address.street || null,
+      numero: clientData.address.number || null,
+      complemento: clientData.address.complement || null,
+      bairro: clientData.address.neighborhood || null,
+      cidade: clientData.address.city || null,
+      estado_uf: clientData.address.state || null,
+    };
+
+    const createdClient = await createClient(newClient);
+
+    if (createdClient) {
+      handleSelecionarCliente(createdClient);
+    }
+
+    setIsClientDialogOpen(false);
+  };
+
+  const handleSalvarOrcamento = async (status: "rascunho" | "enviado") => {
+    const { espacoId, buffetId, servicoIds, serviceQuantities, pacoteId } = itemSelections;
+
+    // Validações
+    if (!clienteId) {
+      toast({
+        title: "Selecione um cliente",
+        description: "Busque e selecione um cliente existente ou cadastre um novo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!espacoId && !buffetId && servicoIds.length === 0 && !pacoteId) {
+      toast({
+        title: "Selecione ao menos um item",
+        description: "Selecione espaço, buffet, serviços ou pacote.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (nConvidados <= 0) {
+      toast({
+        title: "Número de convidados inválido",
+        description: "Informe um número maior que zero.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (espacoId && !diaSemana) {
+      toast({
+        title: "Defina o dia da semana",
+        description: "O dia da semana é necessário para calcular o preço do espaço.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar quantidades de serviços
+    for (const servicoId of servicoIds) {
+      const servico = services.find((s) => s.id === servicoId);
+      if (servico) {
+        const preco = servico.precos?.[0];
+        if (preco && preco.tipo === "variavel") {
+          const unidade = preco.unidade?.toLowerCase() || "";
+          const isPessoaUnidade =
+            unidade === "pessoa" ||
+            unidade === "pessoas" ||
+            unidade === "convidado" ||
+            unidade === "convidados";
+
+          if (!isPessoaUnidade) {
+            const quantidade = serviceQuantities[servicoId] || 0;
+            if (quantidade < 1) {
+              toast({
+                title: "Quantidade inválida",
+                description: `Informe a quantidade de ${preco.unidade || "unidades"} para "${servico.nome}".`,
+                variant: "destructive",
+              });
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    if (!composicao || composicao.total_geral <= 0) {
+      toast({
+        title: "Valor inválido",
+        description: "O orçamento precisa ter um valor calculado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (status === "enviado" && hasPaymentErrors) {
+      toast({
+        title: "Erro nas condições de pagamento",
+        description: "Corrija os erros antes de salvar o orçamento.",
+        variant: "destructive",
       });
       return;
     }
 
     setIsSaving(true);
-    
-    // Simular salvamento
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: status === 'rascunho' ? 'Rascunho salvo!' : 'Orçamento enviado!',
-      description: status === 'rascunho' 
-        ? 'O orçamento foi salvo como rascunho.'
-        : 'O orçamento foi enviado para o cliente.',
+
+    const valorTotalFinal = composicao.total_geral - (discount?.valor || 0);
+
+    const quote = await createQuote({
+      client_id: clienteId,
+      tipo_evento: tipoEvento || null,
+      data_status: dataStatus,
+      data_evento: dataStatus === "com_data" && dataEvento ? dataEvento : null,
+      dia_semana: diaSemana,
+      ano_evento: anoEvento,
+      n_convidados: nConvidados,
+
+      // Referências às configurações
+      espaco_id: espacoId,
+      buffet_id: buffetId,
+      servico_ids: servicoIds.length > 0 ? servicoIds : null,
+      pacote_id: pacoteId,
+
+      // Quantidades customizadas de serviços
+      servico_quantidades: servicoIds.length > 0 ? serviceQuantities : null,
+
+      // Composição de preço
+      composicao_preco: composicao,
+
+      // Desconto manual
+      desconto_descricao: discount?.descricao || null,
+      desconto_percentual: discount?.percentual || 0,
+      desconto_valor: discount?.valor || 0,
+
+      // Valores (mantidos para compatibilidade)
+      pacote: pacoteId || "",
+      menu_buffet: buffetId || null,
+      valor_total: valorTotalFinal,
+
+      validade: validadeOrcamento || null,
+      status,
+      observacoes_internas: observacoesInternas || null,
+      observacoes_cliente: observacoesCliente || null,
+      percentual_sinal: paymentTerms.percentualSinal,
+      valor_sinal: paymentTerms.valorSinal,
+      numero_parcelas: paymentTerms.numeroParcelas,
+      dia_vencimento: paymentTerms.diaVencimento,
+      parcelas_json: paymentTerms.parcelas,
+      extras_json: extras,
     });
-    
+
     setIsSaving(false);
-    navigate('/orcamentos');
+
+    if (quote) {
+      navigate("/orcamentos");
+    }
   };
 
-  // ============================================================================
+  // =============================================================================
+  // DADOS DERIVADOS
+  // =============================================================================
+
+  const currentYear = new Date().getFullYear();
+  const anos = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
+
+  // Dias da semana disponíveis baseado nos espaços
+  const getDiasDisponiveis = () => {
+    const spacesDoAno = spaces.filter((s) => s.ano === anoEvento);
+    if (spacesDoAno.length === 0) return diasSemana;
+
+    const diasSet = new Set<string>();
+    spacesDoAno.forEach((space) => {
+      space.precos_por_dia?.forEach((preco) => {
+        preco.dias.forEach((dia) => diasSet.add(dia));
+      });
+    });
+
+    return diasSemana.filter((dia) => diasSet.has(dia));
+  };
+
+  const diasDisponiveis = getDiasDisponiveis();
+
+  // =============================================================================
   // RENDER
-  // ============================================================================
-  
+  // =============================================================================
+
   return (
     <MainLayout>
-      <div className="max-w-5xl mx-auto space-y-6 pb-24">
-        
-        {/* ================================================================ */}
-        {/* HEADER */}
-        {/* ================================================================ */}
-        <div className="flex items-center justify-between">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate('/orcamentos')}
+              onClick={() => navigate("/orcamentos")}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Novo Orçamento</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-2xl font-display font-bold text-foreground">
+                Novo Orçamento
+              </h1>
+              <p className="text-muted-foreground">
                 Preencha os dados para gerar uma proposta
               </p>
             </div>
           </div>
-          
-          <Badge variant="outline" className="text-sm">
-            Rascunho
-          </Badge>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleSalvarOrcamento("rascunho")}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Salvar Rascunho
+            </Button>
+            <Button
+              variant="gold"
+              onClick={() => handleSalvarOrcamento("enviado")}
+              disabled={isSaving}
+            >
+              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar Orçamento
+            </Button>
+          </div>
         </div>
 
-        {/* ================================================================ */}
-        {/* CLIENTE */}
-        {/* ================================================================ */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Cliente
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {cliente ? (
-              // Cliente selecionado
-              <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{cliente.nome}</p>
-                    <div className="flex gap-3 text-sm text-muted-foreground">
-                      {cliente.email && (
-                        <span className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {cliente.email}
-                        </span>
-                      )}
-                      {cliente.telefone && (
-                        <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {cliente.telefone}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+        <div className="space-y-6">
+          {/* Block 1 - Cliente */}
+          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-display font-semibold">Dados do Cliente</h2>
+            </div>
+
+            {/* Client Search */}
+            <div className="space-y-4 mb-6">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por telefone, email ou nome"
+                    value={termoBuscaCliente}
+                    onChange={(e) => setTermoBuscaCliente(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleBuscarCliente()}
+                    className="pl-10"
+                    autoComplete="off"
+                  />
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCliente(null)}
-                >
-                  <X className="h-4 w-4" />
+                <Button onClick={handleBuscarCliente} disabled={isSearching}>
+                  {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
+                </Button>
+                <Button variant="outline" onClick={() => setIsClientDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo
                 </Button>
               </div>
-            ) : (
-              // Busca de cliente
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar cliente por nome ou email..."
-                  value={clienteSearch}
-                  onChange={(e) => {
-                    setClienteSearch(e.target.value);
-                    setShowClienteResults(e.target.value.length >= 2);
-                  }}
-                  className="pl-10"
-                />
-                
-                {/* Dropdown de resultados */}
-                {showClienteResults && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-40" 
-                      onClick={() => setShowClienteResults(false)} 
-                    />
-                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border rounded-lg shadow-lg overflow-hidden">
-                      {clientesFiltrados.length > 0 ? (
-                        <ul>
-                          {clientesFiltrados.map((c) => (
-                            <li key={c.id}>
-                              <button
-                                type="button"
-                                className="w-full px-4 py-3 text-left hover:bg-accent transition-colors flex items-center gap-3"
-                                onClick={() => handleSelectCliente(c)}
-                              >
-                                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                                  <User className="h-4 w-4" />
-                                </div>
-                                <div>
-                                  <p className="font-medium text-sm">{c.nome}</p>
-                                  <p className="text-xs text-muted-foreground">{c.email}</p>
-                                </div>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="p-4 text-center">
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Nenhum cliente encontrado
-                          </p>
-                          <Button variant="outline" size="sm">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Criar novo cliente
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* ================================================================ */}
-        {/* EVENTO */}
-        {/* ================================================================ */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Evento
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Tipo */}
-              <div className="space-y-2">
-                <Label>Tipo de Evento</Label>
+              {listaResultadosCliente.length > 0 && (
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Telefone</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead className="w-24">Ação</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {listaResultadosCliente.map((cliente) => (
+                        <TableRow key={cliente.id}>
+                          <TableCell className="font-medium">{cliente.nome}</TableCell>
+                          <TableCell>{cliente.telefone}</TableCell>
+                          <TableCell>{cliente.email || "-"}</TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSelecionarCliente(cliente)}
+                            >
+                              Selecionar
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {clienteId && (
+                <div className="bg-success/10 border border-success/20 rounded-lg p-3">
+                  <p className="text-sm text-success font-medium">
+                    Cliente selecionado: {nomeCliente}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Client Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-muted-foreground text-sm">Nome</Label>
+                <p className="font-medium py-2">{nomeCliente || "-"}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-sm">Email</Label>
+                <p className="font-medium py-2">{email || "-"}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-sm">Telefone</Label>
+                <p className="font-medium py-2">{telefone || "-"}</p>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-sm">CPF</Label>
+                <p className="font-medium py-2">{cpf || "-"}</p>
+              </div>
+            </div>
+
+            <ClientFormDialog
+              open={isClientDialogOpen}
+              onOpenChange={setIsClientDialogOpen}
+              onClientCreated={handleClientCreated}
+              showSaveAndSearch={true}
+            />
+          </div>
+
+          {/* Block 2 - Evento */}
+          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-display font-semibold">Informações do Evento</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-muted-foreground text-sm">Tipo de Evento</Label>
                 <Select value={tipoEvento} onValueChange={setTipoEvento}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TIPOS_EVENTO.map((tipo) => (
+                    {tiposEvento.map((tipo) => (
                       <SelectItem key={tipo.value} value={tipo.value}>
                         {tipo.label}
                       </SelectItem>
@@ -477,582 +699,224 @@ export default function NovoOrcamentoV2() {
                 </Select>
               </div>
 
-              {/* Convidados */}
-              <div className="space-y-2">
-                <Label>Nº de Convidados</Label>
-                <div className="relative">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    min={0}
-                    value={nConvidados || ''}
-                    onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
-                    placeholder="Ex: 150"
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              {/* Data */}
-              <div className="space-y-2">
-                <Label>Data do Evento</Label>
-                <Select 
-                  value={dataStatus} 
-                  onValueChange={(v) => setDataStatus(v as 'com_data' | 'sem_data')}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sem_data">Sem data definida</SelectItem>
-                    <SelectItem value="com_data">Data definida</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Campo de data (condicional) */}
-            {dataStatus === 'com_data' && (
-              <div className="max-w-xs">
-                <Label className="text-sm text-muted-foreground">Data</Label>
-                <Input
-                  type="date"
-                  value={dataEvento}
-                  onChange={(e) => setDataEvento(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="mt-1"
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* ================================================================ */}
-        {/* ITENS DO ORÇAMENTO */}
-        {/* ================================================================ */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Itens do Orçamento
-              </CardTitle>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Item
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleAddItem('espaco')}>
-                    <Home className="h-4 w-4 mr-2" />
-                    Espaço
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleAddItem('buffet')}>
-                    <UtensilsCrossed className="h-4 w-4 mr-2" />
-                    Buffet
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleAddItem('servico')}>
-                    <Wrench className="h-4 w-4 mr-2" />
-                    Serviço
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleAddItem('pacote')}>
-                    <Package className="h-4 w-4 mr-2" />
-                    Pacote
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleAddItem('extra')}>
-                    <Gift className="h-4 w-4 mr-2" />
-                    Item Extra
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {itens.length === 0 ? (
-              // Empty state
-              <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground mb-1">
-                  Nenhum item adicionado
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Clique em "Adicionar Item" para começar
-                </p>
-              </div>
-            ) : (
-              // Tabela de itens
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[100px]">Tipo</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="w-[100px] text-right">Qtd</TableHead>
-                      <TableHead className="w-[130px] text-right">Valor Unit.</TableHead>
-                      <TableHead className="w-[130px] text-right">Total</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {itens.map((item) => {
-                      const config = ITEM_CONFIG[item.tipo];
-                      const Icon = config.icon;
-                      const itemTotal = item.quantidade * item.valorUnitario;
-                      
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <span className={cn(
-                              'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
-                              config.color
-                            )}>
-                              <Icon className="h-3 w-3" />
-                              {config.label}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <p className="font-medium">{item.nome}</p>
-                            {item.unidade && (
-                              <p className="text-xs text-muted-foreground">
-                                Por {item.unidade}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Input
-                              type="number"
-                              min={1}
-                              value={item.quantidade}
-                              onChange={(e) => handleUpdateItemQtd(item.id, parseInt(e.target.value) || 1)}
-                              className="w-20 h-8 text-right ml-auto"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right font-mono">
-                            {formatCurrency(item.valorUnitario)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono font-medium">
-                            {formatCurrency(itemTotal)}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRemoveItem(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* ================================================================ */}
-        {/* TOTAIS E DESCONTO */}
-        {/* ================================================================ */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-              {/* Desconto */}
-              <div className="space-y-3">
-                <Label>Desconto</Label>
-                <div className="flex items-center gap-2">
-                  <Select 
-                    value={descontoTipo} 
-                    onValueChange={(v) => setDescontoTipo(v as 'percentual' | 'valor')}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="percentual">%</SelectItem>
-                      <SelectItem value="valor">R$</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={descontoValor || ''}
-                    onChange={(e) => setDescontoValor(parseFloat(e.target.value) || 0)}
-                    placeholder="0"
-                    className="w-[120px]"
-                  />
-                </div>
-              </div>
-
-              {/* Resumo */}
-              <div className="space-y-2 text-right min-w-[200px]">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-mono">{formatCurrency(totais.subtotal)}</span>
-                </div>
-                {totais.desconto > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Desconto</span>
-                    <span className="font-mono">-{formatCurrency(totais.desconto)}</span>
-                  </div>
-                )}
-                <Separator />
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Total</span>
-                  <span className="font-mono">{formatCurrency(totais.total)}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ================================================================ */}
-        {/* PAGAMENTO */}
-        {/* ================================================================ */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Condições de Pagamento
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {paymentMode === 'default' ? 'Padrão' : 'Personalizado'}
-                </span>
-                <Switch
-                  checked={paymentMode === 'custom'}
-                  onCheckedChange={(checked) => setPaymentMode(checked ? 'custom' : 'default')}
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {paymentMode === 'default' ? (
-              // Modo padrão: resumo
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <Check className="h-4 w-4 text-green-500" />
-                  Usando condições padrão
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Sinal</p>
-                    <p className="font-medium">{percentualSinal}% ({formatCurrency(totais.valorSinal)})</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Parcelas</p>
-                    <p className="font-medium">{numeroParcelas}x de {formatCurrency(totais.valorParcela)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Dia de vencimento</p>
-                    <p className="font-medium">Dia 10</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Saldo restante</p>
-                    <p className="font-medium">{formatCurrency(totais.saldoRestante)}</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Modo personalizado: campos editáveis
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Sinal (%)</Label>
-                    <Input
-                      type="number"
-                      min={10}
-                      max={100}
-                      value={percentualSinal}
-                      onChange={(e) => setPercentualSinal(parseInt(e.target.value) || 10)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Valor: {formatCurrency(totais.valorSinal)}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nº de Parcelas</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={24}
-                      value={numeroParcelas}
-                      onChange={(e) => setNumeroParcelas(parseInt(e.target.value) || 1)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Valor: {formatCurrency(totais.valorParcela)} cada
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Saldo Restante</Label>
-                    <Input
-                      value={formatCurrency(totais.saldoRestante)}
-                      readOnly
-                      className="bg-muted"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* ================================================================ */}
-        {/* OBSERVAÇÕES (COLAPSÁVEL) */}
-        {/* ================================================================ */}
-        <Collapsible open={obsOpen} onOpenChange={setObsOpen}>
-          <Card>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Observações
-                    <span className="text-sm font-normal text-muted-foreground">(opcional)</span>
-                  </CardTitle>
-                  {obsOpen ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="space-y-4 pt-0">
-                <div className="space-y-2">
-                  <Label>Observações Internas</Label>
-                  <Textarea
-                    placeholder="Notas internas (não aparece no PDF)"
-                    value={observacoesInternas}
-                    onChange={(e) => setObservacoesInternas(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Observações para o Cliente</Label>
-                  <Textarea
-                    placeholder="Informações que aparecerão no orçamento"
-                    value={observacoesCliente}
-                    onChange={(e) => setObservacoesCliente(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* ================================================================ */}
-        {/* VALIDADE */}
-        {/* ================================================================ */}
-        <div className="flex items-center gap-4">
-          <Label className="whitespace-nowrap">Validade do orçamento:</Label>
-          <Select value={validade} onValueChange={setValidade}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 dias</SelectItem>
-              <SelectItem value="15">15 dias</SelectItem>
-              <SelectItem value="30">30 dias</SelectItem>
-              <SelectItem value="60">60 dias</SelectItem>
-              <SelectItem value="90">90 dias</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* ================================================================ */}
-        {/* AÇÕES (FIXED BOTTOM) */}
-        {/* ================================================================ */}
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-50">
-          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/orcamentos')}
-            >
-              Cancelar
-            </Button>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => handleSave('rascunho')}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Salvar Rascunho
-              </Button>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button disabled={isSaving}>
-                    {isSaving ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4 mr-2" />
-                    )}
-                    Salvar e Enviar
-                    <ChevronDown className="h-4 w-4 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleSave('enviado')}>
-                    <Send className="h-4 w-4 mr-2" />
-                    Enviar por Email
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleSave('enviado')}>
-                    <Phone className="h-4 w-4 mr-2" />
-                    Enviar por WhatsApp
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Eye className="h-4 w-4 mr-2" />
-                    Visualizar PDF
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </div>
-
-        {/* ================================================================ */}
-        {/* DIALOG: ADICIONAR ITEM */}
-        {/* ================================================================ */}
-        <AddItemDialog
-          open={itemDialogOpen}
-          onOpenChange={setItemDialogOpen}
-          tipo={itemDialogType}
-          onConfirm={handleConfirmAddItem}
-        />
-
-      </div>
-    </MainLayout>
-  );
-}
-
-// ============================================================================
-// COMPONENTE: Dialog para adicionar item
-// ============================================================================
-
-interface AddItemDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  tipo: ItemType;
-  onConfirm: (nome: string, valor: number, quantidade: number, unidade?: string) => void;
-}
-
-function AddItemDialog({ open, onOpenChange, tipo, onConfirm }: AddItemDialogProps) {
-  const [nome, setNome] = useState('');
-  const [valor, setValor] = useState<number>(0);
-  const [quantidade, setQuantidade] = useState(1);
-  const [unidade, setUnidade] = useState('');
-
-  const config = ITEM_CONFIG[tipo];
-  const Icon = config.icon;
-
-  const handleConfirm = () => {
-    if (!nome.trim() || valor <= 0) return;
-    onConfirm(nome.trim(), valor, quantidade, unidade || undefined);
-    // Reset
-    setNome('');
-    setValor(0);
-    setQuantidade(1);
-    setUnidade('');
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Icon className="h-5 w-5" />
-            Adicionar {config.label}
-          </DialogTitle>
-          <DialogDescription>
-            Preencha os dados do item para adicionar ao orçamento.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Nome do Item *</Label>
-            <Input
-              placeholder={`Ex: ${tipo === 'espaco' ? 'Salão Principal' : tipo === 'buffet' ? 'Buffet Completo' : 'Descrição do item'}`}
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Valor Unitário *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                  R$
-                </span>
+              <div>
+                <Label className="text-muted-foreground text-sm">Número de Convidados *</Label>
                 <Input
                   type="number"
-                  min={0}
-                  step={0.01}
-                  value={valor || ''}
-                  onChange={(e) => setValor(parseFloat(e.target.value) || 0)}
-                  className="pl-10"
+                  min="1"
+                  value={nConvidados || ""}
+                  onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
+                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Quantidade</Label>
-              <Input
-                type="number"
-                min={1}
-                value={quantidade}
-                onChange={(e) => setQuantidade(parseInt(e.target.value) || 1)}
-              />
+
+              {/* Date Status Selection */}
+              <div className="md:col-span-2">
+                <Label className="text-muted-foreground text-sm mb-2 block">Data do Evento</Label>
+                <RadioGroup
+                  value={dataStatus}
+                  onValueChange={(v) => setDataStatus(v as "com_data" | "sem_data")}
+                  className="flex gap-6 mb-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="com_data" id="com_data" />
+                    <Label htmlFor="com_data">Data definida</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="sem_data" id="sem_data" />
+                    <Label htmlFor="sem_data">Sem data definida</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {dataStatus === "com_data" ? (
+                <>
+                  <div>
+                    <Label className="text-muted-foreground text-sm">Data do Evento *</Label>
+                    <Input
+                      type="date"
+                      value={dataEvento}
+                      onChange={(e) => setDataEvento(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
+                    <Input
+                      type="date"
+                      value={validadeOrcamento}
+                      onChange={(e) => setValidadeOrcamento(e.target.value)}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <Label className="text-muted-foreground text-sm">
+                      Ano do Evento *
+                      <span className="block text-xs font-normal text-muted-foreground/70 mt-0.5">
+                        Para carregar configurações
+                      </span>
+                    </Label>
+                    <Select value={anoEvento} onValueChange={setAnoEvento}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o ano" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {anos.map((ano) => (
+                          <SelectItem key={ano} value={ano}>
+                            {ano}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-muted-foreground text-sm">
+                      Dia da Semana *
+                      <span className="block text-xs font-normal text-muted-foreground/70 mt-0.5">
+                        Para calcular preços
+                      </span>
+                    </Label>
+                    <Select
+                      value={diaSemana || ""}
+                      onValueChange={(v) => setDiaSemana(v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o dia" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {diasDisponiveis.length > 0 ? (
+                          diasDisponiveis.map((dia) => (
+                            <SelectItem key={dia} value={dia}>
+                              {dia}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            Configure espaços primeiro
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
+                    <Input
+                      type="date"
+                      value={validadeOrcamento}
+                      onChange={(e) => setValidadeOrcamento(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Unidade (opcional)</Label>
-            <Input
-              placeholder="Ex: pessoa, hora, unidade"
-              value={unidade}
-              onChange={(e) => setUnidade(e.target.value)}
+          {/* Block 3 - Itens do Orçamento (NOVO COMPONENTE) */}
+          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+            <div className="flex items-center gap-2 mb-6">
+              <PackageIcon className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-display font-semibold">Itens do Orçamento</h2>
+            </div>
+
+            <QuoteItemsSection
+              spaces={spaces}
+              buffets={buffets}
+              services={services}
+              packages={packages}
+              selections={itemSelections}
+              onSelectionsChange={setItemSelections}
+              anoEvento={anoEvento}
+              diaSemana={diaSemana}
             />
           </div>
 
-          {valor > 0 && (
-            <div className="p-3 bg-muted rounded-lg">
-              <div className="flex justify-between text-sm">
-                <span>Total do item:</span>
-                <span className="font-bold">
-                  {formatCurrency(valor * quantidade)}
-                </span>
+          {/* Block 4 - Extras */}
+          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+            <div className="flex items-center gap-2 mb-4">
+              <Plus className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-display font-semibold">Extras</h2>
+            </div>
+
+            <ExtrasForm extras={extras} onChange={setExtras} guestCount={nConvidados} />
+          </div>
+
+          {/* Block 5 - Desconto */}
+          {composicao && composicao.total_geral > 0 && (
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+              <div className="flex items-center gap-2 mb-4">
+                <PackageIcon className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-display font-semibold">Desconto Adicional</h2>
               </div>
+
+              <DiscountForm
+                valorTotal={composicao.total_geral}
+                discount={discount}
+                onChange={setDiscount}
+              />
             </div>
           )}
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleConfirm} disabled={!nome.trim() || valor <= 0}>
-            Adicionar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          {/* Block 6 - Resumo do Orçamento */}
+          {composicao && composicao.total_geral > 0 && (
+            <div className="animate-slide-up">
+              <QuotePriceSummary
+                composicao={composicao}
+                nConvidados={nConvidados}
+                discount={discount}
+                packageInfo={packageInfoForSummary}
+              />
+            </div>
+          )}
+
+          {/* Block 7 - Condições de Pagamento */}
+          {composicao && composicao.total_geral > 0 && (
+            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-display font-semibold">Condições de Pagamento</h2>
+              </div>
+              <PaymentTermsForm
+                valorTotal={composicao.total_geral - (discount?.valor || 0)}
+                dataEvento={dataStatus === "com_data" ? dataEvento : null}
+                onChange={setPaymentTerms}
+                onValidationChange={setHasPaymentErrors}
+              />
+            </div>
+          )}
+
+          {/* Block 8 - Observações */}
+          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-display font-semibold">Observações</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-muted-foreground text-sm">Observações Internas</Label>
+                <Textarea
+                  placeholder="Observações que só você verá..."
+                  value={observacoesInternas}
+                  onChange={(e) => setObservacoesInternas(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label className="text-muted-foreground text-sm">Observações para o Cliente</Label>
+                <Textarea
+                  placeholder="Observações que aparecerão no orçamento..."
+                  value={observacoesCliente}
+                  onChange={(e) => setObservacoesCliente(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </MainLayout>
   );
 }
