@@ -31,7 +31,14 @@ import {
   Save,
   Plus,
   Loader2,
+  ChevronDown,
+  Percent,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
 import { useClientsOptimized as useClients, type Client, type ClientInsert } from "@/hooks/useClientsOptimized";
@@ -574,16 +581,16 @@ export default function NovoOrcamento() {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Block 1 - Cliente */}
-          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-            <div className="flex items-center gap-2 mb-4">
-              <User className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-display font-semibold">Dados do Cliente</h2>
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
+            <div className="flex items-center gap-2 mb-3">
+              <User className="h-4 w-4 text-primary" />
+              <h2 className="font-display font-semibold">Dados do Cliente</h2>
             </div>
 
             {/* Client Search */}
-            <div className="space-y-4 mb-6">
+            <div className="space-y-3">
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -592,15 +599,15 @@ export default function NovoOrcamento() {
                     value={termoBuscaCliente}
                     onChange={(e) => setTermoBuscaCliente(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleBuscarCliente()}
-                    className="pl-10"
+                    className="pl-10 h-9"
                     autoComplete="off"
                   />
                 </div>
-                <Button onClick={handleBuscarCliente} disabled={isSearching}>
+                <Button size="sm" onClick={handleBuscarCliente} disabled={isSearching}>
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
                 </Button>
-                <Button variant="outline" onClick={() => setIsClientDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button size="sm" variant="outline" onClick={() => setIsClientDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1" />
                   Novo
                 </Button>
               </div>
@@ -610,19 +617,19 @@ export default function NovoOrcamento() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Telefone</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead className="w-24">Ação</TableHead>
+                        <TableHead className="py-2">Nome</TableHead>
+                        <TableHead className="py-2">Telefone</TableHead>
+                        <TableHead className="py-2">Email</TableHead>
+                        <TableHead className="py-2 w-24">Ação</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {listaResultadosCliente.map((cliente) => (
                         <TableRow key={cliente.id}>
-                          <TableCell className="font-medium">{cliente.nome}</TableCell>
-                          <TableCell>{cliente.telefone}</TableCell>
-                          <TableCell>{cliente.email || "-"}</TableCell>
-                          <TableCell>
+                          <TableCell className="py-2 font-medium">{cliente.nome}</TableCell>
+                          <TableCell className="py-2">{cliente.telefone}</TableCell>
+                          <TableCell className="py-2">{cliente.email || "-"}</TableCell>
+                          <TableCell className="py-2">
                             <Button
                               size="sm"
                               variant="outline"
@@ -639,32 +646,12 @@ export default function NovoOrcamento() {
               )}
 
               {clienteId && (
-                <div className="bg-success/10 border border-success/20 rounded-lg p-3">
+                <div className="bg-success/10 border border-success/20 rounded-lg p-2.5">
                   <p className="text-sm text-success font-medium">
-                    Cliente selecionado: {nomeCliente}
+                    ✓ {nomeCliente} {telefone && `· ${telefone}`} {email && `· ${email}`}
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Client Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-muted-foreground text-sm">Nome</Label>
-                <p className="font-medium py-2">{nomeCliente || "-"}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground text-sm">Email</Label>
-                <p className="font-medium py-2">{email || "-"}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground text-sm">Telefone</Label>
-                <p className="font-medium py-2">{telefone || "-"}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground text-sm">CPF</Label>
-                <p className="font-medium py-2">{cpf || "-"}</p>
-              </div>
             </div>
 
             <ClientFormDialog
@@ -676,17 +663,17 @@ export default function NovoOrcamento() {
           </div>
 
           {/* Block 2 - Evento */}
-          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-display font-semibold">Informações do Evento</h2>
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="h-4 w-4 text-primary" />
+              <h2 className="font-display font-semibold">Informações do Evento</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
-                <Label className="text-muted-foreground text-sm">Tipo de Evento</Label>
+                <Label className="text-muted-foreground text-xs">Tipo de Evento</Label>
                 <Select value={tipoEvento} onValueChange={setTipoEvento}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -700,31 +687,31 @@ export default function NovoOrcamento() {
               </div>
 
               <div>
-                <Label className="text-muted-foreground text-sm">Número de Convidados *</Label>
+                <Label className="text-muted-foreground text-xs">Nº Convidados *</Label>
                 <Input
                   type="number"
                   min="1"
                   value={nConvidados || ""}
                   onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
-                  className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
-              {/* Date Status Selection */}
-              <div className="md:col-span-2">
-                <Label className="text-muted-foreground text-sm mb-2 block">Data do Evento</Label>
+              {/* Data Status - inline */}
+              <div className="col-span-2">
+                <Label className="text-muted-foreground text-xs mb-1.5 block">Data do Evento</Label>
                 <RadioGroup
                   value={dataStatus}
                   onValueChange={(v) => setDataStatus(v as "com_data" | "sem_data")}
-                  className="flex gap-6 mb-4"
+                  className="flex gap-4"
                 >
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1.5">
                     <RadioGroupItem value="com_data" id="com_data" />
-                    <Label htmlFor="com_data">Data definida</Label>
+                    <Label htmlFor="com_data" className="text-sm font-normal cursor-pointer">Definida</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1.5">
                     <RadioGroupItem value="sem_data" id="sem_data" />
-                    <Label htmlFor="sem_data">Sem data definida</Label>
+                    <Label htmlFor="sem_data" className="text-sm font-normal cursor-pointer">A definir</Label>
                   </div>
                 </RadioGroup>
               </div>
@@ -732,34 +719,31 @@ export default function NovoOrcamento() {
               {dataStatus === "com_data" ? (
                 <>
                   <div>
-                    <Label className="text-muted-foreground text-sm">Data do Evento *</Label>
+                    <Label className="text-muted-foreground text-xs">Data *</Label>
                     <Input
                       type="date"
                       value={dataEvento}
                       onChange={(e) => setDataEvento(e.target.value)}
+                      className="h-9"
                     />
                   </div>
                   <div>
-                    <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
+                    <Label className="text-muted-foreground text-xs">Validade</Label>
                     <Input
                       type="date"
                       value={validadeOrcamento}
                       onChange={(e) => setValidadeOrcamento(e.target.value)}
+                      className="h-9"
                     />
                   </div>
                 </>
               ) : (
                 <>
                   <div>
-                    <Label className="text-muted-foreground text-sm">
-                      Ano do Evento *
-                      <span className="block text-xs font-normal text-muted-foreground/70 mt-0.5">
-                        Para carregar configurações
-                      </span>
-                    </Label>
+                    <Label className="text-muted-foreground text-xs">Ano *</Label>
                     <Select value={anoEvento} onValueChange={setAnoEvento}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o ano" />
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Ano" />
                       </SelectTrigger>
                       <SelectContent>
                         {anos.map((ano) => (
@@ -772,18 +756,13 @@ export default function NovoOrcamento() {
                   </div>
 
                   <div>
-                    <Label className="text-muted-foreground text-sm">
-                      Dia da Semana *
-                      <span className="block text-xs font-normal text-muted-foreground/70 mt-0.5">
-                        Para calcular preços
-                      </span>
-                    </Label>
+                    <Label className="text-muted-foreground text-xs">Dia da Semana *</Label>
                     <Select
                       value={diaSemana || ""}
                       onValueChange={(v) => setDiaSemana(v)}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o dia" />
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Dia" />
                       </SelectTrigger>
                       <SelectContent>
                         {diasDisponiveis.length > 0 ? (
@@ -794,19 +773,20 @@ export default function NovoOrcamento() {
                           ))
                         ) : (
                           <SelectItem value="none" disabled>
-                            Configure espaços primeiro
+                            Configure espaços
                           </SelectItem>
                         )}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="md:col-span-2">
-                    <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Validade</Label>
                     <Input
                       type="date"
                       value={validadeOrcamento}
                       onChange={(e) => setValidadeOrcamento(e.target.value)}
+                      className="h-9"
                     />
                   </div>
                 </>
@@ -814,11 +794,11 @@ export default function NovoOrcamento() {
             </div>
           </div>
 
-          {/* Block 3 - Itens do Orçamento (NOVO COMPONENTE) */}
-          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-            <div className="flex items-center gap-2 mb-6">
-              <PackageIcon className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-display font-semibold">Itens do Orçamento</h2>
+          {/* Block 3 - Itens do Orçamento */}
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
+            <div className="flex items-center gap-2 mb-4">
+              <PackageIcon className="h-4 w-4 text-primary" />
+              <h2 className="font-display font-semibold">Itens do Orçamento</h2>
             </div>
 
             <QuoteItemsSection
@@ -833,33 +813,63 @@ export default function NovoOrcamento() {
             />
           </div>
 
-          {/* Block 4 - Extras */}
-          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-            <div className="flex items-center gap-2 mb-4">
-              <Plus className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-display font-semibold">Extras</h2>
+          {/* Block 4 - Extras (Colapsável) */}
+          <Collapsible>
+            <div className="bg-card rounded-xl shadow-soft border border-border animate-slide-up">
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4 text-primary" />
+                    <h2 className="font-display font-semibold">Extras</h2>
+                    {extras.length > 0 && (
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                        {extras.length} item(s)
+                      </span>
+                    )}
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-4 pb-4 pt-0">
+                  <ExtrasForm extras={extras} onChange={setExtras} guestCount={nConvidados} />
+                </div>
+              </CollapsibleContent>
             </div>
+          </Collapsible>
 
-            <ExtrasForm extras={extras} onChange={setExtras} guestCount={nConvidados} />
-          </div>
-
-          {/* Block 5 - Desconto */}
+          {/* Block 5 - Desconto (Colapsável) */}
           {composicao && composicao.total_geral > 0 && (
-            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-              <div className="flex items-center gap-2 mb-4">
-                <PackageIcon className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Desconto Adicional</h2>
+            <Collapsible>
+              <div className="bg-card rounded-xl shadow-soft border border-border animate-slide-up">
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <Percent className="h-4 w-4 text-primary" />
+                      <h2 className="font-display font-semibold">Desconto</h2>
+                      {discount.valor > 0 && (
+                        <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
+                          -{discount.percentual.toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 pt-0">
+                    <DiscountForm
+                      valorTotal={composicao.total_geral}
+                      discount={discount}
+                      onChange={setDiscount}
+                    />
+                  </div>
+                </CollapsibleContent>
               </div>
-
-              <DiscountForm
-                valorTotal={composicao.total_geral}
-                discount={discount}
-                onChange={setDiscount}
-              />
-            </div>
+            </Collapsible>
           )}
 
-          {/* Block 6 - Resumo do Orçamento */}
+          {/* Block 5 - Resumo do Orçamento */}
           {composicao && composicao.total_geral > 0 && (
             <div className="animate-slide-up">
               <QuotePriceSummary
@@ -871,12 +881,9 @@ export default function NovoOrcamento() {
             </div>
           )}
 
-          {/* Block 7 - Condições de Pagamento */}
+          {/* Block 6 - Condições de Pagamento */}
           {composicao && composicao.total_geral > 0 && (
-            <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-lg font-display font-semibold">Condições de Pagamento</h2>
-              </div>
+            <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
               <PaymentTermsForm
                 valorTotal={composicao.total_geral - (discount?.valor || 0)}
                 dataEvento={dataStatus === "com_data" ? dataEvento : null}
@@ -886,31 +893,34 @@ export default function NovoOrcamento() {
             </div>
           )}
 
-          {/* Block 8 - Observações */}
-          <div className="bg-card rounded-xl p-6 shadow-soft border border-border animate-slide-up">
-            <div className="flex items-center gap-2 mb-4">
-              <FileText className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-display font-semibold">Observações</h2>
+          {/* Block 7 - Observações (Compacto) */}
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
+            <div className="flex items-center gap-2 mb-3">
+              <FileText className="h-4 w-4 text-primary" />
+              <h2 className="font-display font-semibold">Observações</h2>
+              <span className="text-xs text-muted-foreground">(opcional)</span>
             </div>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <Label className="text-muted-foreground text-sm">Observações Internas</Label>
+                <Label className="text-xs text-muted-foreground">Internas (só você vê)</Label>
                 <Textarea
-                  placeholder="Observações que só você verá..."
+                  placeholder="Anotações internas..."
                   value={observacoesInternas}
                   onChange={(e) => setObservacoesInternas(e.target.value)}
-                  rows={3}
+                  rows={2}
+                  className="resize-none"
                 />
               </div>
 
               <div>
-                <Label className="text-muted-foreground text-sm">Observações para o Cliente</Label>
+                <Label className="text-xs text-muted-foreground">Para o cliente</Label>
                 <Textarea
-                  placeholder="Observações que aparecerão no orçamento..."
+                  placeholder="Aparecerá no orçamento..."
                   value={observacoesCliente}
                   onChange={(e) => setObservacoesCliente(e.target.value)}
-                  rows={3}
+                  rows={2}
+                  className="resize-none"
                 />
               </div>
             </div>
