@@ -33,6 +33,8 @@ import {
   Loader2,
   ChevronDown,
   Percent,
+  CreditCard,
+  Settings2,
 } from "lucide-react";
 import {
   Collapsible,
@@ -534,54 +536,43 @@ export default function NovoOrcamento() {
   // RENDER
   // =============================================================================
 
+  // Formatar moeda
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
+  // Valor final com desconto
+  const valorFinal = composicao 
+    ? composicao.total_geral - (discount?.valor || 0) 
+    : 0;
+
   return (
     <MainLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/orcamentos")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-display font-bold text-foreground">
-                Novo Orçamento
-              </h1>
-              <p className="text-muted-foreground">
-                Preencha os dados para gerar uma proposta
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleSalvarOrcamento("rascunho")}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Salvar Rascunho
-            </Button>
-            <Button
-              variant="gold"
-              onClick={() => handleSalvarOrcamento("enviado")}
-              disabled={isSaving}
-            >
-              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Salvar Orçamento
-            </Button>
+      <div className="space-y-4">
+        {/* Header Compacto */}
+        <div className="flex items-center gap-4 animate-fade-in">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/orcamentos")}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-display font-bold text-foreground">
+              Novo Orçamento
+            </h1>
           </div>
         </div>
 
-        <div className="space-y-4">
+        {/* Layout 2 Colunas: Formulário + Sidebar Financeira */}
+        <div className="flex flex-col lg:flex-row gap-4">
+          
+          {/* ========== COLUNA PRINCIPAL (Formulário Rolável) ========== */}
+          <div className="flex-1 space-y-4 lg:max-w-3xl">
           {/* Block 1 - Cliente */}
           <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
             <div className="flex items-center gap-2 mb-3">
@@ -669,128 +660,135 @@ export default function NovoOrcamento() {
               <h2 className="font-display font-semibold">Informações do Evento</h2>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <Label className="text-muted-foreground text-xs">Tipo de Evento</Label>
-                <Select value={tipoEvento} onValueChange={setTipoEvento}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tiposEvento.map((tipo) => (
-                      <SelectItem key={tipo.value} value={tipo.value}>
-                        {tipo.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-4">
+              {/* Linha 1: Tipo e Convidados */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Tipo de Evento</Label>
+                  <Select value={tipoEvento} onValueChange={setTipoEvento}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tiposEvento.map((tipo) => (
+                        <SelectItem key={tipo.value} value={tipo.value}>
+                          {tipo.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground text-xs">Nº de Convidados *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Ex: 150"
+                    value={nConvidados || ""}
+                    onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
+                    className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
               </div>
 
-              <div>
-                <Label className="text-muted-foreground text-xs">Nº Convidados *</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={nConvidados || ""}
-                  onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
-                  className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
+              {/* Linha 2: Data do Evento - Unificado */}
+              <div className="bg-muted/30 rounded-lg p-3 border border-border">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-sm font-medium">Data do Evento</Label>
+                  <RadioGroup
+                    value={dataStatus}
+                    onValueChange={(v) => setDataStatus(v as "com_data" | "sem_data")}
+                    className="flex gap-2"
+                  >
+                    <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md cursor-pointer transition-colors ${dataStatus === "com_data" ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}>
+                      <RadioGroupItem value="com_data" id="com_data" className="h-3.5 w-3.5" />
+                      <Label htmlFor="com_data" className="text-xs font-medium cursor-pointer">Definida</Label>
+                    </div>
+                    <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md cursor-pointer transition-colors ${dataStatus === "sem_data" ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}>
+                      <RadioGroupItem value="sem_data" id="sem_data" className="h-3.5 w-3.5" />
+                      <Label htmlFor="sem_data" className="text-xs font-medium cursor-pointer">A definir</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
 
-              {/* Data Status - inline */}
-              <div className="col-span-2">
-                <Label className="text-muted-foreground text-xs mb-1.5 block">Data do Evento</Label>
-                <RadioGroup
-                  value={dataStatus}
-                  onValueChange={(v) => setDataStatus(v as "com_data" | "sem_data")}
-                  className="flex gap-4"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <RadioGroupItem value="com_data" id="com_data" />
-                    <Label htmlFor="com_data" className="text-sm font-normal cursor-pointer">Definida</Label>
+                {/* Campos condicionais */}
+                {dataStatus === "com_data" ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Data *</Label>
+                      <Input
+                        type="date"
+                        value={dataEvento}
+                        onChange={(e) => setDataEvento(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Validade do Orçamento</Label>
+                      <Input
+                        type="date"
+                        value={validadeOrcamento}
+                        onChange={(e) => setValidadeOrcamento(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-1.5">
-                    <RadioGroupItem value="sem_data" id="sem_data" />
-                    <Label htmlFor="sem_data" className="text-sm font-normal cursor-pointer">A definir</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {dataStatus === "com_data" ? (
-                <>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Data *</Label>
-                    <Input
-                      type="date"
-                      value={dataEvento}
-                      onChange={(e) => setDataEvento(e.target.value)}
-                      className="h-9"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Validade</Label>
-                    <Input
-                      type="date"
-                      value={validadeOrcamento}
-                      onChange={(e) => setValidadeOrcamento(e.target.value)}
-                      className="h-9"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Ano *</Label>
-                    <Select value={anoEvento} onValueChange={setAnoEvento}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Ano" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {anos.map((ano) => (
-                          <SelectItem key={ano} value={ano}>
-                            {ano}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Dia da Semana *</Label>
-                    <Select
-                      value={diaSemana || ""}
-                      onValueChange={(v) => setDiaSemana(v)}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Dia" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {diasDisponiveis.length > 0 ? (
-                          diasDisponiveis.map((dia) => (
-                            <SelectItem key={dia} value={dia}>
-                              {dia}
+                ) : (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Ano *</Label>
+                      <Select value={anoEvento} onValueChange={setAnoEvento}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Ano" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {anos.map((ano) => (
+                            <SelectItem key={ano} value={ano}>
+                              {ano}
                             </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>
-                            Configure espaços
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                  <div>
-                    <Label className="text-muted-foreground text-xs">Validade</Label>
-                    <Input
-                      type="date"
-                      value={validadeOrcamento}
-                      onChange={(e) => setValidadeOrcamento(e.target.value)}
-                      className="h-9"
-                    />
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Dia da Semana *</Label>
+                      <Select
+                        value={diaSemana || ""}
+                        onValueChange={(v) => setDiaSemana(v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {diasDisponiveis.length > 0 ? (
+                            diasDisponiveis.map((dia) => (
+                              <SelectItem key={dia} value={dia}>
+                                {dia}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              Configure espaços
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Validade</Label>
+                      <Input
+                        type="date"
+                        value={validadeOrcamento}
+                        onChange={(e) => setValidadeOrcamento(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
                   </div>
-                </>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
@@ -838,62 +836,7 @@ export default function NovoOrcamento() {
             </div>
           </Collapsible>
 
-          {/* Block 5 - Desconto (Colapsável) */}
-          {composicao && composicao.total_geral > 0 && (
-            <Collapsible>
-              <div className="bg-card rounded-xl shadow-soft border border-border animate-slide-up">
-                <CollapsibleTrigger asChild>
-                  <button className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <Percent className="h-4 w-4 text-primary" />
-                      <h2 className="font-display font-semibold">Desconto</h2>
-                      {discount.valor > 0 && (
-                        <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">
-                          -{discount.percentual.toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="px-4 pb-4 pt-0">
-                    <DiscountForm
-                      valorTotal={composicao.total_geral}
-                      discount={discount}
-                      onChange={setDiscount}
-                    />
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          )}
-
-          {/* Block 5 - Resumo do Orçamento */}
-          {composicao && composicao.total_geral > 0 && (
-            <div className="animate-slide-up">
-              <QuotePriceSummary
-                composicao={composicao}
-                nConvidados={nConvidados}
-                discount={discount}
-                packageInfo={packageInfoForSummary}
-              />
-            </div>
-          )}
-
-          {/* Block 6 - Condições de Pagamento */}
-          {composicao && composicao.total_geral > 0 && (
-            <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
-              <PaymentTermsForm
-                valorTotal={composicao.total_geral - (discount?.valor || 0)}
-                dataEvento={dataStatus === "com_data" ? dataEvento : null}
-                onChange={setPaymentTerms}
-                onValidationChange={setHasPaymentErrors}
-              />
-            </div>
-          )}
-
-          {/* Block 7 - Observações (Compacto) */}
+          {/* Block 5 - Observações (Compacto) */}
           <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
             <div className="flex items-center gap-2 mb-3">
               <FileText className="h-4 w-4 text-primary" />
@@ -925,7 +868,291 @@ export default function NovoOrcamento() {
               </div>
             </div>
           </div>
+
+          </div>
+          {/* ========== FIM COLUNA PRINCIPAL ========== */}
+
+          {/* ========== SIDEBAR FINANCEIRA (Fixa no Desktop) ========== */}
+          <div className="lg:w-96 lg:flex-shrink-0">
+            <div className="lg:sticky lg:top-4 space-y-4">
+              
+              {/* Card Principal - Valor Total */}
+              <div className="bg-card rounded-xl p-4 shadow-soft border border-border">
+                <div className="text-center space-y-1">
+                  <p className="text-sm text-muted-foreground">Valor Total</p>
+                  <p className={`text-3xl font-bold ${valorFinal > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {valorFinal > 0 ? formatCurrency(valorFinal) : 'R$ 0,00'}
+                  </p>
+                  {nConvidados > 0 && valorFinal > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(valorFinal / nConvidados)} por convidado
+                    </p>
+                  )}
+                </div>
+
+                {/* Resumo detalhado dos itens */}
+                {composicao && composicao.itens.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <button className="w-full flex items-center justify-between text-sm hover:bg-muted/50 rounded-lg p-2 -mx-2 transition-colors group">
+                          <span className="text-muted-foreground font-medium">
+                            Ver detalhes ({composicao.itens.length} {composicao.itens.length === 1 ? 'item' : 'itens'})
+                          </span>
+                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-[[data-state=open]]:rotate-180" />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 space-y-3">
+                          {composicao.itens.map((item) => (
+                            <div key={item.id} className="bg-muted/30 rounded-lg p-2.5 space-y-1">
+                              <div className="flex justify-between items-start">
+                                <span className="text-sm font-medium text-foreground">{item.nome}</span>
+                                <span className="text-sm font-semibold text-primary whitespace-nowrap ml-2">
+                                  {formatCurrency(item.valor_total)}
+                                </span>
+                              </div>
+                              {/* Detalhamento do cálculo */}
+                              <div className="text-xs text-muted-foreground">
+                                {item.tipo_preco === 'fixo' ? (
+                                  <span>Valor fixo</span>
+                                ) : (
+                                  <span>
+                                    {item.valor_inicial && item.valor_inicial > 0 && (
+                                      <>Base {formatCurrency(item.valor_inicial)} + </>
+                                    )}
+                                    {item.valor_por_unidade && (
+                                      <>
+                                        {formatCurrency(item.valor_por_unidade)}/{item.unidade || 'un'} × {
+                                          item.valor_inicial
+                                            ? Math.round((item.valor_total - item.valor_inicial) / item.valor_por_unidade)
+                                            : Math.round(item.valor_total / item.valor_por_unidade)
+                                        }
+                                      </>
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {/* Extras */}
+                          {composicao.total_extras > 0 && (
+                            <div className="flex justify-between text-sm py-1">
+                              <span className="text-muted-foreground">Extras</span>
+                              <span className="text-foreground font-medium">
+                                {formatCurrency(composicao.total_extras)}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Desconto do pacote */}
+                          {(composicao.desconto_fixo > 0 || composicao.desconto_variavel > 0) && (
+                            <div className="flex justify-between text-sm py-1 text-green-600">
+                              <span>Desconto do pacote</span>
+                              <span className="font-medium">
+                                -{formatCurrency(composicao.desconto_fixo + composicao.desconto_variavel)}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Desconto manual */}
+                          {discount.valor > 0 && (
+                            <div className="flex justify-between text-sm py-1 text-green-600">
+                              <span>Desconto adicional</span>
+                              <span className="font-medium">
+                                -{formatCurrency(discount.valor)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                )}
+
+                {/* Estado vazio */}
+                {(!composicao || composicao.itens.length === 0) && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <p className="text-sm text-muted-foreground text-center">
+                      Selecione os itens do orçamento para calcular o valor
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Desconto */}
+              <div className="bg-card rounded-xl p-4 shadow-soft border border-border">
+                <Collapsible>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Percent className="h-4 w-4 text-primary" />
+                      <span className="font-medium">Desconto</span>
+                      {discount.valor > 0 && (
+                        <span className="text-sm font-medium text-green-600">
+                          -{formatCurrency(discount.valor)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {composicao && composicao.total_geral > 0 ? (
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1">
+                          {discount.valor > 0 ? (
+                            <>
+                              <Settings2 className="h-3.5 w-3.5" />
+                              Editar
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-3.5 w-3.5" />
+                              Adicionar
+                            </>
+                          )}
+                        </Button>
+                      </CollapsibleTrigger>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Indisponível</span>
+                    )}
+                  </div>
+
+                  {composicao && composicao.total_geral > 0 && (
+                    <CollapsibleContent>
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <DiscountForm
+                          valorTotal={composicao.total_geral}
+                          discount={discount}
+                          onChange={setDiscount}
+                        />
+                      </div>
+                    </CollapsibleContent>
+                  )}
+                </Collapsible>
+              </div>
+
+              {/* Condições de Pagamento */}
+              <div className="bg-card rounded-xl p-4 shadow-soft border border-border">
+                <Collapsible>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      <span className="font-medium">Pagamento</span>
+                    </div>
+
+                    {composicao && composicao.total_geral > 0 ? (
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1">
+                          <Settings2 className="h-3.5 w-3.5" />
+                          Configurar
+                        </Button>
+                      </CollapsibleTrigger>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Indisponível</span>
+                    )}
+                  </div>
+
+                  {composicao && composicao.total_geral > 0 && (
+                    <>
+                      {/* Resumo sempre visível */}
+                      <div className="mt-3 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Sinal ({paymentTerms.percentualSinal}%)</span>
+                          <span className="font-medium">{formatCurrency(paymentTerms.valorSinal)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Parcelas</span>
+                          <span className="font-medium">
+                            {paymentTerms.numeroParcelas}x de {formatCurrency((valorFinal - paymentTerms.valorSinal) / Math.max(paymentTerms.numeroParcelas, 1))}
+                          </span>
+                        </div>
+                      </div>
+
+                      <CollapsibleContent>
+                        <div className="mt-4 pt-4 border-t border-border">
+                          <PaymentTermsForm
+                            valorTotal={valorFinal}
+                            dataEvento={dataStatus === "com_data" ? dataEvento : null}
+                            onChange={setPaymentTerms}
+                            onValidationChange={setHasPaymentErrors}
+                          />
+                        </div>
+                      </CollapsibleContent>
+                    </>
+                  )}
+
+                  {(!composicao || composicao.total_geral <= 0) && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Adicione itens para configurar
+                    </p>
+                  )}
+                </Collapsible>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="space-y-2">
+                <Button
+                  className="w-full"
+                  variant="gold"
+                  onClick={() => handleSalvarOrcamento("enviado")}
+                  disabled={isSaving || !composicao || composicao.total_geral <= 0}
+                >
+                  {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Salvar Orçamento
+                </Button>
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => handleSalvarOrcamento("rascunho")}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Salvar Rascunho
+                </Button>
+              </div>
+
+            </div>
+          </div>
+          {/* ========== FIM SIDEBAR FINANCEIRA ========== */}
+
         </div>
+
+        {/* ========== FOOTER MOBILE (Resumo Fixo) ========== */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 shadow-lg z-50">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="text-xl font-bold text-primary">
+                {valorFinal > 0 ? formatCurrency(valorFinal) : 'R$ 0,00'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleSalvarOrcamento("rascunho")}
+                disabled={isSaving}
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="gold"
+                onClick={() => handleSalvarOrcamento("enviado")}
+                disabled={isSaving || !composicao || composicao.total_geral <= 0}
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Espaçamento para o footer mobile não sobrepor conteúdo */}
+        <div className="lg:hidden h-24" />
+
       </div>
     </MainLayout>
   );
