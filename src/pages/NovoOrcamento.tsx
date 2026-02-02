@@ -594,6 +594,12 @@ export default function NovoOrcamento() {
                     onKeyDown={(e) => e.key === "Enter" && handleBuscarCliente()}
                     className="pl-10 h-9"
                     autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    name="search-client-field"  // Nome único que navegador não reconhece
+                    type="search"  // Tipo search ao invés de text
+
                   />
                 </div>
                 <Button size="sm" onClick={handleBuscarCliente} disabled={isSearching}>

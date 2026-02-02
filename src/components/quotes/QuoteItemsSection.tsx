@@ -29,6 +29,8 @@ import { SpaceSelection } from "./SpaceSelection";
 import { BuffetSelection } from "./BuffetSelection";
 import { ServicesSelection } from "./ServicesSelection";
 import { formatCurrency } from "@/lib/pricingCalculator";
+import { Input } from "@/components/ui/input";
+import React from "react";
 
 // =============================================================================
 // TIPOS
@@ -390,6 +392,10 @@ export function QuoteItemsSection({
                       icon={<Wrench className="h-4 w-4" />}
                       type="Serviço"
                       item={service}
+                      serviceId={serviceId}  // ← ADICIONAR
+                      quantity={selections.serviceQuantities[serviceId] || 1}  // ← ADICIONAR
+                      onQuantityChange={handleServiceQuantityChange}  // ← ADICIONAR
+                      disabled={disabled}  // ← ADICIONAR
                     />
                   );
                 })}
@@ -549,17 +555,83 @@ interface LockedItemCardProps {
   type: string;
   item?: { nome: string; precos_por_dia?: any[]; precos_por_pessoa?: any[]; precos?: any[] };
   diaSemana?: string | null;
+  // ADICIONAR:
+  serviceId?: string;
+  quantity?: number;
+  onQuantityChange?: (serviceId: string, quantity: number) => void;
+  disabled?: boolean;
 }
 
-function LockedItemCard({ icon, type, item, diaSemana }: LockedItemCardProps) {
+function LockedItemCard({ 
+  icon, 
+  type, 
+  item, 
+  diaSemana,
+  serviceId,
+  quantity = 1,
+  onQuantityChange,
+  disabled = false,
+}: LockedItemCardProps) {
   if (!item) return null;
+
+  // Inicializar com o valor atual da quantidade
+  const [tempQuantity, setTempQuantity] = React.useState<string>(
+    quantity ? quantity.toString() : "1"
+  );
+
+  // Sincronizar quando quantity externa mudar
+  React.useEffect(() => {
+    if (quantity !== undefined) {
+      setTempQuantity(quantity.toString());
+    }
+  }, [quantity]);
+
+  // Verificar se precisa de input de quantidade
+  const needsQuantityInput = React.useMemo(() => {
+    if (type !== "Serviço" || !('precos' in item)) return false;
+    
+    const preco = item.precos?.[0];
+    if (!preco || preco.tipo === 'fixo') return false;
+    
+    const unidade = preco.unidade?.toLowerCase() || '';
+    return unidade !== 'pessoa' && 
+           unidade !== 'pessoas' && 
+           unidade !== 'convidado' && 
+           unidade !== 'convidados';
+  }, [item, type]);
+
+  // Handlers de quantidade
+  const handleQuantityChange = (value: string) => {
+    // Permitir campo vazio temporariamente
+    setTempQuantity(value);
+    
+    // Só atualizar o pai se for número válido
+    const num = parseInt(value);
+    if (!isNaN(num) && num > 0 && serviceId && onQuantityChange) {
+      onQuantityChange(serviceId, num);
+    }
+  };
+
+  const handleQuantityBlur = () => {
+    const num = parseInt(tempQuantity);
+    
+    // Se vazio ou inválido, resetar para 1
+    if (!tempQuantity || isNaN(num) || num < 1) {
+      setTempQuantity("1");
+      if (serviceId && onQuantityChange) {
+        onQuantityChange(serviceId, 1);
+      }
+    }
+  };
 
   // Tentar extrair preço para exibição
   let precoInfo: string | null = null;
+  let preco: any = null;
   
   if ('precos_por_dia' in item && item.precos_por_dia && diaSemana) {
     const precoDia = item.precos_por_dia.find((p: any) => p.dias?.includes(diaSemana));
     if (precoDia) {
+      preco = precoDia;
       if (precoDia.tipo === 'fixo') {
         precoInfo = formatCurrency(precoDia.preco_fixo || 0);
       } else {
@@ -567,14 +639,14 @@ function LockedItemCard({ icon, type, item, diaSemana }: LockedItemCardProps) {
       }
     }
   } else if ('precos_por_pessoa' in item && item.precos_por_pessoa?.[0]) {
-    const preco = item.precos_por_pessoa[0];
+    preco = item.precos_por_pessoa[0];
     if (preco.tipo === 'fixo') {
       precoInfo = `${formatCurrency(preco.preco_fixo || 0)}/pessoa`;
     } else {
       precoInfo = `${formatCurrency(preco.valor_por_pessoa || 0)}/pessoa`;
     }
   } else if ('precos' in item && item.precos?.[0]) {
-    const preco = item.precos[0];
+    preco = item.precos[0];
     if (preco.tipo === 'fixo') {
       precoInfo = formatCurrency(preco.preco_fixo || 0);
     } else {
@@ -583,20 +655,48 @@ function LockedItemCard({ icon, type, item, diaSemana }: LockedItemCardProps) {
   }
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-white/80 dark:bg-black/30 rounded-lg border border-amber-200/50 dark:border-amber-800/50">
-      <div className="p-1.5 bg-amber-100 dark:bg-amber-900/50 rounded-md text-amber-600 dark:text-amber-400">
-        {icon}
+    <div className="flex flex-col gap-2 p-3 bg-white/80 dark:bg-black/30 rounded-lg border border-amber-200/50 dark:border-amber-800/50">
+      <div className="flex items-center gap-3">
+        <div className="p-1.5 bg-amber-100 dark:bg-amber-900/50 rounded-md text-amber-600 dark:text-amber-400">
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground">{type}</p>
+          <p className="font-medium text-sm text-foreground truncate">{item.nome}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {precoInfo && !needsQuantityInput && (
+            <span className="text-sm text-muted-foreground">{precoInfo}</span>
+          )}
+          <Lock className="h-3.5 w-3.5 text-amber-500" />
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground">{type}</p>
-        <p className="font-medium text-sm text-foreground truncate">{item.nome}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        {precoInfo && (
-          <span className="text-sm text-muted-foreground">{precoInfo}</span>
-        )}
-        <Lock className="h-3.5 w-3.5 text-amber-500" />
-      </div>
+
+      {/* Campo de quantidade para serviços com unidade customizada */}
+      {needsQuantityInput && preco && (
+        <div className="pt-2 border-t border-amber-200/50 dark:border-amber-800/50">
+          <Label className="text-xs text-muted-foreground mb-1 block">
+            Quantidade de {preco.unidade || 'unidades'}
+          </Label>
+          <Input
+            type="number"
+            min="1"
+            value={tempQuantity}
+            onChange={(e) => handleQuantityChange(e.target.value)}
+            onBlur={handleQuantityBlur}
+            disabled={disabled}
+            className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Subtotal: <span className="font-semibold text-amber-700 dark:text-amber-300">
+              {formatCurrency(
+                (preco.valor_inicial || 0) + 
+                ((preco.valor_por_unidade || 0) * (parseInt(tempQuantity) || 0))
+              )}
+            </span>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
