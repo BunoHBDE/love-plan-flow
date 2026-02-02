@@ -278,14 +278,15 @@ export default function NovoOrcamento() {
     );
     setComposicao(novaComposicao);
   }, [
-    itemSelections,
-    diaSemana,
-    nConvidados,
-    extras,
-    spaces,
-    buffets,
-    services,
-    selectedPackage,
+  itemSelections.espacoId,
+  itemSelections.buffetId,
+  itemSelections.servicoIds,
+  itemSelections.serviceQuantities,
+  itemSelections.pacoteId,
+  diaSemana,
+  nConvidados,
+  extras,
+  selectedPackage,
   ]);
 
   // Package info para o resumo
@@ -512,11 +513,13 @@ export default function NovoOrcamento() {
   // DADOS DERIVADOS
   // =============================================================================
 
-  const currentYear = new Date().getFullYear();
-  const anos = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
+  const anos = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
+  }, []); // Array vazio = calcula apenas UMA vez
 
   // Dias da semana disponíveis baseado nos espaços
-  const getDiasDisponiveis = () => {
+  const diasDisponiveis = useMemo(() => {
     const spacesDoAno = spaces.filter((s) => s.ano === anoEvento);
     if (spacesDoAno.length === 0) return diasSemana;
 
@@ -528,18 +531,25 @@ export default function NovoOrcamento() {
     });
 
     return diasSemana.filter((dia) => diasSet.has(dia));
-  };
-
-  const diasDisponiveis = getDiasDisponiveis();
+  }, [spaces, anoEvento]); // Recalcula apenas se spaces ou anoEvento mudarem
 
   // =============================================================================
   // RENDER
   // =============================================================================
 
+  // Dentro do componente NovoOrcamento()
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
   // Valor final com desconto
-  const valorFinal = composicao 
-    ? composicao.total_geral - (discount?.valor || 0) 
-    : 0;
+  const valorFinal = useMemo(() => {
+    if (!composicao) return 0;
+    return composicao.total_geral - (discount?.valor || 0);
+  }, [composicao, discount?.valor]);
 
   return (
     <MainLayout>
