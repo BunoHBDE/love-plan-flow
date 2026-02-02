@@ -536,14 +536,6 @@ export default function NovoOrcamento() {
   // RENDER
   // =============================================================================
 
-  // Formatar moeda
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
-
   // Valor final com desconto
   const valorFinal = composicao 
     ? composicao.total_geral - (discount?.valor || 0) 
