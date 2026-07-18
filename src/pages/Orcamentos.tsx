@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { generateQuotePDF } from "@/lib/generateQuotePDF";
 import { useQuotesOptimized as useQuotes, type Quote } from "@/hooks/useQuotesOptimized";
+import { usePackageSettings } from "@/hooks/usePackageSettings";
 import { SubscriptionGate } from "@/components/subscription";
 
 type QuoteStatus = "rascunho" | "enviado" | "aceito" | "recusado" | "expirado";
@@ -64,6 +65,7 @@ const allStatuses: QuoteStatus[] = ["rascunho", "enviado", "aceito", "recusado",
 
 export default function Orcamentos() {
   const { quotes, loading, updateQuoteStatus } = useQuotes();
+  const { packages } = usePackageSettings();
   const [searchTerm, setSearchTerm] = useState("");
   const [quoteNumberFilter, setQuoteNumberFilter] = useState("");
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
@@ -152,6 +154,10 @@ export default function Orcamentos() {
 
     // ✅ NOVO: Extrair dados da composição (já incluído em composicao.itens)
 
+    // Resolver nome do pacote (campo "pacote" legado pode guardar o id)
+    const pacoteRef = quote.pacote_id || quote.pacote || null;
+    const pacoteSelecionado = pacoteRef ? packages.find((p) => p.id === pacoteRef) : null;
+
     generateQuotePDF({
       id: quote.quote_number,
       clientName: quote.client?.nome || "Cliente",
@@ -181,6 +187,7 @@ export default function Orcamentos() {
         valor: quote.desconto_valor || 0,
       } : undefined,
       extras,
+      pacoteNome: pacoteSelecionado?.nome,
     });
   };
 
