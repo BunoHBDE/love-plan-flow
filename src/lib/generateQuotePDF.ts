@@ -62,6 +62,7 @@ interface QuoteData {
   composicao?: ComposicaoPreco;
   extras?: ExtraItem[];
   desconto?: DescontoData;
+  pacoteNome?: string;
 }
 
 const formatCurrency = (value: number): string => {
@@ -233,24 +234,54 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   // Renderizar itens da composição
   if (quote.composicao && quote.composicao.itens && quote.composicao.itens.length > 0) {
-    quote.composicao.itens.forEach((item) => {
-      if (itemIndex % 2 === 0) {
-        doc.setFillColor(...colors.bg);
-        doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
-      }
+    if (quote.pacoteNome) {
+      // Com pacote: exibir linha única com o valor do pacote,
+      // e listar os itens inclusos sem valores individuais
+      const valorPacote = quote.composicao.total_fixo + quote.composicao.total_variavel;
 
-      // Nome do item com tipo entre parênteses
-      const tipoLabel = item.tipo === 'espaco' ? 'Espaço' : 
-                        item.tipo === 'buffet' ? 'Buffet' : 
-                        item.tipo === 'servico' ? 'Serviço' : item.tipo;
-      
-      doc.text(`${item.nome} (${tipoLabel})`, margin + 5, yPosition);
+      doc.setFillColor(...colors.bg);
+      doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
+
       doc.setFont("helvetica", "bold");
-      doc.text(formatCurrency(item.valor_total), pageWidth - margin - 5, yPosition, { align: "right" });
+      doc.text(`Pacote ${quote.pacoteNome}`, margin + 5, yPosition);
+      doc.text(formatCurrency(valorPacote), pageWidth - margin - 5, yPosition, { align: "right" });
       doc.setFont("helvetica", "normal");
       yPosition += 9;
       itemIndex++;
-    });
+
+      doc.setFontSize(9);
+      doc.setTextColor(...colors.textLight);
+      quote.composicao.itens.forEach((item) => {
+        const tipoLabel = item.tipo === 'espaco' ? 'Espaço' :
+                          item.tipo === 'buffet' ? 'Buffet' :
+                          item.tipo === 'servico' ? 'Serviço' : item.tipo;
+
+        doc.text(`• ${item.nome} (${tipoLabel})`, margin + 10, yPosition);
+        yPosition += 6;
+      });
+      doc.setFontSize(10);
+      doc.setTextColor(...colors.text);
+      yPosition += 3;
+    } else {
+      quote.composicao.itens.forEach((item) => {
+        if (itemIndex % 2 === 0) {
+          doc.setFillColor(...colors.bg);
+          doc.rect(margin, yPosition - 4, contentWidth, 9, "F");
+        }
+
+        // Nome do item com tipo entre parênteses
+        const tipoLabel = item.tipo === 'espaco' ? 'Espaço' :
+                          item.tipo === 'buffet' ? 'Buffet' :
+                          item.tipo === 'servico' ? 'Serviço' : item.tipo;
+
+        doc.text(`${item.nome} (${tipoLabel})`, margin + 5, yPosition);
+        doc.setFont("helvetica", "bold");
+        doc.text(formatCurrency(item.valor_total), pageWidth - margin - 5, yPosition, { align: "right" });
+        doc.setFont("helvetica", "normal");
+        yPosition += 9;
+        itemIndex++;
+      });
+    }
   }
 
   // Extras

@@ -511,6 +511,8 @@ export default function EditarOrcamento() {
 
     const valorFinal = composicao.total_geral - (discount?.valor || 0);
 
+    const pacoteSelecionado = pacoteId ? packages.find((p) => p.id === pacoteId) : null;
+
     generateQuotePDF({
       id: quoteData.quote_number,
       clientName: quoteData.client?.nome || "Cliente",
@@ -528,6 +530,7 @@ export default function EditarOrcamento() {
         valor: discount.valor,
       } : undefined,
       extras: extrasData,
+      pacoteNome: pacoteSelecionado?.nome,
     });
   };
 
