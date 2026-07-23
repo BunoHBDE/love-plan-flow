@@ -113,14 +113,15 @@ export function PaymentTermsForm({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Contar quantas parcelas mensais reais cabem até a data limite,
+    // seguindo o mesmo cronograma de calcularParcelas: primeira parcela
+    // no mês seguinte, sempre no dia de vencimento escolhido
     let months = 0;
-    const tempDate = new Date(today);
-    
-    while (tempDate < lastPaymentDate) {
+    const tempDate = new Date(today.getFullYear(), today.getMonth() + 1, diaVencimento);
+
+    while (tempDate <= lastPaymentDate) {
+      months++;
       tempDate.setMonth(tempDate.getMonth() + 1);
-      if (tempDate <= lastPaymentDate) {
-        months++;
-      }
     }
 
     const calculatedMax = Math.max(1, months);
