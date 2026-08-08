@@ -208,6 +208,9 @@ export const generateQuotePDF = (quote: QuoteData): void => {
 
   const rowH = 6.5;
 
+  // Respiro entre a barra de seção e o cabeçalho da tabela
+  yPosition += 4;
+
   // Cabeçalho da tabela
   doc.setDrawColor(...colors.line);
   doc.setLineWidth(0.3);
