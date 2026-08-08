@@ -582,10 +582,12 @@ export default function NovoOrcamento() {
     if (nConvidados <= 0) {
       pend.push("Número de convidados não informado");
     }
-    if (dataStatus === "com_data" && !dataEvento) {
-      pend.push("Data do evento não definida");
-    }
-    if (espacoId && !diaSemana) {
+    // Em modo "com data" o dia da semana vem da data; em "a definir" é escolhido direto.
+    if (dataStatus === "com_data") {
+      if (!dataEvento) {
+        pend.push("Data do evento não definida");
+      }
+    } else if (espacoId && !diaSemana) {
       pend.push("Dia da semana não definido (necessário para o preço do espaço)");
     }
     if (!composicao || composicao.total_geral <= 0) {
@@ -601,6 +603,12 @@ export default function NovoOrcamento() {
     const temItens = !!(espacoId || buffetId || servicoIds.length > 0 || pacoteId);
     return temItens && nConvidados <= 0;
   }, [itemSelections, nConvidados]);
+
+  // Espaço selecionado em modo "com data" mas sem data escolhida:
+  // a data é necessária porque o preço do espaço depende do dia da semana.
+  const dataPendente = useMemo(() => {
+    return dataStatus === "com_data" && !dataEvento && !!itemSelections.espacoId;
+  }, [dataStatus, dataEvento, itemSelections.espacoId]);
 
   // Mensagem contextual do resumo quando ainda não há valor calculado,
   // apontando para o dado que realmente está faltando.
@@ -620,7 +628,15 @@ export default function NovoOrcamento() {
         message: "Informe o número de convidados para calcular o valor",
       };
     }
+    // O espaço precisa do dia da semana. Em modo "com data" ele vem da data
+    // do evento; em modo "a definir" o usuário seleciona o dia diretamente.
     if (espacoId && !diaSemana) {
+      if (dataStatus === "com_data") {
+        return {
+          Icon: Calendar,
+          message: "Informe a data do evento para calcular o preço do espaço",
+        };
+      }
       return {
         Icon: Calendar,
         message: "Defina o dia da semana para calcular o preço do espaço",
@@ -630,7 +646,7 @@ export default function NovoOrcamento() {
       Icon: PackageIcon,
       message: "Ajuste os itens selecionados para calcular o valor",
     };
-  }, [itemSelections, nConvidados, diaSemana]);
+  }, [itemSelections, nConvidados, diaSemana, dataStatus]);
 
   // Ao clicar em "Salvar Rascunho": exige cliente e abre o pop-up de confirmação
   const handleDraftClick = () => {
@@ -836,8 +852,16 @@ export default function NovoOrcamento() {
                         type="date"
                         value={dataEvento}
                         onChange={(e) => setDataEvento(e.target.value)}
-                        className="h-9"
+                        className={`h-9 ${
+                          dataPendente ? "border-amber-400 ring-1 ring-amber-400/40" : ""
+                        }`}
                       />
+                      {dataPendente && (
+                        <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Necessária para o preço do espaço
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs">Validade do Orçamento</Label>
