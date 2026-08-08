@@ -35,12 +35,24 @@ import {
   Percent,
   CreditCard,
   Settings2,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
 import { useClientsOptimized as useClients, type Client, type ClientInsert } from "@/hooks/useClientsOptimized";
@@ -107,6 +119,7 @@ export default function NovoOrcamento() {
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
 
   // Dados do cliente selecionado
   const [nomeCliente, setNomeCliente] = useState("");
@@ -372,7 +385,7 @@ export default function NovoOrcamento() {
   const handleSalvarOrcamento = async (status: "rascunho" | "enviado") => {
     const { espacoId, buffetId, servicoIds, serviceQuantities, pacoteId } = itemSelections;
 
-    // Validações
+    // Cliente é sempre obrigatório — mesmo em rascunho, para saber de quem é o orçamento
     if (!clienteId) {
       toast({
         title: "Selecione um cliente",
@@ -382,82 +395,88 @@ export default function NovoOrcamento() {
       return;
     }
 
-    if (!espacoId && !buffetId && servicoIds.length === 0 && !pacoteId) {
-      toast({
-        title: "Selecione ao menos um item",
-        description: "Selecione espaço, buffet, serviços ou pacote.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Validações completas apenas ao finalizar o orçamento.
+    // Rascunhos podem ser salvos incompletos (sem itens, convidados ou valor calculado).
+    if (status === "enviado") {
+      if (!espacoId && !buffetId && servicoIds.length === 0 && !pacoteId) {
+        toast({
+          title: "Selecione ao menos um item",
+          description: "Selecione espaço, buffet, serviços ou pacote.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (nConvidados <= 0) {
-      toast({
-        title: "Número de convidados inválido",
-        description: "Informe um número maior que zero.",
-        variant: "destructive",
-      });
-      return;
-    }
+      if (nConvidados <= 0) {
+        toast({
+          title: "Número de convidados inválido",
+          description: "Informe um número maior que zero.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (espacoId && !diaSemana) {
-      toast({
-        title: "Defina o dia da semana",
-        description: "O dia da semana é necessário para calcular o preço do espaço.",
-        variant: "destructive",
-      });
-      return;
-    }
+      if (espacoId && !diaSemana) {
+        toast({
+          title: "Defina o dia da semana",
+          description: "O dia da semana é necessário para calcular o preço do espaço.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // Validar quantidades de serviços
-    for (const servicoId of servicoIds) {
-      const servico = services.find((s) => s.id === servicoId);
-      if (servico) {
-        const preco = servico.precos?.[0];
-        if (preco && preco.tipo === "variavel") {
-          const unidade = preco.unidade?.toLowerCase() || "";
-          const isPessoaUnidade =
-            unidade === "pessoa" ||
-            unidade === "pessoas" ||
-            unidade === "convidado" ||
-            unidade === "convidados";
+      // Validar quantidades de serviços
+      for (const servicoId of servicoIds) {
+        const servico = services.find((s) => s.id === servicoId);
+        if (servico) {
+          const preco = servico.precos?.[0];
+          if (preco && preco.tipo === "variavel") {
+            const unidade = preco.unidade?.toLowerCase() || "";
+            const isPessoaUnidade =
+              unidade === "pessoa" ||
+              unidade === "pessoas" ||
+              unidade === "convidado" ||
+              unidade === "convidados";
 
-          if (!isPessoaUnidade) {
-            const quantidade = serviceQuantities[servicoId] || 0;
-            if (quantidade < 1) {
-              toast({
-                title: "Quantidade inválida",
-                description: `Informe a quantidade de ${preco.unidade || "unidades"} para "${servico.nome}".`,
-                variant: "destructive",
-              });
-              return;
+            if (!isPessoaUnidade) {
+              const quantidade = serviceQuantities[servicoId] || 0;
+              if (quantidade < 1) {
+                toast({
+                  title: "Quantidade inválida",
+                  description: `Informe a quantidade de ${preco.unidade || "unidades"} para "${servico.nome}".`,
+                  variant: "destructive",
+                });
+                return;
+              }
             }
           }
         }
       }
-    }
 
-    if (!composicao || composicao.total_geral <= 0) {
-      toast({
-        title: "Valor inválido",
-        description: "O orçamento precisa ter um valor calculado.",
-        variant: "destructive",
-      });
-      return;
-    }
+      if (!composicao || composicao.total_geral <= 0) {
+        toast({
+          title: "Valor inválido",
+          description: "O orçamento precisa ter um valor calculado.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (status === "enviado" && hasPaymentErrors) {
-      toast({
-        title: "Erro nas condições de pagamento",
-        description: "Corrija os erros antes de salvar o orçamento.",
-        variant: "destructive",
-      });
-      return;
+      if (hasPaymentErrors) {
+        toast({
+          title: "Erro nas condições de pagamento",
+          description: "Corrija os erros antes de salvar o orçamento.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsSaving(true);
 
-    const valorTotalFinal = composicao.total_geral - (discount?.valor || 0);
+    const valorTotalFinal = composicao
+      ? composicao.total_geral - (discount?.valor || 0)
+      : 0;
 
     const quote = await createQuote({
       client_id: clienteId,
@@ -550,6 +569,48 @@ export default function NovoOrcamento() {
     if (!composicao) return 0;
     return composicao.total_geral - (discount?.valor || 0);
   }, [composicao, discount?.valor]);
+
+  // Dados que ainda faltam para finalizar o orçamento (exibidos ao salvar rascunho)
+  const draftPendencias = useMemo(() => {
+    const pend: string[] = [];
+    const { espacoId, buffetId, servicoIds, pacoteId } = itemSelections;
+
+    if (!espacoId && !buffetId && servicoIds.length === 0 && !pacoteId) {
+      pend.push("Nenhum item selecionado (espaço, buffet, serviços ou pacote)");
+    }
+    if (nConvidados <= 0) {
+      pend.push("Número de convidados não informado");
+    }
+    if (dataStatus === "com_data" && !dataEvento) {
+      pend.push("Data do evento não definida");
+    }
+    if (espacoId && !diaSemana) {
+      pend.push("Dia da semana não definido (necessário para o preço do espaço)");
+    }
+    if (!composicao || composicao.total_geral <= 0) {
+      pend.push("Valor total ainda não calculado");
+    }
+
+    return pend;
+  }, [itemSelections, nConvidados, dataStatus, dataEvento, diaSemana, composicao]);
+
+  // Ao clicar em "Salvar Rascunho": exige cliente e abre o pop-up de confirmação
+  const handleDraftClick = () => {
+    if (!clienteId) {
+      toast({
+        title: "Selecione um cliente",
+        description: "É necessário selecionar um cliente, mesmo para salvar um rascunho.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsDraftDialogOpen(true);
+  };
+
+  const handleConfirmDraft = () => {
+    setIsDraftDialogOpen(false);
+    handleSalvarOrcamento("rascunho");
+  };
 
   return (
     <MainLayout>
@@ -1110,7 +1171,7 @@ export default function NovoOrcamento() {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => handleSalvarOrcamento("rascunho")}
+                  onClick={handleDraftClick}
                   disabled={isSaving}
                 >
                   {isSaving ? (
@@ -1128,6 +1189,56 @@ export default function NovoOrcamento() {
 
         </div>
 
+        {/* ========== POP-UP DE CONFIRMAÇÃO DE RASCUNHO ========== */}
+        <AlertDialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Salvar como rascunho
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Este orçamento será salvo como{" "}
+                <span className="font-medium text-foreground">rascunho</span> e{" "}
+                <span className="font-medium text-foreground">não será finalizado</span>.
+                Você poderá editá-lo e concluí-lo depois.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            {draftPendencias.length > 0 ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                <p className="flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="h-4 w-4" />
+                  Dados pendentes ({draftPendencias.length})
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {draftPendencias.map((item, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-start gap-1.5 text-sm text-muted-foreground"
+                    >
+                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-500" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="flex items-center gap-1.5 text-sm text-success">
+                <CheckCircle2 className="h-4 w-4" />
+                Todos os dados principais estão preenchidos.
+              </p>
+            )}
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isSaving}>Voltar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmDraft} disabled={isSaving}>
+                Salvar rascunho
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* ========== FOOTER MOBILE (Resumo Fixo) ========== */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 shadow-lg z-50">
           <div className="flex items-center justify-between gap-4">
@@ -1141,8 +1252,9 @@ export default function NovoOrcamento() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleSalvarOrcamento("rascunho")}
+                onClick={handleDraftClick}
                 disabled={isSaving}
+                aria-label="Salvar rascunho"
               >
                 <Save className="h-4 w-4" />
               </Button>
