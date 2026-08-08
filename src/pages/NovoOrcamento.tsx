@@ -37,6 +37,7 @@ import {
   Settings2,
   AlertTriangle,
   CheckCircle2,
+  Users,
 } from "lucide-react";
 import {
   Collapsible,
@@ -594,6 +595,43 @@ export default function NovoOrcamento() {
     return pend;
   }, [itemSelections, nConvidados, dataStatus, dataEvento, diaSemana, composicao]);
 
+  // Itens selecionados sem número de convidados: convidados é o principal driver do preço
+  const convidadosPendente = useMemo(() => {
+    const { espacoId, buffetId, servicoIds, pacoteId } = itemSelections;
+    const temItens = !!(espacoId || buffetId || servicoIds.length > 0 || pacoteId);
+    return temItens && nConvidados <= 0;
+  }, [itemSelections, nConvidados]);
+
+  // Mensagem contextual do resumo quando ainda não há valor calculado,
+  // apontando para o dado que realmente está faltando.
+  const resumoEmptyState = useMemo(() => {
+    const { espacoId, buffetId, servicoIds, pacoteId } = itemSelections;
+    const temItens = !!(espacoId || buffetId || servicoIds.length > 0 || pacoteId);
+
+    if (!temItens) {
+      return {
+        Icon: PackageIcon,
+        message: "Selecione os itens do orçamento para calcular o valor",
+      };
+    }
+    if (nConvidados <= 0) {
+      return {
+        Icon: Users,
+        message: "Informe o número de convidados para calcular o valor",
+      };
+    }
+    if (espacoId && !diaSemana) {
+      return {
+        Icon: Calendar,
+        message: "Defina o dia da semana para calcular o preço do espaço",
+      };
+    }
+    return {
+      Icon: PackageIcon,
+      message: "Ajuste os itens selecionados para calcular o valor",
+    };
+  }, [itemSelections, nConvidados, diaSemana]);
+
   // Ao clicar em "Salvar Rascunho": exige cliente e abre o pop-up de confirmação
   const handleDraftClick = () => {
     if (!clienteId) {
@@ -756,8 +794,16 @@ export default function NovoOrcamento() {
                     placeholder="Ex: 150"
                     value={nConvidados || ""}
                     onChange={(e) => setNConvidados(parseInt(e.target.value) || 0)}
-                    className="h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className={`h-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                      convidadosPendente ? "border-amber-400 ring-1 ring-amber-400/40" : ""
+                    }`}
                   />
+                  {convidadosPendente && (
+                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Necessário para calcular o valor
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1040,12 +1086,15 @@ export default function NovoOrcamento() {
                   </div>
                 )}
 
-                {/* Estado vazio */}
+                {/* Estado vazio (mensagem contextual conforme o dado faltante) */}
                 {(!composicao || composicao.itens.length === 0) && (
                   <div className="mt-4 pt-4 border-t border-border">
-                    <p className="text-sm text-muted-foreground text-center">
-                      Selecione os itens do orçamento para calcular o valor
-                    </p>
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <resumoEmptyState.Icon className="h-5 w-5 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        {resumoEmptyState.message}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
