@@ -62,7 +62,7 @@ interface QuoteItemsSectionProps {
   
   // Seleções atuais
   selections: QuoteItemsSelections;
-  onSelectionsChange: (selections: QuoteItemsSelections) => void;
+  onSelectionsChange: React.Dispatch<React.SetStateAction<QuoteItemsSelections>>;
   
   // Contexto
   anoEvento: string;
@@ -100,11 +100,15 @@ export function QuoteItemsSection({
   // HANDLERS
   // =============================================================================
 
+  // IMPORTANTE: todos os handlers usam updates funcionais (prev => ...).
+  // Isso evita que chamadas encadeadas no mesmo evento (ex.: adicionar um
+  // serviço dispara onServicesChange + onQuantityChange) se sobrescrevam por
+  // usarem uma cópia desatualizada de `selections`.
   const handleModeChange = (mode: SelectionMode) => {
     if (mode === "personalizado") {
       // Limpar seleções do pacote, manter itens desbloqueados
-      onSelectionsChange({
-        ...selections,
+      onSelectionsChange((prev) => ({
+        ...prev,
         mode: "personalizado",
         pacoteId: null,
         packageLockedItems: {
@@ -112,11 +116,11 @@ export function QuoteItemsSection({
           buffetId: null,
           servicoIds: [],
         },
-      });
+      }));
     } else {
       // Mudar para modo pacote - limpar seleções manuais
-      onSelectionsChange({
-        ...selections,
+      onSelectionsChange((prev) => ({
+        ...prev,
         mode: "pacote",
         espacoId: null,
         buffetId: null,
@@ -127,15 +131,15 @@ export function QuoteItemsSection({
           buffetId: null,
           servicoIds: [],
         },
-      });
+      }));
     }
   };
 
   const handlePackageChange = (packageId: string | null) => {
     if (!packageId) {
       // Removeu pacote - voltar para modo personalizado
-      onSelectionsChange({
-        ...selections,
+      onSelectionsChange((prev) => ({
+        ...prev,
         mode: "personalizado",
         pacoteId: null,
         espacoId: null,
@@ -147,7 +151,7 @@ export function QuoteItemsSection({
           buffetId: null,
           servicoIds: [],
         },
-      });
+      }));
       return;
     }
 
@@ -165,8 +169,8 @@ export function QuoteItemsSection({
       newServiceQuantities[id] = 1;
     });
 
-    onSelectionsChange({
-      ...selections,
+    onSelectionsChange((prev) => ({
+      ...prev,
       mode: "pacote",
       pacoteId: packageId,
       espacoId: espacoIdFromPackage,
@@ -178,50 +182,51 @@ export function QuoteItemsSection({
         buffetId: buffetIdFromPackage,
         servicoIds: servicoIdsFromPackage,
       },
-    });
+    }));
   };
 
   // Handlers para modo personalizado
   const handleSpaceChange = (spaceId: string | null) => {
-    onSelectionsChange({
-      ...selections,
+    onSelectionsChange((prev) => ({
+      ...prev,
       espacoId: spaceId,
-    });
+    }));
   };
 
   const handleBuffetChange = (buffetId: string | null) => {
-    onSelectionsChange({
-      ...selections,
+    onSelectionsChange((prev) => ({
+      ...prev,
       buffetId: buffetId,
-    });
+    }));
   };
 
   const handleServicesChange = (serviceIds: string[]) => {
-    onSelectionsChange({
-      ...selections,
+    onSelectionsChange((prev) => ({
+      ...prev,
       servicoIds: serviceIds,
-    });
+    }));
   };
 
   const handleServiceQuantityChange = (serviceId: string, quantity: number) => {
-    onSelectionsChange({
-      ...selections,
+    onSelectionsChange((prev) => ({
+      ...prev,
       serviceQuantities: {
-        ...selections.serviceQuantities,
+        ...prev.serviceQuantities,
         [serviceId]: quantity,
       },
-    });
+    }));
   };
 
   // Handler para serviços EXTRAS (além do pacote)
   const handleExtraServicesChange = (serviceIds: string[]) => {
-    // Manter os serviços do pacote + adicionar os extras
-    const packageServiceIds = selections.packageLockedItems.servicoIds;
-    const allServiceIds = [...new Set([...packageServiceIds, ...serviceIds])];
-    
-    onSelectionsChange({
-      ...selections,
-      servicoIds: allServiceIds,
+    onSelectionsChange((prev) => {
+      // Manter os serviços do pacote + adicionar os extras
+      const packageServiceIds = prev.packageLockedItems.servicoIds;
+      const allServiceIds = [...new Set([...packageServiceIds, ...serviceIds])];
+      return {
+        ...prev,
+        servicoIds: allServiceIds,
+      };
     });
   };
 
