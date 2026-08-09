@@ -870,7 +870,7 @@ export default function NovoOrcamento() {
         </div>
 
         {/* ========== BARRA FIXA DE AÇÃO (topo) ========== */}
-        <div className="sticky top-16 md:top-2 z-20 mx-auto w-full max-w-3xl rounded-xl border border-border bg-card px-3 py-2 shadow-md md:px-4 md:py-2.5">
+        <div className="sticky top-16 md:top-2 z-20 mx-auto w-full max-w-5xl rounded-xl border border-border bg-card px-3 py-2 shadow-md md:px-4 md:py-2.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <FinalizacaoRing checklist={finalizacaoChecklist} />
@@ -920,7 +920,7 @@ export default function NovoOrcamento() {
         </div>
 
         {/* ========== FORMULÁRIO (coluna única) ========== */}
-        <div className="mx-auto w-full max-w-3xl space-y-4">
+        <div className="mx-auto w-full max-w-5xl space-y-4">
           {/* Block 1 - Cliente */}
           <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
             <div className="flex items-center gap-2 mb-3">
@@ -1197,13 +1197,8 @@ export default function NovoOrcamento() {
             </Collapsible>
           </div>
 
-          {/* Detalhamento do valor (alarga em telas grandes para preencher o espaço) */}
-          <div
-            className={`bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up ${
-              composicao && composicao.itens.length > 0 ? "xl:-mx-16 2xl:-mx-32" : ""
-            }`}
-            style={{ animationDelay: "230ms", animationFillMode: "both" }}
-          >
+          {/* Detalhamento do valor */}
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "230ms", animationFillMode: "both" }}>
             {composicao && composicao.itens.length > 0 ? (
               <Collapsible defaultOpen>
                 <CollapsibleTrigger asChild>
@@ -1217,7 +1212,6 @@ export default function NovoOrcamento() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="mt-2 space-y-3">
-                    <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
                     {composicao.itens.map((item) => (
                       <div key={item.id} className="bg-muted/30 rounded-lg p-2.5 space-y-1">
                         <div className="flex justify-between items-start">
@@ -1248,7 +1242,6 @@ export default function NovoOrcamento() {
                         </div>
                       </div>
                     ))}
-                    </div>
 
                     {composicao.total_extras > 0 && (
                       <div className="flex justify-between text-sm py-1">
