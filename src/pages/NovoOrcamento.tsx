@@ -39,6 +39,7 @@ import {
   Users,
   Circle,
   X,
+  Check,
 } from "lucide-react";
 import {
   Collapsible,
@@ -63,6 +64,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
 import { useClientsOptimized as useClients, type Client, type ClientInsert } from "@/hooks/useClientsOptimized";
@@ -94,6 +100,83 @@ const tiposEvento = [
   { value: "aniversario", label: "Aniversário" },
 ];
 
+
+// Anel proporcional de progresso "Para finalizar" (hover mostra as pendências)
+function FinalizacaoRing({
+  checklist,
+}: {
+  checklist: { label: string; done: boolean }[];
+}) {
+  const total = checklist.length;
+  const done = checklist.filter((i) => i.done).length;
+  const percent = total > 0 ? done / total : 0;
+  const pronto = total > 0 && done === total;
+  const pendentes = checklist.filter((i) => !i.done);
+
+  const r = 16;
+  const c = 2 * Math.PI * r;
+
+  return (
+    <HoverCard openDelay={80} closeDelay={80}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Para finalizar: ${done} de ${total} concluídos`}
+        >
+          <svg viewBox="0 0 40 40" className="h-11 w-11 -rotate-90">
+            <circle
+              cx="20"
+              cy="20"
+              r={r}
+              fill="none"
+              strokeWidth="4"
+              style={{ stroke: "hsl(var(--border))" }}
+            />
+            <circle
+              cx="20"
+              cy="20"
+              r={r}
+              fill="none"
+              strokeWidth="4"
+              strokeLinecap="round"
+              style={{
+                stroke: pronto ? "hsl(var(--success))" : "hsl(var(--primary))",
+                strokeDasharray: c,
+                strokeDashoffset: c * (1 - percent),
+                transition: "stroke-dashoffset 0.35s ease",
+              }}
+            />
+          </svg>
+          <span className="absolute flex items-center justify-center text-[10px] font-semibold text-foreground">
+            {pronto ? <Check className="h-4 w-4 text-success" /> : `${Math.round(percent * 100)}%`}
+          </span>
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="w-64">
+        <p className="mb-2 text-sm font-medium">
+          {pronto
+            ? "Tudo pronto para finalizar"
+            : `Para finalizar (${pendentes.length} pendente${pendentes.length > 1 ? "s" : ""})`}
+        </p>
+        <ul className="space-y-1.5">
+          {checklist.map((item) => (
+            <li key={item.label} className="flex items-center gap-2 text-sm">
+              {item.done ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+              ) : (
+                <Circle className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+              )}
+              <span className={item.done ? "text-muted-foreground" : "text-foreground"}>
+                {item.label}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
 
 export default function NovoOrcamento() {
   const navigate = useNavigate();
@@ -786,11 +869,58 @@ export default function NovoOrcamento() {
           </div>
         </div>
 
-        {/* Layout 2 Colunas: Formulário + Sidebar Financeira */}
-        <div className="flex flex-col lg:flex-row gap-4">
-          
-          {/* ========== COLUNA PRINCIPAL (Formulário Rolável) ========== */}
-          <div className="flex-1 space-y-4 lg:max-w-3xl">
+        {/* ========== BARRA FIXA DE AÇÃO (topo) ========== */}
+        <div className="sticky top-16 md:top-2 z-20 mx-auto w-full max-w-3xl rounded-xl border border-border bg-card px-3 py-2 shadow-md md:px-4 md:py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <FinalizacaoRing checklist={finalizacaoChecklist} />
+              <div className="min-w-0">
+                <p className="text-[11px] leading-none text-muted-foreground">Valor total</p>
+                <p className="truncate text-lg font-bold leading-tight text-primary md:text-xl">
+                  {valorFinal > 0 ? formatCurrency(valorFinal) : "R$ 0,00"}
+                </p>
+                {nConvidados > 0 && valorFinal > 0 && (
+                  <p className="text-[11px] leading-none text-muted-foreground">
+                    {formatCurrency(valorFinal / nConvidados)}/convidado
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDraftClick}
+                disabled={isSaving}
+                aria-label="Salvar como rascunho"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span className="ml-1.5 hidden md:inline">Salvar rascunho</span>
+              </Button>
+              <Button
+                variant="gold"
+                size="sm"
+                onClick={() => handleSalvarOrcamento("enviado")}
+                disabled={isSaving || !prontoParaFinalizar}
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin sm:mr-1.5" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 sm:mr-1.5" />
+                )}
+                <span className="hidden sm:inline">Finalizar orçamento</span>
+                <span className="sm:hidden">Finalizar</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* ========== FORMULÁRIO (coluna única) ========== */}
+        <div className="mx-auto w-full max-w-3xl space-y-4">
           {/* Block 1 - Cliente */}
           <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
             <div className="flex items-center gap-2 mb-3">
@@ -1018,6 +1148,197 @@ export default function NovoOrcamento() {
             </div>
           </Collapsible>
 
+          {/* Desconto */}
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "200ms", animationFillMode: "both" }}>
+            <Collapsible>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Percent className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Desconto</span>
+                  {discount.valor > 0 && (
+                    <span className="text-sm font-medium text-success">
+                      -{formatCurrency(discount.valor)}
+                    </span>
+                  )}
+                </div>
+
+                {composicao && composicao.total_geral > 0 ? (
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs gap-1">
+                      {discount.valor > 0 ? (
+                        <>
+                          <Settings2 className="h-3.5 w-3.5" />
+                          Editar
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-3.5 w-3.5" />
+                          Adicionar
+                        </>
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Indisponível</span>
+                )}
+              </div>
+
+              {composicao && composicao.total_geral > 0 && (
+                <CollapsibleContent>
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <DiscountForm
+                      valorTotal={composicao.total_geral}
+                      discount={discount}
+                      onChange={setDiscount}
+                    />
+                  </div>
+                </CollapsibleContent>
+              )}
+            </Collapsible>
+          </div>
+
+          {/* Detalhamento do valor */}
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "230ms", animationFillMode: "both" }}>
+            {composicao && composicao.itens.length > 0 ? (
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <button className="w-full flex items-center justify-between text-sm hover:bg-muted/50 rounded-lg p-2 -mx-2 transition-colors group">
+                    <span className="font-medium text-foreground flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      Detalhamento do valor ({composicao.itens.length} {composicao.itens.length === 1 ? 'item' : 'itens'})
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-[[data-state=open]]:rotate-180" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-2 space-y-3">
+                    {composicao.itens.map((item) => (
+                      <div key={item.id} className="bg-muted/30 rounded-lg p-2.5 space-y-1">
+                        <div className="flex justify-between items-start">
+                          <span className="text-sm font-medium text-foreground">{item.nome}</span>
+                          <span className="text-sm font-semibold text-primary whitespace-nowrap ml-2">
+                            {formatCurrency(item.valor_total)}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.tipo_preco === 'fixo' ? (
+                            <span>Valor fixo</span>
+                          ) : (
+                            <span>
+                              {item.valor_inicial && item.valor_inicial > 0 && (
+                                <>Base {formatCurrency(item.valor_inicial)} + </>
+                              )}
+                              {item.valor_por_unidade && (
+                                <>
+                                  {formatCurrency(item.valor_por_unidade)}/{item.unidade || 'un'} × {
+                                    item.valor_inicial
+                                      ? Math.round((item.valor_total - item.valor_inicial) / item.valor_por_unidade)
+                                      : Math.round(item.valor_total / item.valor_por_unidade)
+                                  }
+                                </>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {composicao.total_extras > 0 && (
+                      <div className="flex justify-between text-sm py-1">
+                        <span className="text-muted-foreground">Extras</span>
+                        <span className="text-foreground font-medium">
+                          {formatCurrency(composicao.total_extras)}
+                        </span>
+                      </div>
+                    )}
+
+                    {(composicao.desconto_fixo > 0 || composicao.desconto_variavel > 0) && (
+                      <div className="flex justify-between text-sm py-1 text-success">
+                        <span>Desconto do pacote</span>
+                        <span className="font-medium">
+                          -{formatCurrency(composicao.desconto_fixo + composicao.desconto_variavel)}
+                        </span>
+                      </div>
+                    )}
+
+                    {discount.valor > 0 && (
+                      <div className="flex justify-between text-sm py-1 text-success">
+                        <span>Desconto adicional</span>
+                        <span className="font-medium">
+                          -{formatCurrency(discount.valor)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-center py-2">
+                <resumoEmptyState.Icon className="h-5 w-5 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {resumoEmptyState.message}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Pagamento */}
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "260ms", animationFillMode: "both" }}>
+            <Collapsible>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Pagamento</span>
+                </div>
+
+                {composicao && composicao.total_geral > 0 ? (
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs gap-1">
+                      <Settings2 className="h-3.5 w-3.5" />
+                      Configurar
+                    </Button>
+                  </CollapsibleTrigger>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Indisponível</span>
+                )}
+              </div>
+
+              {composicao && composicao.total_geral > 0 && (
+                <>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Sinal ({paymentTerms.percentualSinal}%)</span>
+                      <span className="font-medium">{formatCurrency(paymentTerms.valorSinal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Parcelas</span>
+                      <span className="font-medium">
+                        {paymentTerms.numeroParcelas}x de {formatCurrency((valorFinal - paymentTerms.valorSinal) / Math.max(paymentTerms.numeroParcelas, 1))}
+                      </span>
+                    </div>
+                  </div>
+
+                  <CollapsibleContent>
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <PaymentTermsForm
+                        valorTotal={valorFinal}
+                        dataEvento={dataStatus === "com_data" ? dataEvento : null}
+                        onChange={setPaymentTerms}
+                        onValidationChange={setHasPaymentErrors}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </>
+              )}
+
+              {(!composicao || composicao.total_geral <= 0) && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Adicione itens para configurar
+                </p>
+              )}
+            </Collapsible>
+          </div>
+
           {/* Block 5 - Observações (Compacto) */}
           <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "240ms", animationFillMode: "both" }}>
             <div className="flex items-center gap-2 mb-3">
@@ -1054,303 +1375,6 @@ export default function NovoOrcamento() {
           </div>
 
           </div>
-          {/* ========== FIM COLUNA PRINCIPAL ========== */}
-
-          {/* ========== SIDEBAR FINANCEIRA (Fixa no Desktop) ========== */}
-          <div className="lg:w-96 lg:flex-shrink-0">
-            <div className="lg:sticky lg:top-4 space-y-4">
-              
-              {/* Card Principal - Valor Total */}
-              <div className="bg-card rounded-xl p-4 shadow-soft border border-border">
-                <div className="text-center space-y-1">
-                  <p className="text-sm text-muted-foreground">Valor Total</p>
-                  <p className={`text-3xl font-bold ${valorFinal > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {valorFinal > 0 ? formatCurrency(valorFinal) : 'R$ 0,00'}
-                  </p>
-                  {nConvidados > 0 && valorFinal > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(valorFinal / nConvidados)} por convidado
-                    </p>
-                  )}
-                </div>
-
-                {/* Resumo detalhado dos itens */}
-                {composicao && composicao.itens.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <Collapsible>
-                      <CollapsibleTrigger asChild>
-                        <button className="w-full flex items-center justify-between text-sm hover:bg-muted/50 rounded-lg p-2 -mx-2 transition-colors group">
-                          <span className="text-muted-foreground font-medium">
-                            Ver detalhes ({composicao.itens.length} {composicao.itens.length === 1 ? 'item' : 'itens'})
-                          </span>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-[[data-state=open]]:rotate-180" />
-                        </button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="mt-2 space-y-3">
-                          {composicao.itens.map((item) => (
-                            <div key={item.id} className="bg-muted/30 rounded-lg p-2.5 space-y-1">
-                              <div className="flex justify-between items-start">
-                                <span className="text-sm font-medium text-foreground">{item.nome}</span>
-                                <span className="text-sm font-semibold text-primary whitespace-nowrap ml-2">
-                                  {formatCurrency(item.valor_total)}
-                                </span>
-                              </div>
-                              {/* Detalhamento do cálculo */}
-                              <div className="text-xs text-muted-foreground">
-                                {item.tipo_preco === 'fixo' ? (
-                                  <span>Valor fixo</span>
-                                ) : (
-                                  <span>
-                                    {item.valor_inicial && item.valor_inicial > 0 && (
-                                      <>Base {formatCurrency(item.valor_inicial)} + </>
-                                    )}
-                                    {item.valor_por_unidade && (
-                                      <>
-                                        {formatCurrency(item.valor_por_unidade)}/{item.unidade || 'un'} × {
-                                          item.valor_inicial
-                                            ? Math.round((item.valor_total - item.valor_inicial) / item.valor_por_unidade)
-                                            : Math.round(item.valor_total / item.valor_por_unidade)
-                                        }
-                                      </>
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                          
-                          {/* Extras */}
-                          {composicao.total_extras > 0 && (
-                            <div className="flex justify-between text-sm py-1">
-                              <span className="text-muted-foreground">Extras</span>
-                              <span className="text-foreground font-medium">
-                                {formatCurrency(composicao.total_extras)}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Desconto do pacote */}
-                          {(composicao.desconto_fixo > 0 || composicao.desconto_variavel > 0) && (
-                            <div className="flex justify-between text-sm py-1 text-success">
-                              <span>Desconto do pacote</span>
-                              <span className="font-medium">
-                                -{formatCurrency(composicao.desconto_fixo + composicao.desconto_variavel)}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Desconto manual */}
-                          {discount.valor > 0 && (
-                            <div className="flex justify-between text-sm py-1 text-success">
-                              <span>Desconto adicional</span>
-                              <span className="font-medium">
-                                -{formatCurrency(discount.valor)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                )}
-
-                {/* Estado vazio (mensagem contextual conforme o dado faltante) */}
-                {(!composicao || composicao.itens.length === 0) && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <div className="flex flex-col items-center gap-2 text-center">
-                      <resumoEmptyState.Icon className="h-5 w-5 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        {resumoEmptyState.message}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Desconto */}
-              <div className="bg-card rounded-xl p-4 shadow-soft border border-border">
-                <Collapsible>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Percent className="h-4 w-4 text-primary" />
-                      <span className="font-medium">Desconto</span>
-                      {discount.valor > 0 && (
-                        <span className="text-sm font-medium text-success">
-                          -{formatCurrency(discount.valor)}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {composicao && composicao.total_geral > 0 ? (
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1">
-                          {discount.valor > 0 ? (
-                            <>
-                              <Settings2 className="h-3.5 w-3.5" />
-                              Editar
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="h-3.5 w-3.5" />
-                              Adicionar
-                            </>
-                          )}
-                        </Button>
-                      </CollapsibleTrigger>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Indisponível</span>
-                    )}
-                  </div>
-
-                  {composicao && composicao.total_geral > 0 && (
-                    <CollapsibleContent>
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <DiscountForm
-                          valorTotal={composicao.total_geral}
-                          discount={discount}
-                          onChange={setDiscount}
-                        />
-                      </div>
-                    </CollapsibleContent>
-                  )}
-                </Collapsible>
-              </div>
-
-              {/* Condições de Pagamento */}
-              <div className="bg-card rounded-xl p-4 shadow-soft border border-border">
-                <Collapsible>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-primary" />
-                      <span className="font-medium">Pagamento</span>
-                    </div>
-
-                    {composicao && composicao.total_geral > 0 ? (
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1">
-                          <Settings2 className="h-3.5 w-3.5" />
-                          Configurar
-                        </Button>
-                      </CollapsibleTrigger>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Indisponível</span>
-                    )}
-                  </div>
-
-                  {composicao && composicao.total_geral > 0 && (
-                    <>
-                      {/* Resumo sempre visível */}
-                      <div className="mt-3 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Sinal ({paymentTerms.percentualSinal}%)</span>
-                          <span className="font-medium">{formatCurrency(paymentTerms.valorSinal)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Parcelas</span>
-                          <span className="font-medium">
-                            {paymentTerms.numeroParcelas}x de {formatCurrency((valorFinal - paymentTerms.valorSinal) / Math.max(paymentTerms.numeroParcelas, 1))}
-                          </span>
-                        </div>
-                      </div>
-
-                      <CollapsibleContent>
-                        <div className="mt-4 pt-4 border-t border-border">
-                          <PaymentTermsForm
-                            valorTotal={valorFinal}
-                            dataEvento={dataStatus === "com_data" ? dataEvento : null}
-                            onChange={setPaymentTerms}
-                            onValidationChange={setHasPaymentErrors}
-                          />
-                        </div>
-                      </CollapsibleContent>
-                    </>
-                  )}
-
-                  {(!composicao || composicao.total_geral <= 0) && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Adicione itens para configurar
-                    </p>
-                  )}
-                </Collapsible>
-              </div>
-
-              {/* Checklist de finalização (feedback proativo perto do CTA) */}
-              <div className="bg-card rounded-xl p-4 shadow-soft border border-border">
-                {prontoParaFinalizar ? (
-                  <p className="flex items-center gap-2 text-sm font-medium text-success">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Tudo pronto para finalizar
-                  </p>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <span className="text-sm font-medium text-foreground">
-                        Para finalizar
-                      </span>
-                      <span className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 rounded-full">
-                        {pendenciasFinalizacao} pendente{pendenciasFinalizacao > 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    <ul className="space-y-1.5">
-                      {finalizacaoChecklist.map((item) => (
-                        <li key={item.label} className="flex items-center gap-2 text-sm">
-                          {item.done ? (
-                            <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                          ) : (
-                            <Circle className="h-4 w-4 text-muted-foreground/50 shrink-0" />
-                          )}
-                          <span className={item.done ? "text-muted-foreground" : "text-foreground"}>
-                            {item.label}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-
-              {/* Botões de Ação */}
-              <div className="space-y-2">
-                <Button
-                  className="w-full"
-                  variant="gold"
-                  onClick={() => handleSalvarOrcamento("enviado")}
-                  disabled={isSaving || !prontoParaFinalizar}
-                >
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                  )}
-                  Finalizar orçamento
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={handleDraftClick}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Salvar como rascunho
-                </Button>
-                <p className="text-xs text-muted-foreground text-center pt-0.5">
-                  Finalizar marca como{" "}
-                  <span className="font-medium text-foreground">Enviado</span>. O
-                  rascunho fica salvo para continuar depois.
-                </p>
-              </div>
-
-            </div>
-          </div>
-          {/* ========== FIM SIDEBAR FINANCEIRA ========== */}
-
-        </div>
-
         {/* ========== POP-UP DE CONFIRMAÇÃO DE RASCUNHO ========== */}
         <AlertDialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
           <AlertDialogContent>
@@ -1430,39 +1454,6 @@ export default function NovoOrcamento() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* ========== FOOTER MOBILE (Resumo Fixo) ========== */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 shadow-lg z-50">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Total</p>
-              <p className="text-xl font-bold text-primary">
-                {valorFinal > 0 ? formatCurrency(valorFinal) : 'R$ 0,00'}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleDraftClick}
-                disabled={isSaving}
-                aria-label="Salvar como rascunho"
-              >
-                <Save className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="gold"
-                onClick={() => handleSalvarOrcamento("enviado")}
-                disabled={isSaving || !prontoParaFinalizar}
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Finalizar'}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Espaçamento para o footer mobile não sobrepor conteúdo */}
-        <div className="lg:hidden h-24" />
 
       </div>
     </MainLayout>
