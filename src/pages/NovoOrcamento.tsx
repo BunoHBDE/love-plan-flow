@@ -55,6 +55,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
 import { useClientsOptimized as useClients, type Client, type ClientInsert } from "@/hooks/useClientsOptimized";
@@ -780,6 +788,21 @@ export default function NovoOrcamento() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
+            <Breadcrumb className="mb-0.5">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <button type="button" onClick={handleVoltar}>
+                      Orçamentos
+                    </button>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Novo orçamento</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
             <h1 className="text-xl font-display font-bold text-foreground">
               Novo Orçamento
             </h1>
