@@ -203,7 +203,7 @@ export function DiscountForm({
             <span className="text-muted-foreground">Original:</span>
             <span className="font-medium">R$ {formatNumberBR(valorTotal)}</span>
           </div>
-          <div className="flex justify-between items-center text-xs text-green-600">
+          <div className="flex justify-between items-center text-xs text-success">
             <span>Desconto:</span>
             <span className="font-medium">- R$ {formatNumberBR(valorDesconto)}</span>
           </div>

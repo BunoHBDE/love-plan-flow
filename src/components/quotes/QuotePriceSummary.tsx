@@ -264,7 +264,7 @@ export function QuotePriceSummary({
             {descontoPacoteItem > 0 && packageInfo && (
               <>
                 <Separator className="my-1" />
-                <div className="flex justify-between text-sm text-green-600">
+                <div className="flex justify-between text-sm text-success">
                   <span className="flex items-center gap-1">
                     <Tag className="h-3 w-3" />
                     Desconto pacote ({item.tipo_preco === 'fixo' ? packageInfo.descontoFixo : packageInfo.descontoVariavel}%)
@@ -328,7 +328,7 @@ export function QuotePriceSummary({
             <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
               {packageInfo.nome}
             </span>
-            <Badge variant="secondary" className="ml-auto bg-green-100 text-green-700 text-xs">
+            <Badge variant="secondary" className="ml-auto bg-success/10 text-success text-xs">
               -{packageInfo.descontoFixo}% fixo / -{packageInfo.descontoVariavel}% var
             </Badge>
           </div>
@@ -396,7 +396,7 @@ export function QuotePriceSummary({
 
           {/* Desconto do Pacote */}
           {hasPackageDiscount && (
-            <div className="flex justify-between text-sm text-green-600">
+            <div className="flex justify-between text-sm text-success">
               <span className="flex items-center gap-1">
                 <Package className="h-3.5 w-3.5" />
                 Desconto do pacote
@@ -417,7 +417,7 @@ export function QuotePriceSummary({
 
           {/* Desconto Manual */}
           {discount && discount.valor > 0 && (
-            <div className="flex justify-between text-sm text-green-600">
+            <div className="flex justify-between text-sm text-success">
               <div className="flex flex-col">
                 <span className="flex items-center gap-1">
                   <Percent className="h-3.5 w-3.5" />
@@ -449,7 +449,7 @@ export function QuotePriceSummary({
           {(hasPackageDiscount || (discount && discount.valor > 0)) && (
             <div className="mt-3 pt-3 border-t border-primary/20">
               <p className="text-xs text-muted-foreground mb-1">Economia total:</p>
-              <p className="text-sm font-semibold text-green-600">
+              <p className="text-sm font-semibold text-success">
                 {formatCurrency(totalDescontoPacote + (discount?.valor || 0))}
               </p>
             </div>

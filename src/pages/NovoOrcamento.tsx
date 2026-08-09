@@ -1139,7 +1139,7 @@ export default function NovoOrcamento() {
                           
                           {/* Desconto do pacote */}
                           {(composicao.desconto_fixo > 0 || composicao.desconto_variavel > 0) && (
-                            <div className="flex justify-between text-sm py-1 text-green-600">
+                            <div className="flex justify-between text-sm py-1 text-success">
                               <span>Desconto do pacote</span>
                               <span className="font-medium">
                                 -{formatCurrency(composicao.desconto_fixo + composicao.desconto_variavel)}
@@ -1149,7 +1149,7 @@ export default function NovoOrcamento() {
                           
                           {/* Desconto manual */}
                           {discount.valor > 0 && (
-                            <div className="flex justify-between text-sm py-1 text-green-600">
+                            <div className="flex justify-between text-sm py-1 text-success">
                               <span>Desconto adicional</span>
                               <span className="font-medium">
                                 -{formatCurrency(discount.valor)}
@@ -1183,7 +1183,7 @@ export default function NovoOrcamento() {
                       <Percent className="h-4 w-4 text-primary" />
                       <span className="font-medium">Desconto</span>
                       {discount.valor > 0 && (
-                        <span className="text-sm font-medium text-green-600">
+                        <span className="text-sm font-medium text-success">
                           -{formatCurrency(discount.valor)}
                         </span>
                       )}

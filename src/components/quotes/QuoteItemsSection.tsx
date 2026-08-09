@@ -346,13 +346,13 @@ export function QuoteItemsSection({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="bg-white/60 dark:bg-black/20 rounded-lg p-3 border border-amber-200/50 dark:border-amber-800/50">
                 <p className="text-xs text-muted-foreground mb-1">Desconto em valores fixos</p>
-                <p className="text-xl font-bold text-green-600 dark:text-green-400">
+                <p className="text-xl font-bold text-success">
                   {selectedPackage.desconto_percentual}%
                 </p>
               </div>
               <div className="bg-white/60 dark:bg-black/20 rounded-lg p-3 border border-amber-200/50 dark:border-amber-800/50">
                 <p className="text-xs text-muted-foreground mb-1">Desconto em valores variáveis</p>
-                <p className="text-xl font-bold text-green-600 dark:text-green-400">
+                <p className="text-xl font-bold text-success">
                   {selectedPackage.desconto_percentual_variavel}%
                 </p>
               </div>
