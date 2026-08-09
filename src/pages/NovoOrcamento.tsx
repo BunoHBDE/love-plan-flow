@@ -1197,8 +1197,13 @@ export default function NovoOrcamento() {
             </Collapsible>
           </div>
 
-          {/* Detalhamento do valor */}
-          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "230ms", animationFillMode: "both" }}>
+          {/* Detalhamento do valor (alarga em telas grandes para preencher o espaço) */}
+          <div
+            className={`bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up ${
+              composicao && composicao.itens.length > 0 ? "xl:-mx-16 2xl:-mx-32" : ""
+            }`}
+            style={{ animationDelay: "230ms", animationFillMode: "both" }}
+          >
             {composicao && composicao.itens.length > 0 ? (
               <Collapsible>
                 <CollapsibleTrigger asChild>
@@ -1212,6 +1217,7 @@ export default function NovoOrcamento() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="mt-2 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                     {composicao.itens.map((item) => (
                       <div key={item.id} className="bg-muted/30 rounded-lg p-2.5 space-y-1">
                         <div className="flex justify-between items-start">
@@ -1242,6 +1248,7 @@ export default function NovoOrcamento() {
                         </div>
                       </div>
                     ))}
+                    </div>
 
                     {composicao.total_extras > 0 && (
                       <div className="flex justify-between text-sm py-1">
