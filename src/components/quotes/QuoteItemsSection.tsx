@@ -686,7 +686,6 @@ function LockedItemCard({
           {precoInfo && !needsQuantityInput && (
             <span className="text-sm text-muted-foreground">{precoInfo}</span>
           )}
-          <Lock className="h-3.5 w-3.5 text-amber-500" />
         </div>
       </div>
 
