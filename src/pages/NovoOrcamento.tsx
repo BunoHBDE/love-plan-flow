@@ -1325,8 +1325,12 @@ export default function NovoOrcamento() {
                   onClick={() => handleSalvarOrcamento("enviado")}
                   disabled={isSaving || !prontoParaFinalizar}
                 >
-                  {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Salvar Orçamento
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                  )}
+                  Finalizar orçamento
                 </Button>
                 <Button
                   className="w-full"
@@ -1339,8 +1343,13 @@ export default function NovoOrcamento() {
                   ) : (
                     <Save className="h-4 w-4 mr-2" />
                   )}
-                  Salvar Rascunho
+                  Salvar como rascunho
                 </Button>
+                <p className="text-xs text-muted-foreground text-center pt-0.5">
+                  Finalizar marca como{" "}
+                  <span className="font-medium text-foreground">Enviado</span>. O
+                  rascunho fica salvo para continuar depois.
+                </p>
               </div>
 
             </div>
@@ -1414,7 +1423,7 @@ export default function NovoOrcamento() {
                 variant="outline"
                 onClick={handleDraftClick}
                 disabled={isSaving}
-                aria-label="Salvar rascunho"
+                aria-label="Salvar como rascunho"
               >
                 <Save className="h-4 w-4" />
               </Button>
@@ -1424,7 +1433,7 @@ export default function NovoOrcamento() {
                 onClick={() => handleSalvarOrcamento("enviado")}
                 disabled={isSaving || !prontoParaFinalizar}
               >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Finalizar'}
               </Button>
             </div>
           </div>
