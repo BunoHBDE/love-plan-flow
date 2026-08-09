@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -95,15 +94,6 @@ const tiposEvento = [
   { value: "aniversario", label: "Aniversário" },
 ];
 
-const diasSemana = [
-  "Segunda",
-  "Terça",
-  "Quarta",
-  "Quinta",
-  "Sexta",
-  "Sábado",
-  "Domingo",
-];
 
 export default function NovoOrcamento() {
   const navigate = useNavigate();
@@ -141,7 +131,7 @@ export default function NovoOrcamento() {
 
   // Evento
   const [tipoEvento, setTipoEvento] = useState("");
-  const [dataStatus, setDataStatus] = useState<"com_data" | "sem_data">("sem_data");
+  const [dataStatus, setDataStatus] = useState<"com_data" | "sem_data">("com_data");
   const [dataEvento, setDataEvento] = useState("");
   const [diaSemana, setDiaSemana] = useState<string | null>(null);
   const [anoEvento, setAnoEvento] = useState<string>(() => {
@@ -551,30 +541,6 @@ export default function NovoOrcamento() {
   };
 
   // =============================================================================
-  // DADOS DERIVADOS
-  // =============================================================================
-
-  const anos = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
-  }, []); // Array vazio = calcula apenas UMA vez
-
-  // Dias da semana disponíveis baseado nos espaços
-  const diasDisponiveis = useMemo(() => {
-    const spacesDoAno = spaces.filter((s) => s.ano === anoEvento);
-    if (spacesDoAno.length === 0) return diasSemana;
-
-    const diasSet = new Set<string>();
-    spacesDoAno.forEach((space) => {
-      space.precos_por_dia?.forEach((preco) => {
-        preco.dias.forEach((dia) => diasSet.add(dia));
-      });
-    });
-
-    return diasSemana.filter((dia) => diasSet.has(dia));
-  }, [spaces, anoEvento]); // Recalcula apenas se spaces ou anoEvento mudarem
-
-  // =============================================================================
   // RENDER
   // =============================================================================
 
@@ -970,29 +936,11 @@ export default function NovoOrcamento() {
                 </div>
               </div>
 
-              {/* Linha 2: Data do Evento - Unificado */}
+              {/* Linha 2: Data do Evento */}
               <div className="bg-muted/30 rounded-lg p-3 border border-border">
-                <div className="flex items-center justify-between mb-3">
-                  <Label className="text-sm font-medium">Data do Evento</Label>
-                  <RadioGroup
-                    value={dataStatus}
-                    onValueChange={(v) => setDataStatus(v as "com_data" | "sem_data")}
-                    className="flex gap-2"
-                  >
-                    <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md cursor-pointer transition-colors ${dataStatus === "com_data" ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}>
-                      <RadioGroupItem value="com_data" id="com_data" className="h-3.5 w-3.5" />
-                      <Label htmlFor="com_data" className="text-xs font-medium cursor-pointer">Definida</Label>
-                    </div>
-                    <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md cursor-pointer transition-colors ${dataStatus === "sem_data" ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}>
-                      <RadioGroupItem value="sem_data" id="sem_data" className="h-3.5 w-3.5" />
-                      <Label htmlFor="sem_data" className="text-xs font-medium cursor-pointer">A definir</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
+                <Label className="text-sm font-medium mb-3 block">Data do Evento</Label>
 
-                {/* Campos condicionais */}
-                {dataStatus === "com_data" ? (
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="data-evento" className="text-muted-foreground text-xs">Data *</Label>
                       <Input
@@ -1022,61 +970,6 @@ export default function NovoOrcamento() {
                       />
                     </div>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label htmlFor="ano-evento" className="text-muted-foreground text-xs">Ano *</Label>
-                      <Select value={anoEvento} onValueChange={setAnoEvento}>
-                        <SelectTrigger id="ano-evento" className="h-9">
-                          <SelectValue placeholder="Ano" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {anos.map((ano) => (
-                            <SelectItem key={ano} value={ano}>
-                              {ano}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="dia-semana" className="text-muted-foreground text-xs">Dia da Semana *</Label>
-                      <Select
-                        value={diaSemana || ""}
-                        onValueChange={(v) => setDiaSemana(v)}
-                      >
-                        <SelectTrigger id="dia-semana" className="h-9">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {diasDisponiveis.length > 0 ? (
-                            diasDisponiveis.map((dia) => (
-                              <SelectItem key={dia} value={dia}>
-                                {dia}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="none" disabled>
-                              Configure espaços
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="validade-orcamento-sd" className="text-muted-foreground text-xs">Validade</Label>
-                      <Input
-                        id="validade-orcamento-sd"
-                        type="date"
-                        value={validadeOrcamento}
-                        onChange={(e) => setValidadeOrcamento(e.target.value)}
-                        className="h-9"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
