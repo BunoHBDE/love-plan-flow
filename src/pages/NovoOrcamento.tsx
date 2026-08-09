@@ -39,6 +39,7 @@ import {
   CheckCircle2,
   Users,
   Circle,
+  X,
 } from "lucide-react";
 import {
   Collapsible,
@@ -367,6 +368,16 @@ export default function NovoOrcamento() {
       title: "Cliente selecionado",
       description: cliente.nome,
     });
+  };
+
+  const handleLimparCliente = () => {
+    setClienteId(null);
+    setNomeCliente("");
+    setEmail("");
+    setTelefone("");
+    setCpf("");
+    setListaResultadosCliente([]);
+    setTermoBuscaCliente("");
   };
 
   const handleClientCreated = async (clientData: ClientFormData & { id: string }) => {
@@ -885,10 +896,20 @@ export default function NovoOrcamento() {
               )}
 
               {clienteId && (
-                <div className="bg-success/10 border border-success/20 rounded-lg p-2.5">
-                  <p className="text-sm text-success font-medium">
+                <div className="bg-success/10 border border-success/20 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                  <p className="text-sm text-success font-medium min-w-0 truncate">
                     ✓ {nomeCliente} {telefone && `· ${telefone}`} {email && `· ${email}`}
                   </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLimparCliente}
+                    className="h-7 shrink-0 gap-1 text-muted-foreground hover:text-foreground"
+                    aria-label="Trocar cliente"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Trocar
+                  </Button>
                 </div>
               )}
             </div>
