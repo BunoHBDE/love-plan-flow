@@ -1217,7 +1217,7 @@ export default function NovoOrcamento() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="mt-2 space-y-3">
-                    <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
+                    <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
                     {composicao.itens.map((item) => (
                       <div key={item.id} className="bg-muted/30 rounded-lg p-2.5 space-y-1">
                         <div className="flex justify-between items-start">
