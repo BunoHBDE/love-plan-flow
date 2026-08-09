@@ -122,6 +122,7 @@ export default function NovoOrcamento() {
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
 
   // Dados do cliente selecionado
   const [nomeCliente, setNomeCliente] = useState("");
@@ -700,6 +701,53 @@ export default function NovoOrcamento() {
 
   const prontoParaFinalizar = pendenciasFinalizacao === 0;
 
+  // Formulário "sujo": usuário já preencheu algo que seria perdido ao sair.
+  // Campos auto-preenchidos (validade, pagamento) são ignorados de propósito.
+  const isDirty = useMemo(() => {
+    const { espacoId, buffetId, servicoIds, pacoteId } = itemSelections;
+    const temItens = !!(espacoId || buffetId || servicoIds.length > 0 || pacoteId);
+    return (
+      !!clienteId ||
+      !!tipoEvento ||
+      nConvidados > 0 ||
+      temItens ||
+      observacoesInternas.trim() !== "" ||
+      observacoesCliente.trim() !== "" ||
+      extras.length > 0 ||
+      discount.valor > 0 ||
+      discount.descricao.trim() !== ""
+    );
+  }, [
+    clienteId,
+    tipoEvento,
+    nConvidados,
+    itemSelections,
+    observacoesInternas,
+    observacoesCliente,
+    extras,
+    discount,
+  ]);
+
+  // Aviso nativo ao fechar/recarregar a aba com alterações não salvas
+  useEffect(() => {
+    if (!isDirty || isSaving) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty, isSaving]);
+
+  // Botão voltar: confirma antes de descartar alterações não salvas
+  const handleVoltar = () => {
+    if (isDirty && !isSaving) {
+      setIsLeaveDialogOpen(true);
+    } else {
+      navigate("/orcamentos");
+    }
+  };
+
   // Ao clicar em "Salvar Rascunho": exige cliente e abre o pop-up de confirmação
   const handleDraftClick = () => {
     if (!clienteId) {
@@ -726,7 +774,8 @@ export default function NovoOrcamento() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/orcamentos")}
+            onClick={handleVoltar}
+            aria-label="Voltar para orçamentos"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -1410,6 +1459,35 @@ export default function NovoOrcamento() {
               <AlertDialogCancel disabled={isSaving}>Voltar</AlertDialogCancel>
               <AlertDialogAction onClick={handleConfirmDraft} disabled={isSaving}>
                 Salvar rascunho
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ========== POP-UP DE CONFIRMAÇÃO DE SAÍDA ========== */}
+        <AlertDialog open={isLeaveDialogOpen} onOpenChange={setIsLeaveDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Descartar alterações?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Você tem informações não salvas neste orçamento. Se sair agora,
+                elas serão perdidas. Você pode salvar como rascunho para continuar
+                depois.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setIsLeaveDialogOpen(false);
+                  navigate("/orcamentos");
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Descartar e sair
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
