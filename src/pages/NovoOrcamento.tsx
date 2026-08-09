@@ -1205,7 +1205,7 @@ export default function NovoOrcamento() {
             style={{ animationDelay: "230ms", animationFillMode: "both" }}
           >
             {composicao && composicao.itens.length > 0 ? (
-              <Collapsible>
+              <Collapsible defaultOpen>
                 <CollapsibleTrigger asChild>
                   <button className="w-full flex items-center justify-between text-sm hover:bg-muted/50 rounded-lg p-2 -mx-2 transition-colors group">
                     <span className="font-medium text-foreground flex items-center gap-2">
@@ -1217,7 +1217,7 @@ export default function NovoOrcamento() {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="mt-2 space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
                     {composicao.itens.map((item) => (
                       <div key={item.id} className="bg-muted/30 rounded-lg p-2.5 space-y-1">
                         <div className="flex justify-between items-start">
