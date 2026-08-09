@@ -589,8 +589,6 @@ function LockedItemCard({
   onQuantityChange,
   disabled = false,
 }: LockedItemCardProps) {
-  if (!item) return null;
-
   // Inicializar com o valor atual da quantidade
   const [tempQuantity, setTempQuantity] = React.useState<string>(
     quantity ? quantity.toString() : "1"
@@ -605,7 +603,7 @@ function LockedItemCard({
 
   // Verificar se precisa de input de quantidade
   const needsQuantityInput = React.useMemo(() => {
-    if (type !== "Serviço" || !('precos' in item)) return false;
+    if (type !== "Serviço" || !item || !('precos' in item)) return false;
     
     const preco = item.precos?.[0];
     if (!preco || preco.tipo === 'fixo') return false;
@@ -616,6 +614,9 @@ function LockedItemCard({
            unidade !== 'convidado' && 
            unidade !== 'convidados';
   }, [item, type]);
+
+  // Todos os hooks já foram chamados; agora é seguro sair se não houver item.
+  if (!item) return null;
 
   // Handlers de quantidade
   const handleQuantityChange = (value: string) => {
