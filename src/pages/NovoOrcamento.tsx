@@ -38,6 +38,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Users,
+  Circle,
 } from "lucide-react";
 import {
   Collapsible,
@@ -648,6 +649,57 @@ export default function NovoOrcamento() {
     };
   }, [itemSelections, nConvidados, diaSemana, dataStatus]);
 
+  // Checklist de requisitos para finalizar (feedback proativo, ao lado do CTA).
+  // Cada item reflete uma validação real do fluxo de finalização.
+  const finalizacaoChecklist = useMemo(() => {
+    const { espacoId, buffetId, servicoIds, pacoteId } = itemSelections;
+    const temItens = !!(espacoId || buffetId || servicoIds.length > 0 || pacoteId);
+
+    const items: { label: string; done: boolean }[] = [
+      { label: "Cliente selecionado", done: !!clienteId },
+      { label: "Itens do orçamento", done: temItens },
+      { label: "Número de convidados", done: nConvidados > 0 },
+    ];
+
+    // Data/dia só é obrigatório quando há espaço (o preço depende do dia da semana).
+    if (espacoId) {
+      if (dataStatus === "com_data") {
+        items.push({ label: "Data do evento", done: !!dataEvento });
+      } else {
+        items.push({ label: "Dia da semana", done: !!diaSemana });
+      }
+    }
+
+    // Valor calculado (fecha o ciclo dos itens acima).
+    items.push({
+      label: "Valor calculado",
+      done: !!composicao && composicao.total_geral > 0,
+    });
+
+    // Só aparece quando há erro a corrigir nas condições de pagamento.
+    if (hasPaymentErrors) {
+      items.push({ label: "Condições de pagamento", done: false });
+    }
+
+    return items;
+  }, [
+    itemSelections,
+    clienteId,
+    nConvidados,
+    dataStatus,
+    dataEvento,
+    diaSemana,
+    composicao,
+    hasPaymentErrors,
+  ]);
+
+  const pendenciasFinalizacao = useMemo(
+    () => finalizacaoChecklist.filter((i) => !i.done).length,
+    [finalizacaoChecklist]
+  );
+
+  const prontoParaFinalizar = pendenciasFinalizacao === 0;
+
   // Ao clicar em "Salvar Rascunho": exige cliente e abre o pop-up de confirmação
   const handleDraftClick = () => {
     if (!clienteId) {
@@ -1230,13 +1282,48 @@ export default function NovoOrcamento() {
                 </Collapsible>
               </div>
 
+              {/* Checklist de finalização (feedback proativo perto do CTA) */}
+              <div className="bg-card rounded-xl p-4 shadow-soft border border-border">
+                {prontoParaFinalizar ? (
+                  <p className="flex items-center gap-2 text-sm font-medium text-success">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Tudo pronto para finalizar
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="text-sm font-medium text-foreground">
+                        Para finalizar
+                      </span>
+                      <span className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                        {pendenciasFinalizacao} pendente{pendenciasFinalizacao > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {finalizacaoChecklist.map((item) => (
+                        <li key={item.label} className="flex items-center gap-2 text-sm">
+                          {item.done ? (
+                            <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                          )}
+                          <span className={item.done ? "text-muted-foreground" : "text-foreground"}>
+                            {item.label}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+
               {/* Botões de Ação */}
               <div className="space-y-2">
                 <Button
                   className="w-full"
                   variant="gold"
                   onClick={() => handleSalvarOrcamento("enviado")}
-                  disabled={isSaving || !composicao || composicao.total_geral <= 0}
+                  disabled={isSaving || !prontoParaFinalizar}
                 >
                   {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Salvar Orçamento
@@ -1335,7 +1422,7 @@ export default function NovoOrcamento() {
                 size="sm"
                 variant="gold"
                 onClick={() => handleSalvarOrcamento("enviado")}
-                disabled={isSaving || !composicao || composicao.total_geral <= 0}
+                disabled={isSaving || !prontoParaFinalizar}
               >
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
               </Button>
