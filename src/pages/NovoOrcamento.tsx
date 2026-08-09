@@ -826,7 +826,7 @@ export default function NovoOrcamento() {
           {/* ========== COLUNA PRINCIPAL (Formulário Rolável) ========== */}
           <div className="flex-1 space-y-4 lg:max-w-3xl">
           {/* Block 1 - Cliente */}
-          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
             <div className="flex items-center gap-2 mb-3">
               <User className="h-4 w-4 text-primary" />
               <h2 className="font-display font-semibold">Dados do Cliente</h2>
@@ -923,7 +923,7 @@ export default function NovoOrcamento() {
           </div>
 
           {/* Block 2 - Evento */}
-          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "60ms", animationFillMode: "both" }}>
             <div className="flex items-center gap-2 mb-3">
               <Calendar className="h-4 w-4 text-primary" />
               <h2 className="font-display font-semibold">Informações do Evento</h2>
@@ -1082,7 +1082,7 @@ export default function NovoOrcamento() {
           </div>
 
           {/* Block 3 - Itens do Orçamento */}
-          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "120ms", animationFillMode: "both" }}>
             <div className="flex items-center gap-2 mb-4">
               <PackageIcon className="h-4 w-4 text-primary" />
               <h2 className="font-display font-semibold">Itens do Orçamento</h2>
@@ -1102,7 +1102,7 @@ export default function NovoOrcamento() {
 
           {/* Block 4 - Extras (Colapsável) */}
           <Collapsible>
-            <div className="bg-card rounded-xl shadow-soft border border-border animate-slide-up">
+            <div className="bg-card rounded-xl shadow-soft border border-border animate-slide-up" style={{ animationDelay: "180ms", animationFillMode: "both" }}>
               <CollapsibleTrigger asChild>
                 <button className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors rounded-xl">
                   <div className="flex items-center gap-2">
@@ -1126,7 +1126,7 @@ export default function NovoOrcamento() {
           </Collapsible>
 
           {/* Block 5 - Observações (Compacto) */}
-          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up">
+          <div className="bg-card rounded-xl p-4 shadow-soft border border-border animate-slide-up" style={{ animationDelay: "240ms", animationFillMode: "both" }}>
             <div className="flex items-center gap-2 mb-3">
               <FileText className="h-4 w-4 text-primary" />
               <h2 className="font-display font-semibold">Observações</h2>
