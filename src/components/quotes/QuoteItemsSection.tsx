@@ -445,16 +445,24 @@ export function QuoteItemsSection({
     <div className="space-y-6">
       {/* Seletor de Modo */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium text-foreground">
+        <Label id="modo-orcamento-label" className="text-sm font-medium text-foreground">
           Como deseja montar o orçamento?
         </Label>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+          role="group"
+          aria-labelledby="modo-orcamento-label"
+        >
           {/* Opção Personalizado */}
-          <div
-            onClick={() => !disabled && handleModeChange("personalizado")}
+          <button
+            type="button"
+            onClick={() => handleModeChange("personalizado")}
+            disabled={disabled}
+            aria-pressed={selections.mode === "personalizado"}
             className={cn(
-              "relative flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all",
+              "relative flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all text-left w-full",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               selections.mode === "personalizado"
                 ? "border-primary bg-primary/5 shadow-sm"
                 : "border-border hover:border-primary/40 hover:bg-muted/30",
@@ -492,13 +500,17 @@ export function QuoteItemsSection({
                 <div className="h-2.5 w-2.5 rounded-full bg-primary" />
               )}
             </div>
-          </div>
+          </button>
 
           {/* Opção Pacote */}
-          <div
-            onClick={() => !disabled && pacotesDoAno.length > 0 && handleModeChange("pacote")}
+          <button
+            type="button"
+            onClick={() => handleModeChange("pacote")}
+            disabled={disabled || pacotesDoAno.length === 0}
+            aria-pressed={selections.mode === "pacote"}
             className={cn(
-              "relative flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all",
+              "relative flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all text-left w-full",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               selections.mode === "pacote"
                 ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-sm"
                 : "border-border hover:border-amber-400/40 hover:bg-muted/30",
@@ -538,7 +550,7 @@ export function QuoteItemsSection({
                 <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />
               )}
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
