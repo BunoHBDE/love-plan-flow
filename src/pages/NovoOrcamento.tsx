@@ -755,6 +755,7 @@ export default function NovoOrcamento() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
+                    aria-label="Buscar cliente por telefone, email ou nome"
                     placeholder="Buscar por telefone, email ou nome"
                     value={termoBuscaCliente}
                     onChange={(e) => setTermoBuscaCliente(e.target.value)}
@@ -839,9 +840,9 @@ export default function NovoOrcamento() {
               {/* Linha 1: Tipo e Convidados */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-muted-foreground text-xs">Tipo de Evento</Label>
+                  <Label htmlFor="tipo-evento" className="text-muted-foreground text-xs">Tipo de Evento</Label>
                   <Select value={tipoEvento} onValueChange={setTipoEvento}>
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger id="tipo-evento" className="h-9">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -855,8 +856,9 @@ export default function NovoOrcamento() {
                 </div>
 
                 <div>
-                  <Label className="text-muted-foreground text-xs">Nº de Convidados *</Label>
+                  <Label htmlFor="n-convidados" className="text-muted-foreground text-xs">Nº de Convidados *</Label>
                   <Input
+                    id="n-convidados"
                     type="number"
                     min="1"
                     placeholder="Ex: 150"
@@ -899,8 +901,9 @@ export default function NovoOrcamento() {
                 {dataStatus === "com_data" ? (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-muted-foreground text-xs">Data *</Label>
+                      <Label htmlFor="data-evento" className="text-muted-foreground text-xs">Data *</Label>
                       <Input
+                        id="data-evento"
                         type="date"
                         value={dataEvento}
                         onChange={(e) => setDataEvento(e.target.value)}
@@ -916,8 +919,9 @@ export default function NovoOrcamento() {
                       )}
                     </div>
                     <div>
-                      <Label className="text-muted-foreground text-xs">Validade do Orçamento</Label>
+                      <Label htmlFor="validade-orcamento" className="text-muted-foreground text-xs">Validade do Orçamento</Label>
                       <Input
+                        id="validade-orcamento"
                         type="date"
                         value={validadeOrcamento}
                         onChange={(e) => setValidadeOrcamento(e.target.value)}
@@ -928,9 +932,9 @@ export default function NovoOrcamento() {
                 ) : (
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <Label className="text-muted-foreground text-xs">Ano *</Label>
+                      <Label htmlFor="ano-evento" className="text-muted-foreground text-xs">Ano *</Label>
                       <Select value={anoEvento} onValueChange={setAnoEvento}>
-                        <SelectTrigger className="h-9">
+                        <SelectTrigger id="ano-evento" className="h-9">
                           <SelectValue placeholder="Ano" />
                         </SelectTrigger>
                         <SelectContent>
@@ -944,12 +948,12 @@ export default function NovoOrcamento() {
                     </div>
 
                     <div>
-                      <Label className="text-muted-foreground text-xs">Dia da Semana *</Label>
+                      <Label htmlFor="dia-semana" className="text-muted-foreground text-xs">Dia da Semana *</Label>
                       <Select
                         value={diaSemana || ""}
                         onValueChange={(v) => setDiaSemana(v)}
                       >
-                        <SelectTrigger className="h-9">
+                        <SelectTrigger id="dia-semana" className="h-9">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -969,8 +973,9 @@ export default function NovoOrcamento() {
                     </div>
 
                     <div>
-                      <Label className="text-muted-foreground text-xs">Validade</Label>
+                      <Label htmlFor="validade-orcamento-sd" className="text-muted-foreground text-xs">Validade</Label>
                       <Input
+                        id="validade-orcamento-sd"
                         type="date"
                         value={validadeOrcamento}
                         onChange={(e) => setValidadeOrcamento(e.target.value)}
@@ -1037,8 +1042,9 @@ export default function NovoOrcamento() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs text-muted-foreground">Internas (só você vê)</Label>
+                <Label htmlFor="obs-internas" className="text-xs text-muted-foreground">Internas (só você vê)</Label>
                 <Textarea
+                  id="obs-internas"
                   placeholder="Anotações internas..."
                   value={observacoesInternas}
                   onChange={(e) => setObservacoesInternas(e.target.value)}
@@ -1048,8 +1054,9 @@ export default function NovoOrcamento() {
               </div>
 
               <div>
-                <Label className="text-xs text-muted-foreground">Para o cliente</Label>
+                <Label htmlFor="obs-cliente" className="text-xs text-muted-foreground">Para o cliente</Label>
                 <Textarea
+                  id="obs-cliente"
                   placeholder="Aparecerá no orçamento..."
                   value={observacoesCliente}
                   onChange={(e) => setObservacoesCliente(e.target.value)}
