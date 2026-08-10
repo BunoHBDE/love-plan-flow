@@ -236,39 +236,34 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   };
 
   // Renderizar itens da composição
+  // Sempre agrupamos os itens em uma linha única com o valor combinado e
+  // listamos os itens inclusos abaixo, sem exibir o valor individual de cada um.
+  // Isso vale tanto para pacotes quanto para seleções individuais (ex.: espaço + buffet).
   if (quote.composicao && quote.composicao.itens && quote.composicao.itens.length > 0) {
-    if (quote.pacoteNome) {
-      // Com pacote: linha única com o valor do pacote + itens inclusos sem valores
-      const valorPacote = quote.composicao.total_fixo + quote.composicao.total_variavel;
+    const tituloLinha = quote.pacoteNome
+      ? `Pacote ${quote.pacoteNome}`
+      : "Pacote personalizado";
+    const valorAgrupado =
+      (quote.composicao.total_fixo || 0) + (quote.composicao.total_variavel || 0) ||
+      quote.composicao.itens.reduce((sum, item) => sum + (item.valor_total || 0), 0);
 
-      zebra();
-      doc.setFont("helvetica", "bold");
-      doc.text(`Pacote ${quote.pacoteNome}`, margin + 3, yPosition);
-      doc.text(formatCurrency(valorPacote), pageWidth - margin - 3, yPosition, { align: "right" });
-      doc.setFont("helvetica", "normal");
-      yPosition += rowH;
-      itemIndex++;
+    zebra();
+    doc.setFont("helvetica", "bold");
+    doc.text(tituloLinha, margin + 3, yPosition);
+    doc.text(formatCurrency(valorAgrupado), pageWidth - margin - 3, yPosition, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    yPosition += rowH;
+    itemIndex++;
 
-      doc.setFontSize(8.5);
-      doc.setTextColor(...colors.brownSoft);
-      quote.composicao.itens.forEach((item) => {
-        doc.text(`• ${item.nome} (${tipoLabelOf(item.tipo)})`, margin + 7, yPosition);
-        yPosition += 5;
-      });
-      doc.setFontSize(9.5);
-      doc.setTextColor(...colors.text);
-      yPosition += 1;
-    } else {
-      quote.composicao.itens.forEach((item) => {
-        zebra();
-        doc.text(`${item.nome} (${tipoLabelOf(item.tipo)})`, margin + 3, yPosition);
-        doc.setFont("helvetica", "bold");
-        doc.text(formatCurrency(item.valor_total), pageWidth - margin - 3, yPosition, { align: "right" });
-        doc.setFont("helvetica", "normal");
-        yPosition += rowH;
-        itemIndex++;
-      });
-    }
+    doc.setFontSize(8.5);
+    doc.setTextColor(...colors.brownSoft);
+    quote.composicao.itens.forEach((item) => {
+      doc.text(`• ${item.nome} (${tipoLabelOf(item.tipo)})`, margin + 7, yPosition);
+      yPosition += 5;
+    });
+    doc.setFontSize(9.5);
+    doc.setTextColor(...colors.text);
+    yPosition += 1;
   }
 
   // Extras
