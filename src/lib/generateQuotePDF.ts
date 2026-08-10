@@ -359,20 +359,8 @@ export const generateQuotePDF = (quote: QuoteData): void => {
   if (quote.paymentTerms && quote.paymentTerms.parcelas.length > 0) {
     sectionTitle("CONDIÇÕES DE PAGAMENTO");
 
-    // Sinal
-    doc.setTextColor(...colors.brown);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text("Sinal (Entrada):", margin + 3, yPosition);
-    const sinalLabelW = doc.getTextWidth("Sinal (Entrada):") + 3;
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...colors.text);
-    doc.text(
-      `${formatCurrency(quote.paymentTerms.valorSinal)} (${quote.paymentTerms.percentualSinal}%) — na assinatura do contrato`,
-      margin + 3 + sinalLabelW,
-      yPosition,
-    );
-    yPosition += 7;
+    // Respiro entre a barra de seção e o cabeçalho da tabela
+    yPosition += 4;
 
     const parcelas = quote.paymentTerms.parcelas;
     const parcelaH = 5.4;
@@ -453,6 +441,21 @@ export const generateQuotePDF = (quote: QuoteData): void => {
     doc.setTextColor(...colors.brown);
     doc.text("Total Parcelado:", margin + 40, yPosition);
     doc.text(formatCurrency(totalParcelas), pageWidth - margin - 3, yPosition, { align: "right" });
+    yPosition += 8;
+
+    // Sinal (Entrada) — logo abaixo do total parcelado
+    doc.setTextColor(...colors.brown);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("Sinal (Entrada):", margin + 3, yPosition);
+    const sinalLabelW = doc.getTextWidth("Sinal (Entrada):") + 3;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...colors.text);
+    doc.text(
+      `${formatCurrency(quote.paymentTerms.valorSinal)} (${quote.paymentTerms.percentualSinal}%) — na assinatura do contrato`,
+      margin + 3 + sinalLabelW,
+      yPosition,
+    );
     yPosition += 8;
   }
 
