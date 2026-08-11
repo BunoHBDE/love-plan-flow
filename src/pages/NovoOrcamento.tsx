@@ -70,6 +70,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { DatePickerField } from "@/components/ui/DatePickerField";
+import { useDateAvailability } from "@/hooks/useDateAvailability";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
@@ -193,6 +194,8 @@ export default function NovoOrcamento() {
   const { services } = useServiceSettings();
   const { packages } = usePackageSettings();
   const { settings: paymentSettings } = usePaymentSettings();
+  const { getDateInfo: getDateAvailability, loading: loadingAvailability } =
+    useDateAvailability();
 
   // =============================================================================
   // ESTADOS
@@ -490,6 +493,23 @@ export default function NovoOrcamento() {
         variant: "destructive",
       });
       return;
+    }
+
+    // Data indisponível barra o salvamento mesmo em rascunho: aqui não se trata
+    // de um dado faltando, e sim de uma data que não pode receber evento.
+    // A data também pode ter chegado pela URL, sem passar pelo calendário.
+    if (dataStatus === "com_data" && dataEvento && !loadingAvailability) {
+      const info = getDateAvailability(new Date(dataEvento + "T12:00:00"));
+      if (!info.isAvailable) {
+        toast({
+          title: "Data indisponível",
+          description:
+            info.unavailableReason ??
+            "Escolha uma data disponível ou libere-a em Disponibilidade.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     // Validações completas apenas ao finalizar o orçamento.
@@ -1080,6 +1100,7 @@ export default function NovoOrcamento() {
                         value={dataEvento}
                         onChange={setDataEvento}
                         showAvailability
+                        blockUnavailable
                         className={cn(
                           "h-9",
                           dataPendente && "border-amber-400 ring-1 ring-amber-400/40"

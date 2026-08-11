@@ -44,6 +44,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { DatePickerField } from "@/components/ui/DatePickerField";
+import { useDateAvailability } from "@/hooks/useDateAvailability";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useQuotesOptimized as useQuotes, type Quote } from "@/hooks/useQuotesOptimized";
@@ -118,6 +119,8 @@ export default function EditarOrcamento() {
   const { services } = useServiceSettings();
   const { packages } = usePackageSettings();
   const { settings: paymentSettings } = usePaymentSettings();
+  const { getDateInfo: getDateAvailability, loading: loadingAvailability } =
+    useDateAvailability({ ignoreQuoteId: id });
 
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -334,6 +337,29 @@ export default function EditarOrcamento() {
 
   const handleSalvarOrcamento = async (novoStatus?: string) => {
     if (!quoteData) return;
+
+    // Só barra quando a data foi trocada por uma indisponível. Manter a data já
+    // salva é permitido: caso contrário, um orçamento cuja data passou ou foi
+    // bloqueada depois ficaria impossível de editar.
+    const dataFoiAlterada = dataEvento !== (quoteData.data_evento || "");
+    if (
+      dataStatus === "com_data" &&
+      dataEvento &&
+      dataFoiAlterada &&
+      !loadingAvailability
+    ) {
+      const info = getDateAvailability(new Date(dataEvento + "T12:00:00"));
+      if (!info.isAvailable) {
+        toast({
+          title: "Data indisponível",
+          description:
+            info.unavailableReason ??
+            "Escolha uma data disponível ou libere-a em Disponibilidade.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     // Validation
     if (!espacoId && !buffetId && servicoIds.length === 0 && !pacoteId) {
@@ -786,6 +812,7 @@ export default function EditarOrcamento() {
                         value={dataEvento}
                         onChange={setDataEvento}
                         showAvailability
+                        blockUnavailable
                         ignoreQuoteId={id}
                       />
                     </div>

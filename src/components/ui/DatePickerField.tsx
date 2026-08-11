@@ -32,6 +32,11 @@ export interface DatePickerFieldProps {
    * exibe a legenda e avisa quando a data escolhida não está disponível.
    */
   showAvailability?: boolean;
+  /**
+   * Impede a escolha de datas indisponíveis: só datas disponíveis ou liberadas
+   * ficam clicáveis. Exige `showAvailability`.
+   */
+  blockUnavailable?: boolean;
   /** Orçamento a ignorar ao checar ocupação (usar na edição) */
   ignoreQuoteId?: string;
 }
@@ -41,6 +46,7 @@ export interface DatePickerFieldProps {
  *
  * Com `showAvailability`, usa as mesmas regras e cores da página de
  * Disponibilidade e alerta quando a data escolhida está indisponível.
+ * Com `blockUnavailable`, também impede a escolha dessas datas.
  */
 export function DatePickerField({
   value,
@@ -50,6 +56,7 @@ export function DatePickerField({
   placeholder = "Selecione a data",
   disabled = false,
   showAvailability = false,
+  blockUnavailable = false,
   ignoreQuoteId,
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
@@ -90,16 +97,27 @@ export function DatePickerField({
     ? null
     : selectedInfo?.unavailableReason ?? null;
 
+  // Enquanto os dados não chegam, não dá para afirmar que uma data está
+  // indisponível — bloquear tudo deixaria o calendário inutilizável.
+  const isBlocked = showAvailability && blockUnavailable && !loading;
+
   const handleSelect = (date: Date | undefined) => {
     if (!date) return;
+
+    const info = showAvailability && !loading ? getDateInfo(date) : null;
+
+    // O Calendar já impede o clique, mas o botão "Hoje" chama onSelect direto.
+    if (isBlocked && info && !info.isAvailable) {
+      toast.warning("Data indisponível", {
+        description: info.unavailableReason ?? undefined,
+      });
+      return;
+    }
 
     onChange(format(date, "yyyy-MM-dd"));
     setOpen(false);
 
-    if (!showAvailability || loading) return;
-
-    const info = getDateInfo(date);
-    if (!info.isAvailable && info.unavailableReason) {
+    if (info && !info.isAvailable && info.unavailableReason) {
       toast.warning("Data indisponível", {
         description: info.unavailableReason,
       });
@@ -147,6 +165,9 @@ export function DatePickerField({
             onSelect={handleSelect}
             modifiers={calendarModifiers}
             modifiersClassNames={calendarModifierClasses}
+            disabled={
+              isBlocked ? (date: Date) => !getDateInfo(date).isAvailable : undefined
+            }
           />
 
           {showAvailability && (
@@ -162,6 +183,11 @@ export function DatePickerField({
                   </span>
                 ))}
               </div>
+              {isBlocked && (
+                <p className="text-[0.7rem] text-muted-foreground mt-1.5">
+                  Só é possível escolher datas disponíveis ou liberadas.
+                </p>
+              )}
             </div>
           )}
         </PopoverContent>
