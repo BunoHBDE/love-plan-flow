@@ -64,10 +64,58 @@ export interface RemapSelectionsResult {
 }
 
 // ==========================================
+// CASAMENTO POR NOME
+// ==========================================
+
+/**
+ * Palavras genéricas que costumam variar entre os anos ao renomear um item —
+ * "Pacote Essência" em 2026 virou "Essência" em 2027, por exemplo.
+ */
+const PREFIXOS_GENERICOS = [
+  "pacote",
+  "plano",
+  "combo",
+  "espaco",
+  "buffet",
+  "servico",
+];
+
+/** Minúsculas, sem acentos e com espaços normalizados. */
+function normalizarNome(nome: string): string {
+  return nome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Remove um prefixo genérico do nome já normalizado. Só remove se sobrar algo:
+ * um espaço chamado apenas "Espaço" precisa continuar sendo "espaco".
+ */
+function removerPrefixoGenerico(nomeNormalizado: string): string {
+  for (const prefixo of PREFIXOS_GENERICOS) {
+    if (nomeNormalizado.startsWith(`${prefixo} `)) {
+      const resto = nomeNormalizado.slice(prefixo.length + 1).trim();
+      if (resto) return resto;
+    }
+  }
+  return nomeNormalizado;
+}
+
+// ==========================================
 // PRIMITIVA
 // ==========================================
 
-/** Traduz o id de um item para o equivalente em `targetYear`. */
+/**
+ * Traduz o id de um item para o equivalente em `targetYear`.
+ *
+ * O casamento é por nome, em duas passadas: primeiro pelo nome normalizado
+ * (minúsculas, sem acentos); se não achar, ignorando um prefixo genérico dos
+ * dois lados. A segunda passada só vale quando encontra um único candidato —
+ * com mais de um não há como saber qual é o certo.
+ */
 export function remapItemToYear(
   items: YearScopedItem[],
   currentId: string | null | undefined,
@@ -79,9 +127,23 @@ export function remapItemToYear(
   if (!current) return { status: "unknown" };
   if (current.ano === targetYear) return { status: "unchanged" };
 
-  const equivalent = items.find(
-    (item) => item.ano === targetYear && item.nome === current.nome
+  const candidatos = items.filter((item) => item.ano === targetYear && item.id);
+  const nomeAtual = normalizarNome(current.nome);
+
+  let equivalent = candidatos.find(
+    (item) => normalizarNome(item.nome) === nomeAtual
   );
+
+  if (!equivalent) {
+    const nomeSemPrefixo = removerPrefixoGenerico(nomeAtual);
+    const aproximados = candidatos.filter(
+      (item) =>
+        removerPrefixoGenerico(normalizarNome(item.nome)) === nomeSemPrefixo
+    );
+    if (aproximados.length === 1) {
+      equivalent = aproximados[0];
+    }
+  }
 
   if (equivalent?.id) {
     return { status: "remapped", id: equivalent.id, nome: equivalent.nome };
@@ -154,9 +216,10 @@ export function remapSelectionsToYear(
     const pkg = catalogs.packages.find((p) => p.id === outcome.id);
     if (!pkg) return deferred;
 
-    const espacoId = pkg.itens_pacote.espacos[0] || null;
-    const buffetId = pkg.itens_pacote.buffets[0] || null;
-    const servicoIds = pkg.itens_pacote.servicos || [];
+    const itens = pkg.itens_pacote;
+    const espacoId = itens?.espacos?.[0] || null;
+    const buffetId = itens?.buffets?.[0] || null;
+    const servicoIds = itens?.servicos ?? [];
 
     const serviceQuantities: Record<string, number> = {};
     servicoIds.forEach((id) => {
