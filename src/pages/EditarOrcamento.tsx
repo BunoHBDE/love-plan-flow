@@ -44,6 +44,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { DatePickerField } from "@/components/ui/DatePickerField";
+import { remapItemToYear } from "@/lib/quoteYearMigration";
 import { useDateAvailability } from "@/hooks/useDateAvailability";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -271,7 +272,7 @@ export default function EditarOrcamento() {
 
     // Calcular preço do espaço (se selecionado)
     if (espacoId && diaSemana) {
-      const espaco = spaces.find((s) => s.id === espacoId);
+      const espaco = spaces.find((s) => s.id === espacoId && s.ano === anoEvento);
       if (espaco) {
         const precoEspaco = calcularPrecoEspaco(espaco, diaSemana, nConvidados);
         if (precoEspaco) {
@@ -282,7 +283,7 @@ export default function EditarOrcamento() {
 
     // Calcular preço do buffet (se selecionado)
     if (buffetId) {
-      const buffet = buffets.find((b) => b.id === buffetId);
+      const buffet = buffets.find((b) => b.id === buffetId && b.ano === anoEvento);
       if (buffet) {
         const precoBuffet = calcularPrecoBuffet(buffet, nConvidados);
         if (precoBuffet) {
@@ -293,7 +294,9 @@ export default function EditarOrcamento() {
 
     // Calcular preço dos serviços (se selecionados)
     servicoIds.forEach((servicoId) => {
-      const servico = services.find((s) => s.id === servicoId);
+      const servico = services.find(
+        (s) => s.id === servicoId && s.ano === anoEvento
+      );
       if (servico) {
         // Verificar se precisa usar quantidade customizada
         const preco = servico.precos?.[0];
@@ -318,12 +321,14 @@ export default function EditarOrcamento() {
     });
 
     // Buscar pacote (se selecionado)
-    const pacote = pacoteId ? packages.find((p) => p.id === pacoteId) : null;
+    const pacote = pacoteId
+      ? packages.find((p) => p.id === pacoteId && p.ano === anoEvento)
+      : null;
 
     // Calcular composição final
     const novaComposicao = calcularComposicaoPreco(itens, pacote || null, extras, nConvidados);
     setComposicao(novaComposicao);
-  }, [espacoId, buffetId, servicoIds, serviceQuantities, pacoteId, diaSemana, nConvidados, extras, spaces, buffets, services, packages]);
+  }, [espacoId, buffetId, servicoIds, serviceQuantities, pacoteId, anoEvento, diaSemana, nConvidados, extras, spaces, buffets, services, packages]);
 
   // Update diaSemana when dataEvento changes
   useEffect(() => {
@@ -334,6 +339,98 @@ export default function EditarOrcamento() {
       setAnoEvento(year);
     }
   }, [dataEvento, dataStatus]);
+
+  // Migrar as seleções quando o ano do evento muda. Os itens são cadastrados por
+  // ano, então os ids do ano anterior não existem no novo — sem isso os selects
+  // ficam em branco e o preço continua o do ano antigo.
+  useEffect(() => {
+    if (loading) return;
+
+    const removidos: string[] = [];
+
+    const espacoOutcome = remapItemToYear(spaces, espacoId, anoEvento);
+    const buffetOutcome = remapItemToYear(buffets, buffetId, anoEvento);
+    const pacoteOutcome = remapItemToYear(packages, pacoteId, anoEvento);
+    const servicoOutcomes = servicoIds.map((servicoId) => ({
+      servicoId,
+      outcome: remapItemToYear(services, servicoId, anoEvento),
+    }));
+
+    // Catálogo ainda incompleto: migrar agora apagaria seleções válidas.
+    const catalogoIncompleto =
+      espacoOutcome.status === "unknown" ||
+      buffetOutcome.status === "unknown" ||
+      pacoteOutcome.status === "unknown" ||
+      servicoOutcomes.some(({ outcome }) => outcome.status === "unknown");
+    if (catalogoIncompleto) return;
+
+    if (espacoOutcome.status === "remapped") {
+      setEspacoId(espacoOutcome.id);
+    } else if (espacoOutcome.status === "removed") {
+      setEspacoId(null);
+      removidos.push(espacoOutcome.nome);
+    }
+
+    if (buffetOutcome.status === "remapped") {
+      setBuffetId(buffetOutcome.id);
+    } else if (buffetOutcome.status === "removed") {
+      setBuffetId(null);
+      removidos.push(buffetOutcome.nome);
+    }
+
+    if (pacoteOutcome.status === "remapped") {
+      setPacoteId(pacoteOutcome.id);
+    } else if (pacoteOutcome.status === "removed") {
+      setPacoteId(null);
+      removidos.push(pacoteOutcome.nome);
+    }
+
+    const algumServicoMudou = servicoOutcomes.some(
+      ({ outcome }) => outcome.status !== "unchanged"
+    );
+    if (algumServicoMudou) {
+      const novosIds: string[] = [];
+      const novasQuantidades: Record<string, number> = {};
+
+      servicoOutcomes.forEach(({ servicoId, outcome }) => {
+        if (outcome.status === "removed") {
+          removidos.push(outcome.nome);
+          return;
+        }
+
+        // A quantidade acompanha o serviço para a nova chave.
+        const novoId = outcome.status === "remapped" ? outcome.id : servicoId;
+        novosIds.push(novoId);
+        if (serviceQuantities[servicoId] !== undefined) {
+          novasQuantidades[novoId] = serviceQuantities[servicoId];
+        }
+      });
+
+      setServicoIds(novosIds);
+      setServiceQuantities(novasQuantidades);
+    }
+
+    if (removidos.length > 0) {
+      toast({
+        title: `Itens sem cadastro em ${anoEvento}`,
+        description: `Removidos do orçamento: ${removidos.join(", ")}. Selecione novamente ou cadastre-os para ${anoEvento}.`,
+        variant: "destructive",
+      });
+    }
+  }, [
+    anoEvento,
+    loading,
+    espacoId,
+    buffetId,
+    pacoteId,
+    servicoIds,
+    serviceQuantities,
+    spaces,
+    buffets,
+    services,
+    packages,
+    toast,
+  ]);
 
   const handleSalvarOrcamento = async (novoStatus?: string) => {
     if (!quoteData) return;
