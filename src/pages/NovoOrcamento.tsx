@@ -70,6 +70,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { DatePickerField } from "@/components/ui/DatePickerField";
+import { remapSelectionsToYear } from "@/lib/quoteYearMigration";
 import { useDateAvailability } from "@/hooks/useDateAvailability";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -301,6 +302,30 @@ export default function NovoOrcamento() {
     setValidadeOrcamento(defaultValidity.toISOString().split("T")[0]);
   }, []);
 
+  // Migrar as seleções quando o ano do evento muda. Os itens são cadastrados por
+  // ano, então os ids do ano anterior não existem no novo — sem isso os selects
+  // ficam em branco e o preço continua o do ano antigo.
+  useEffect(() => {
+    const result = remapSelectionsToYear(itemSelections, anoEvento, {
+      spaces,
+      buffets,
+      services,
+      packages,
+    });
+
+    if (!result.changed) return;
+
+    setItemSelections(result.selections);
+
+    if (result.removed.length > 0) {
+      toast({
+        title: `Itens sem cadastro em ${anoEvento}`,
+        description: `Removidos do orçamento: ${result.removed.join(", ")}. Selecione novamente ou cadastre-os para ${anoEvento}.`,
+        variant: "destructive",
+      });
+    }
+  }, [anoEvento, itemSelections, spaces, buffets, services, packages, toast]);
+
   // =============================================================================
   // CÁLCULO DE PREÇOS (useMemo para performance)
   // =============================================================================
@@ -308,8 +333,12 @@ export default function NovoOrcamento() {
   // Encontrar pacote selecionado
   const selectedPackage = useMemo(() => {
     if (!itemSelections.pacoteId) return null;
-    return packages.find((p) => p.id === itemSelections.pacoteId) || null;
-  }, [itemSelections.pacoteId, packages]);
+    return (
+      packages.find(
+        (p) => p.id === itemSelections.pacoteId && p.ano === anoEvento
+      ) || null
+    );
+  }, [itemSelections.pacoteId, packages, anoEvento]);
 
   // Calcular composição de preço
   useEffect(() => {
@@ -323,9 +352,11 @@ export default function NovoOrcamento() {
 
     const itens: QuoteItem[] = [];
 
+    // Os itens são cadastrados por ano: casar também pelo ano garante que um id
+    // remanescente de outro ano nunca seja precificado com o valor errado.
     // Calcular preço do espaço
     if (espacoId && diaSemana) {
-      const espaco = spaces.find((s) => s.id === espacoId);
+      const espaco = spaces.find((s) => s.id === espacoId && s.ano === anoEvento);
       if (espaco) {
         const precoEspaco = calcularPrecoEspaco(espaco, diaSemana, nConvidados);
         if (precoEspaco) {
@@ -336,7 +367,7 @@ export default function NovoOrcamento() {
 
     // Calcular preço do buffet
     if (buffetId) {
-      const buffet = buffets.find((b) => b.id === buffetId);
+      const buffet = buffets.find((b) => b.id === buffetId && b.ano === anoEvento);
       if (buffet) {
         const precoBuffet = calcularPrecoBuffet(buffet, nConvidados);
         if (precoBuffet) {
@@ -347,7 +378,9 @@ export default function NovoOrcamento() {
 
     // Calcular preço dos serviços
     servicoIds.forEach((servicoId) => {
-      const servico = services.find((s) => s.id === servicoId);
+      const servico = services.find(
+        (s) => s.id === servicoId && s.ano === anoEvento
+      );
       if (servico) {
         const preco = servico.precos?.[0];
         let quantidade = nConvidados;
@@ -386,10 +419,14 @@ export default function NovoOrcamento() {
   itemSelections.servicoIds,
   itemSelections.serviceQuantities,
   itemSelections.pacoteId,
+  anoEvento,
   diaSemana,
   nConvidados,
   extras,
   selectedPackage,
+  spaces,
+  buffets,
+  services,
   ]);
 
   // Package info para o resumo
