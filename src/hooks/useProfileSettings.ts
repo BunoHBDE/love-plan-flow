@@ -38,7 +38,7 @@ const nomeSchema = z
   .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, { message: "O nome deve conter apenas letras, espaços, hífens e apóstrofos" });
 
 export function useProfileSettings() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   // ==========================================
@@ -368,6 +368,10 @@ export function useProfileSettings() {
       }
 
       setHasChanges(false);
+
+      // Sincroniza nome e logo exibidos na sidebar com o que acabou de ser salvo
+      await refreshProfile();
+
       toast.success("Configurações salvas com sucesso!");
     } catch (error) {
       console.error("Save error:", error);

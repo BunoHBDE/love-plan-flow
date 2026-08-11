@@ -51,7 +51,9 @@ export default function Auth() {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate('/');
+      // Direto para o dashboard: passar por "/" faria a landing redirecionar de
+      // novo, com um segundo flash de carregamento.
+      navigate('/dashboard', { replace: true });
     }
   }, [user, loading, navigate]);
 

@@ -31,15 +31,17 @@ export function SubscriptionGate({
   description = 'Este recurso está disponível apenas para assinantes do Plano Pro.',
   showLoading = true,
 }: SubscriptionGateProps) {
-  const { hasAccess, loading } = useSubscriptionContext();
+  const { hasAccess, loading, subscription } = useSubscriptionContext();
   const navigate = useNavigate();
 
   const handleSubscribe = () => {
     navigate('/configuracoes?tab=assinatura');
   };
 
-  // Loading state
-  if (loading && showLoading) {
+  // Loading state - apenas na primeira verificação. Depois que há dados de
+  // assinatura, revalidações acontecem em segundo plano e não podem desmontar
+  // o conteúdo (isso zeraria formulários, filtros e scroll da página inteira).
+  if (loading && !subscription && showLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
