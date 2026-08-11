@@ -1,7 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
-  Calendar,
   FileText,
   Users,
   CreditCard,
@@ -22,7 +21,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/", disabled: false },
   { icon: CalendarCheck, label: "Disponibilidade", path: "/disponibilidade", disabled: false },
-  { icon: Calendar, label: "Visitas", path: "/visitas", disabled: false },
   { icon: FileText, label: "Orçamentos", path: "/orcamentos", disabled: false },
   { icon: Users, label: "Clientes", path: "/clientes", disabled: false },
   { icon: ScrollText, label: "Contratos", path: "/contratos", disabled: false },
