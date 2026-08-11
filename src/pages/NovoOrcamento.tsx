@@ -69,14 +69,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { ClientFormDialog, ClientFormData } from "@/components/clients/ClientFormDialog";
@@ -231,8 +224,6 @@ export default function NovoOrcamento() {
   });
   const [validadeOrcamento, setValidadeOrcamento] = useState("");
   const [nConvidados, setNConvidados] = useState(0);
-  const [isDataEventoOpen, setIsDataEventoOpen] = useState(false);
-  const [isValidadeOpen, setIsValidadeOpen] = useState(false);
 
   // NOVO: Seleções de itens (unificado)
   const [itemSelections, setItemSelections] = useState<QuoteItemsSelections>(
@@ -1084,49 +1075,16 @@ export default function NovoOrcamento() {
                 <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="data-evento" className="text-muted-foreground text-xs">Data *</Label>
-                      <Popover modal={true} open={isDataEventoOpen} onOpenChange={setIsDataEventoOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="data-evento"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal h-9",
-                              !dataEvento && "text-muted-foreground",
-                              dataPendente && "border-amber-400 ring-1 ring-amber-400/40"
-                            )}
-                          >
-                            <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">
-                              {dataEvento
-                                ? format(new Date(dataEvento + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })
-                                : "Selecione a data"}
-                            </span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          className="w-auto p-0 z-[9999]"
-                          align="start"
-                          side="bottom"
-                          sideOffset={4}
-                          collisionPadding={{ top: 60, bottom: 16, left: 16, right: 16 }}
-                          avoidCollisions={true}
-                          sticky="always"
-                        >
-                          <CalendarComponent
-                            size="xs"
-                            showMonthNavigation={true}
-                            showYearNavigation={true}
-                            mode="single"
-                            selected={dataEvento ? new Date(dataEvento + "T12:00:00") : undefined}
-                            onSelect={(date) => {
-                              if (date) {
-                                setDataEvento(format(date, "yyyy-MM-dd"));
-                                setIsDataEventoOpen(false);
-                              }
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <DatePickerField
+                        id="data-evento"
+                        value={dataEvento}
+                        onChange={setDataEvento}
+                        showAvailability
+                        className={cn(
+                          "h-9",
+                          dataPendente && "border-amber-400 ring-1 ring-amber-400/40"
+                        )}
+                      />
                       {dataPendente && (
                         <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
                           <AlertTriangle className="h-3 w-3" />
@@ -1136,48 +1094,12 @@ export default function NovoOrcamento() {
                     </div>
                     <div>
                       <Label htmlFor="validade-orcamento" className="text-muted-foreground text-xs">Validade do Orçamento</Label>
-                      <Popover modal={true} open={isValidadeOpen} onOpenChange={setIsValidadeOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="validade-orcamento"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal h-9",
-                              !validadeOrcamento && "text-muted-foreground"
-                            )}
-                          >
-                            <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">
-                              {validadeOrcamento
-                                ? format(new Date(validadeOrcamento + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })
-                                : "Selecione a data"}
-                            </span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          className="w-auto p-0 z-[9999]"
-                          align="start"
-                          side="bottom"
-                          sideOffset={4}
-                          collisionPadding={{ top: 60, bottom: 16, left: 16, right: 16 }}
-                          avoidCollisions={true}
-                          sticky="always"
-                        >
-                          <CalendarComponent
-                            size="xs"
-                            showMonthNavigation={true}
-                            showYearNavigation={true}
-                            mode="single"
-                            selected={validadeOrcamento ? new Date(validadeOrcamento + "T12:00:00") : undefined}
-                            onSelect={(date) => {
-                              if (date) {
-                                setValidadeOrcamento(format(date, "yyyy-MM-dd"));
-                                setIsValidadeOpen(false);
-                              }
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <DatePickerField
+                        id="validade-orcamento"
+                        value={validadeOrcamento}
+                        onChange={setValidadeOrcamento}
+                        className="h-9"
+                      />
                     </div>
                   </div>
               </div>

@@ -78,6 +78,11 @@ export const QUERY_KEYS = {
   // DATAS BLOQUEADAS
   // ==========================================
   BLOCKED_DATES: ['blocked_dates'] as const,
+
+  // ==========================================
+  // DATAS DISPONÍVEIS (dias de semana habilitados manualmente)
+  // ==========================================
+  AVAILABLE_DATES: ['available_dates'] as const,
 } as const;
 
 // ==========================================
@@ -114,6 +119,9 @@ export const invalidateQueries = {
   
   // Datas Bloqueadas
   blockedDates: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.BLOCKED_DATES }),
+
+  // Datas Disponíveis
+  availableDates: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.AVAILABLE_DATES }),
   
   // Invalida TUDO (use com cuidado!)
   all: () => queryClient.invalidateQueries(),

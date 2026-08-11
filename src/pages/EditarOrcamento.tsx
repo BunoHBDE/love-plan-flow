@@ -43,14 +43,7 @@ import {
   Download,
   Trash2,
 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useQuotesOptimized as useQuotes, type Quote } from "@/hooks/useQuotesOptimized";
@@ -77,61 +70,6 @@ import {
   getAnoFromDate,
 } from "@/lib/pricingCalculator";
 import type { QuoteItem, QuoteComposicao } from "@/types/quote.types";
-
-/** Campo de data usando o calendário padrão em um popover (valor em "yyyy-MM-dd"). */
-function DatePickerField({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Popover modal={true} open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground"
-          )}
-        >
-          <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
-          <span className="truncate">
-            {value
-              ? format(new Date(value + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })
-              : "Selecione a data"}
-          </span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-auto p-0 z-[9999]"
-        align="start"
-        side="bottom"
-        sideOffset={4}
-        collisionPadding={{ top: 60, bottom: 16, left: 16, right: 16 }}
-        avoidCollisions={true}
-        sticky="always"
-      >
-        <CalendarComponent
-          size="xs"
-          showMonthNavigation={true}
-          showYearNavigation={true}
-          mode="single"
-          selected={value ? new Date(value + "T12:00:00") : undefined}
-          onSelect={(date) => {
-            if (date) {
-              onChange(format(date, "yyyy-MM-dd"));
-              setOpen(false);
-            }
-          }}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 const tiposEvento = [
   { value: "casamento", label: "Casamento" },
@@ -844,7 +782,12 @@ export default function EditarOrcamento() {
                   <>
                     <div>
                       <Label className="text-muted-foreground text-sm">Data do Evento *</Label>
-                      <DatePickerField value={dataEvento} onChange={setDataEvento} />
+                      <DatePickerField
+                        value={dataEvento}
+                        onChange={setDataEvento}
+                        showAvailability
+                        ignoreQuoteId={id}
+                      />
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-sm">Validade do Orçamento</Label>
