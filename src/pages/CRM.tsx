@@ -75,11 +75,11 @@ export default function CRM() {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Tabs defaultValue="kanban" className="space-y-6">
+            <Tabs defaultValue="fila" className="space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <TabsList>
-                  <TabsTrigger value="kanban">Kanban</TabsTrigger>
                   <TabsTrigger value="fila">Fila do dia</TabsTrigger>
+                  <TabsTrigger value="kanban">Kanban</TabsTrigger>
                   <TabsTrigger value="painel">Painel</TabsTrigger>
                 </TabsList>
 
@@ -94,16 +94,16 @@ export default function CRM() {
                 </div>
               </div>
 
+              <TabsContent value="fila" className="mt-0">
+                <CrmFilaDoDia leads={filtrados} onAbrirLead={setLeadAberto} />
+              </TabsContent>
+
               <TabsContent value="kanban" className="mt-0">
                 <CrmKanban
                   leads={filtrados}
                   config={config}
                   onAbrirLead={setLeadAberto}
                 />
-              </TabsContent>
-
-              <TabsContent value="fila" className="mt-0">
-                <CrmFilaDoDia leads={filtrados} onAbrirLead={setLeadAberto} />
               </TabsContent>
 
               <TabsContent value="painel" className="mt-0">

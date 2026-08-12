@@ -187,6 +187,16 @@ export const SITUACAO_STYLES: Record<Situacao, string> = {
 
 export type Urgencia = "atrasado" | "hoje" | "futuro";
 
+/**
+ * O controle que resolve o próximo passo. Sai do mesmo lugar que decide o
+ * passo, para que a interface possa oferecer a ação sem repetir a lógica.
+ */
+export type AcaoProximoPasso =
+  | { tipo: "etapa"; stageId: string }
+  | { tipo: "followup"; numero: number }
+  | { tipo: "compareceu" }
+  | { tipo: "agendamento" };
+
 /** Coluna do Kanban: uma etapa, ou uma das duas colunas de encerramento. */
 export const COLUNA_GANHO = "__ganho";
 export const COLUNA_PERDIDO = "__perdido";
@@ -205,6 +215,8 @@ export interface CrmDerived {
   /** Próximo follow-up a disparar (1-based), ou null */
   proximoFup: number | null;
   proximoPasso: string | null;
+  /** O que resolve o próximo passo, para a ação rápida na gaveta. */
+  acao: AcaoProximoPasso | null;
   quando: string | null;
   /** A data em vigor foi definida na mão, não calculada. */
   quandoManual: boolean;
