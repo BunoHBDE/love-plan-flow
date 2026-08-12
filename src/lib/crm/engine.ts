@@ -178,7 +178,7 @@ export function derivar(
   }
 
   // --- Próximo passo e quando ---
-  const { proximoPasso, quando } = calcularProximoPasso({
+  const { proximoPasso, quando: quandoCalculado } = calcularProximoPasso({
     lead,
     stages,
     settings,
@@ -192,6 +192,11 @@ export function derivar(
     fupPrevistos,
     hojeISO,
   });
+
+  // A data pode ser ajustada na mão — remarcar um retorno, adiar uma cobrança.
+  // O override só vale enquanto houver um passo pendente.
+  const quandoManual = proximoPasso !== null && lead.quando_manual !== null;
+  const quando = quandoManual ? lead.quando_manual : quandoCalculado;
 
   // --- Urgência ---
   let urgencia: Urgencia | null = null;
@@ -215,6 +220,8 @@ export function derivar(
     proximoFup,
     proximoPasso,
     quando,
+    quandoManual,
+    quandoCalculado,
     urgencia,
     recuperadoNoFup: lead.followups.some((f) => f.resultado === "respondeu"),
   };

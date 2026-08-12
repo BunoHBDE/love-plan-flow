@@ -34,7 +34,6 @@ const ESTADO_INICIAL = {
   nome: "",
   telefone: "",
   origem: "",
-  cidade: "",
 };
 
 export function NovoLeadDialog({
@@ -70,7 +69,6 @@ export function NovoLeadDialog({
       nome: campos.nome,
       telefone: campos.telefone,
       origem: campos.origem || null,
-      cidade: campos.cidade || null,
       entrada,
     });
   };
@@ -129,21 +127,9 @@ export function NovoLeadDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Entrada</Label>
-              <DatePickerField value={entrada} onChange={setEntrada} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lead-cidade">Cidade</Label>
-              <Input
-                id="lead-cidade"
-                value={campos.cidade}
-                onChange={(e) =>
-                  setCampos({ ...campos, cidade: e.target.value })
-                }
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Entrada</Label>
+            <DatePickerField value={entrada} onChange={setEntrada} />
           </div>
 
           {erro && <p className="text-sm text-destructive">{erro}</p>}
