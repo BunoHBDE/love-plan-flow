@@ -122,6 +122,9 @@ export interface CrmFollowup {
   registrado_em: string;
 }
 
+/** A data do casamento pode estar fechada ou ainda ser só um mês/ano. */
+export type DataEventoStatus = "com_data" | "sem_data";
+
 export interface CrmLead {
   id: string;
   client_id: string;
@@ -129,12 +132,16 @@ export interface CrmLead {
   origem: string | null;
   ultima_msg: string | null;
   ultima_msg_manual: boolean;
+  /** Data do próximo passo definida na mão, que sobrepõe a calculada. */
+  quando_manual: string | null;
   data_agendamento: string | null;
   compareceu: Compareceu | null;
   fup_ciclo: number;
+  data_evento_status: DataEventoStatus;
   data_evento: string | null;
+  mes_evento: string | null;
+  ano_evento: string | null;
   convidados: number | null;
-  cidade: string | null;
   motivo_objecao: string | null;
   encerrado_em: string | null;
   observacoes: string | null;
@@ -199,6 +206,10 @@ export interface CrmDerived {
   proximoFup: number | null;
   proximoPasso: string | null;
   quando: string | null;
+  /** A data em vigor foi definida na mão, não calculada. */
+  quandoManual: boolean;
+  /** A data que o motor calcularia — útil para voltar ao automático. */
+  quandoCalculado: string | null;
   urgencia: Urgencia | null;
   recuperadoNoFup: boolean;
 }

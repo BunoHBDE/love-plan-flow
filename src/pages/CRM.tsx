@@ -28,8 +28,7 @@ export default function CRM() {
     return leads.filter(
       (lead) =>
         lead.nome.toLowerCase().includes(termo) ||
-        lead.telefone.includes(termo) ||
-        (lead.cidade?.toLowerCase().includes(termo) ?? false),
+        lead.telefone.includes(termo),
     );
   }, [leads, busca]);
 
@@ -89,7 +88,7 @@ export default function CRM() {
                   <Input
                     value={busca}
                     onChange={(e) => setBusca(e.target.value)}
-                    placeholder="Buscar por nome, telefone ou cidade"
+                    placeholder="Buscar por nome ou telefone"
                     className="pl-9"
                   />
                 </div>

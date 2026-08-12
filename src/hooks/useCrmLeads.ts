@@ -22,6 +22,7 @@ import type {
   CrmConfig,
   CrmLead,
   CrmLeadComputed,
+  DataEventoStatus,
   FollowupResultado,
 } from "@/types/crm.types";
 
@@ -30,9 +31,10 @@ import type {
 // ==========================================
 
 const SELECT_LEAD = `
-  id, client_id, entrada, origem, ultima_msg, ultima_msg_manual,
-  data_agendamento, compareceu, fup_ciclo, data_evento, convidados,
-  cidade, motivo_objecao, encerrado_em, observacoes, arquivado, created_at,
+  id, client_id, entrada, origem, ultima_msg, ultima_msg_manual, quando_manual,
+  data_agendamento, compareceu, fup_ciclo, convidados,
+  data_evento_status, data_evento, mes_evento, ano_evento,
+  motivo_objecao, encerrado_em, observacoes, arquivado, created_at,
   clients ( nome, telefone, email ),
   crm_lead_stages ( stage_id, outcome_id, registrado_em ),
   crm_followups ( id, ciclo, numero, resultado, registrado_em )
@@ -61,12 +63,15 @@ async function carregarLeads(): Promise<CrmLead[]> {
       origem: row.origem,
       ultima_msg: row.ultima_msg,
       ultima_msg_manual: row.ultima_msg_manual,
+      quando_manual: row.quando_manual,
       data_agendamento: row.data_agendamento,
       compareceu: row.compareceu as Compareceu | null,
       fup_ciclo: row.fup_ciclo,
+      data_evento_status: row.data_evento_status as DataEventoStatus,
       data_evento: row.data_evento,
+      mes_evento: row.mes_evento,
+      ano_evento: row.ano_evento,
       convidados: row.convidados,
-      cidade: row.cidade,
       motivo_objecao: row.motivo_objecao,
       encerrado_em: row.encerrado_em,
       observacoes: row.observacoes,
@@ -103,9 +108,6 @@ export interface NovoLeadInput {
   email?: string | null;
   origem?: string | null;
   entrada: string;
-  cidade?: string | null;
-  data_evento?: string | null;
-  convidados?: number | null;
   observacoes?: string | null;
 }
 
@@ -113,11 +115,14 @@ export interface AtualizarLeadInput {
   origem?: string | null;
   ultima_msg?: string | null;
   ultima_msg_manual?: boolean;
+  quando_manual?: string | null;
   data_agendamento?: string | null;
   compareceu?: Compareceu | null;
+  data_evento_status?: DataEventoStatus;
   data_evento?: string | null;
+  mes_evento?: string | null;
+  ano_evento?: string | null;
   convidados?: number | null;
-  cidade?: string | null;
   motivo_objecao?: string | null;
   observacoes?: string | null;
   /** Preenchidos pelo próprio motor, não pelos formulários. */
@@ -187,7 +192,6 @@ export function useCrmLeads(config: CrmConfig | null) {
           nome: input.nome.trim(),
           telefone: input.telefone.trim(),
           email: input.email?.trim() || null,
-          cidade: input.cidade?.trim() || null,
           created_by: createdBy,
         })
         .select("id")
@@ -204,9 +208,6 @@ export function useCrmLeads(config: CrmConfig | null) {
           origem: input.origem || null,
           // A entrada é a data da sua primeira mensagem: é o relógio inicial.
           ultima_msg: input.entrada,
-          cidade: input.cidade?.trim() || null,
-          data_evento: input.data_evento || null,
-          convidados: input.convidados ?? null,
           observacoes: input.observacoes?.trim() || null,
         })
         .select("id")
@@ -276,6 +277,9 @@ export function useCrmLeads(config: CrmConfig | null) {
 
       // Efeitos colaterais no lead, conforme a semântica do resultado.
       const patch: AtualizarLeadInput = {};
+
+      // O passo pendente mudou, então a data ajustada na mão perde o sentido.
+      if (lead.quando_manual) patch.quando_manual = null;
 
       if (outcome?.semantica === "aguardando" && !lead.ultima_msg_manual) {
         // Você acabou de enviar a mensagem desta etapa: o relógio reinicia.
@@ -350,13 +354,19 @@ export function useCrmLeads(config: CrmConfig | null) {
           { onConflict: "lead_id,ciclo,numero" },
         );
         if (error) throw error;
+      }
 
-        if (resultado === "recusou") {
-          await supabase
-            .from("crm_leads")
-            .update({ encerrado_em: hoje() })
-            .eq("id", lead.id);
-        }
+      const patch: AtualizarLeadInput = {};
+      // O follow-up seguinte tem data própria: a data ajustada na mão sai.
+      if (lead.quando_manual) patch.quando_manual = null;
+      if (resultado === "recusou") patch.encerrado_em = hoje();
+
+      if (Object.keys(patch).length > 0) {
+        const { error } = await supabase
+          .from("crm_leads")
+          .update(patch)
+          .eq("id", lead.id);
+        if (error) throw error;
       }
 
       // Importante: enviar follow-up NÃO mexe em `ultima_msg`. Essa data é o

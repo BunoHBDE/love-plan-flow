@@ -342,6 +342,7 @@ export type Database = {
       }
       crm_leads: {
         Row: {
+          ano_evento: string | null
           arquivado: boolean
           cidade: string | null
           client_id: string
@@ -351,18 +352,22 @@ export type Database = {
           created_by: string
           data_agendamento: string | null
           data_evento: string | null
+          data_evento_status: string
           encerrado_em: string | null
           entrada: string
           fup_ciclo: number
           id: string
+          mes_evento: string | null
           motivo_objecao: string | null
           observacoes: string | null
           origem: string | null
+          quando_manual: string | null
           ultima_msg: string | null
           ultima_msg_manual: boolean
           updated_at: string
         }
         Insert: {
+          ano_evento?: string | null
           arquivado?: boolean
           cidade?: string | null
           client_id: string
@@ -372,18 +377,22 @@ export type Database = {
           created_by: string
           data_agendamento?: string | null
           data_evento?: string | null
+          data_evento_status?: string
           encerrado_em?: string | null
           entrada?: string
           fup_ciclo?: number
           id?: string
+          mes_evento?: string | null
           motivo_objecao?: string | null
           observacoes?: string | null
           origem?: string | null
+          quando_manual?: string | null
           ultima_msg?: string | null
           ultima_msg_manual?: boolean
           updated_at?: string
         }
         Update: {
+          ano_evento?: string | null
           arquivado?: boolean
           cidade?: string | null
           client_id?: string
@@ -393,13 +402,16 @@ export type Database = {
           created_by?: string
           data_agendamento?: string | null
           data_evento?: string | null
+          data_evento_status?: string
           encerrado_em?: string | null
           entrada?: string
           fup_ciclo?: number
           id?: string
+          mes_evento?: string | null
           motivo_objecao?: string | null
           observacoes?: string | null
           origem?: string | null
+          quando_manual?: string | null
           ultima_msg?: string | null
           ultima_msg_manual?: boolean
           updated_at?: string
