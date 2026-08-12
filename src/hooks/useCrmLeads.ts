@@ -13,10 +13,12 @@ import { useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonner } from "sonner";
 import { getSafeErrorMessage } from "@/lib/errorHandler";
 import { QUERY_KEYS, invalidateQueries } from "@/lib/queryClient";
 import { derivar } from "@/lib/crm/engine";
 import { hoje } from "@/lib/crm/dates";
+import { FOLLOWUP_LABELS } from "@/types/crm.types";
 import type {
   Compareceu,
   CrmConfig,
@@ -136,6 +138,14 @@ async function usuarioAtual(): Promise<string> {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Sessão expirada. Entre novamente.");
   return user.id;
+}
+
+/**
+ * Confirmação curta do que foi gravado. O id fixo faz a mensagem nova
+ * substituir a anterior, em vez de empilhar avisos a cada campo alterado.
+ */
+function confirmar(mensagem: string) {
+  sonner.success(mensagem, { id: "crm-salvo", duration: 1800 });
 }
 
 async function registrarEvento(
@@ -311,16 +321,17 @@ export function useCrmLeads(config: CrmConfig | null) {
         if (error) throw error;
       }
 
-      await registrarEvento(
-        lead.id,
-        createdBy,
-        "etapa",
-        outcome
-          ? `${stage?.nome}: ${outcome.label}`
-          : `${stage?.nome}: resultado removido`,
-      );
+      const descricao = outcome
+        ? `${stage?.nome}: ${outcome.label}`
+        : `${stage?.nome}: resultado removido`;
+
+      await registrarEvento(lead.id, createdBy, "etapa", descricao);
+      return descricao;
     },
-    onSuccess: () => invalidateQueries.crmLeads(),
+    onSuccess: (descricao) => {
+      invalidateQueries.crmLeads();
+      confirmar(descricao);
+    },
     onError: erro("registrarEtapa"),
   });
 
@@ -371,16 +382,17 @@ export function useCrmLeads(config: CrmConfig | null) {
 
       // Importante: enviar follow-up NÃO mexe em `ultima_msg`. Essa data é o
       // relógio da cadência — se ela andasse, os follow-ups se empurrariam.
-      await registrarEvento(
-        lead.id,
-        createdBy,
-        "followup",
-        resultado
-          ? `FUP ${numero}: ${resultado}`
-          : `FUP ${numero}: resultado removido`,
-      );
+      const descricao = resultado
+        ? `FUP ${numero}: ${FOLLOWUP_LABELS[resultado]}`
+        : `FUP ${numero}: resultado removido`;
+
+      await registrarEvento(lead.id, createdBy, "followup", descricao);
+      return descricao;
     },
-    onSuccess: () => invalidateQueries.crmLeads(),
+    onSuccess: (descricao) => {
+      invalidateQueries.crmLeads();
+      confirmar(descricao);
+    },
     onError: erro("registrarFollowup"),
   });
 
@@ -393,7 +405,10 @@ export function useCrmLeads(config: CrmConfig | null) {
         .eq("id", args.id);
       if (error) throw error;
     },
-    onSuccess: () => invalidateQueries.crmLeads(),
+    onSuccess: () => {
+      invalidateQueries.crmLeads();
+      confirmar("Alterações salvas");
+    },
     onError: erro("atualizarLead"),
   });
 
@@ -412,6 +427,7 @@ export function useCrmLeads(config: CrmConfig | null) {
     onSuccess: () => {
       invalidateQueries.crmLeads();
       invalidateQueries.clients();
+      confirmar("Alterações salvas");
     },
     onError: erro("atualizarContato"),
   });

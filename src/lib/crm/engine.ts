@@ -13,6 +13,7 @@
 import {
   COLUNA_GANHO,
   COLUNA_PERDIDO,
+  type AcaoProximoPasso,
   type CrmDerived,
   type CrmLead,
   type CrmOutcome,
@@ -178,7 +179,7 @@ export function derivar(
   }
 
   // --- Próximo passo e quando ---
-  const { proximoPasso, quando: quandoCalculado } = calcularProximoPasso({
+  const { proximoPasso, quando: quandoCalculado, acao } = calcularProximoPasso({
     lead,
     stages,
     settings,
@@ -219,6 +220,7 @@ export function derivar(
     fupPrevistos,
     proximoFup,
     proximoPasso,
+    acao,
     quando,
     quandoManual,
     quandoCalculado,
@@ -248,14 +250,17 @@ interface ContextoPasso {
 
 /**
  * A cascata de decisão, na mesma ordem de precedência da planilha.
- * A primeira condição que bate define o próximo passo e a sua data.
+ * A primeira condição que bate define o próximo passo, a sua data e — o que
+ * a planilha não tinha — qual controle resolve esse passo.
  */
 function calcularProximoPasso(ctx: ContextoPasso): {
   proximoPasso: string | null;
   quando: string | null;
+  acao: AcaoProximoPasso | null;
 } {
   const {
     lead,
+    stages,
     settings,
     situacao,
     encerrado,
@@ -269,21 +274,22 @@ function calcularProximoPasso(ctx: ContextoPasso): {
   } = ctx;
 
   if (encerrado) {
-    return { proximoPasso: null, quando: null };
+    return { proximoPasso: null, quando: null, acao: null };
   }
 
   // Lead em silêncio: a fila é a cadência de follow-up.
   if (situacao === "em_followup") {
     if (proximoFup === null) {
-      return { proximoPasso: null, quando: null };
+      return { proximoPasso: null, quando: null, acao: null };
     }
     return {
       proximoPasso: `Enviar FUP ${proximoFup}`,
       quando: fupPrevistos[proximoFup - 1],
+      acao: { tipo: "followup", numero: proximoFup },
     };
   }
 
-  // 1. A bola está com você (ex.: o casal pediu um ajuste no contrato).
+  // 1. A bola está com você (ex.: o casal entrou em negociação).
   const pendencia = listaResultados.find(
     (r) => r.outcome.semantica === "pendencia",
   );
@@ -292,17 +298,26 @@ function calcularProximoPasso(ctx: ContextoPasso): {
       proximoPasso:
         pendencia.outcome.acao_label ?? `Resolver: ${pendencia.outcome.label}`,
       quando: hojeISO,
+      acao: { tipo: "etapa", stageId: pendencia.stage.id },
     };
   }
 
   // 2. Não compareceu ao compromisso.
   if (lead.compareceu === "nao") {
-    return { proximoPasso: "Reagendar a visita", quando: hojeISO };
+    return {
+      proximoPasso: "Reagendar a visita",
+      quando: hojeISO,
+      acao: { tipo: "agendamento" },
+    };
   }
 
   // 3. Remarcou e a nova data ainda não foi confirmada.
   if (lead.compareceu === "remarcou") {
-    return { proximoPasso: "Confirmar a nova data", quando: hojeISO };
+    return {
+      proximoPasso: "Confirmar a nova data",
+      quando: hojeISO,
+      acao: { tipo: "agendamento" },
+    };
   }
 
   // 4. Compareceu e está analisando o desfecho — o relógio conta do compromisso.
@@ -315,6 +330,7 @@ function calcularProximoPasso(ctx: ContextoPasso): {
     return {
       proximoPasso: "Conferir se assinaram",
       quando: base ? somarDias(base, settings.dias_analise_final) : null,
+      acao: { tipo: "etapa", stageId: posAgendamento.stage.id },
     };
   }
 
@@ -324,7 +340,11 @@ function calcularProximoPasso(ctx: ContextoPasso): {
     etapaPosAgendamento &&
     !resultados.has(etapaPosAgendamento.id)
   ) {
-    return { proximoPasso: "Registrar o pós-visita", quando: hojeISO };
+    return {
+      proximoPasso: "Registrar o pós-visita",
+      quando: hojeISO,
+      acao: { tipo: "etapa", stageId: etapaPosAgendamento.id },
+    };
   }
 
   // 6. Compromisso marcado e ainda não realizado — confirmar antes.
@@ -334,6 +354,7 @@ function calcularProximoPasso(ctx: ContextoPasso): {
       quando: lead.data_agendamento
         ? somarDias(lead.data_agendamento, -settings.dias_confirmar_agendamento)
         : null,
+      acao: { tipo: "compareceu" },
     };
   }
 
@@ -347,11 +368,18 @@ function calcularProximoPasso(ctx: ContextoPasso): {
       quando: lead.ultima_msg
         ? somarDias(lead.ultima_msg, settings.dias_silencio)
         : null,
+      acao: { tipo: "etapa", stageId: aguardando.stage.id },
     };
   }
 
-  // 8. O lead respondeu e está esperando a sua próxima mensagem.
-  return { proximoPasso: "Seguir o atendimento", quando: hojeISO };
+  // 8. O lead respondeu e espera a sua próxima mensagem: a ação é registrar
+  //    o envio na primeira etapa ainda em branco.
+  const proximaEmBranco = stages.find((stage) => !resultados.has(stage.id));
+  return {
+    proximoPasso: "Seguir o atendimento",
+    quando: hojeISO,
+    acao: proximaEmBranco ? { tipo: "etapa", stageId: proximaEmBranco.id } : null,
+  };
 }
 
 // ==========================================

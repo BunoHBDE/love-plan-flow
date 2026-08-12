@@ -141,7 +141,12 @@ function ConteudoDrawer({
         <WhatsAppButton telefone={lead.telefone} />
       </SheetHeader>
 
-      <ProximoPasso lead={lead} salvar={salvar} />
+      <ProximoPasso
+        lead={lead}
+        config={config}
+        acoes={acoes}
+        salvar={salvar}
+      />
 
       <Secao titulo="Atendimento">
         {config.stages.map((stage, indice) => {
@@ -196,9 +201,13 @@ function ConteudoDrawer({
 
 function ProximoPasso({
   lead,
+  config,
+  acoes,
   salvar,
 }: {
   lead: CrmLeadComputed;
+  config: CrmConfig;
+  acoes: ReturnType<typeof useCrmLeads>;
   salvar: (patch: AtualizarLeadInput) => void;
 }) {
   const { derived } = lead;
@@ -285,6 +294,120 @@ function ProximoPasso({
           {derived.diasEmSilencio === 1 ? "" : "s"}
         </p>
       )}
+
+      <AcaoRapida lead={lead} config={config} acoes={acoes} salvar={salvar} />
+    </div>
+  );
+}
+
+/**
+ * Resolve o próximo passo ali mesmo, sem rolar a gaveta atrás do controle
+ * certo. Qual controle resolve o quê vem do motor, não daqui.
+ */
+function AcaoRapida({
+  lead,
+  config,
+  acoes,
+  salvar,
+}: {
+  lead: CrmLeadComputed;
+  config: CrmConfig;
+  acoes: ReturnType<typeof useCrmLeads>;
+  salvar: (patch: AtualizarLeadInput) => void;
+}) {
+  const acao = lead.derived.acao;
+  if (!acao) return null;
+
+  const moldura = (dica: string, children: React.ReactNode) => (
+    <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+      <p className="text-xs text-muted-foreground">{dica}</p>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+
+  if (acao.tipo === "etapa") {
+    const stage = config.stages.find((s) => s.id === acao.stageId);
+    if (!stage) return null;
+
+    const atual = lead.etapas.find((e) => e.stage_id === stage.id);
+
+    return moldura(
+      `Registrar em ${stage.nome}:`,
+      stage.outcomes.map((outcome) => (
+        <Button
+          key={outcome.id}
+          size="sm"
+          variant={atual?.outcome_id === outcome.id ? "default" : "outline"}
+          onClick={() =>
+            acoes.registrarEtapa.mutate({
+              lead,
+              stageId: stage.id,
+              outcomeId: outcome.id,
+            })
+          }
+        >
+          {outcome.label}
+        </Button>
+      )),
+    );
+  }
+
+  if (acao.tipo === "followup") {
+    const atual = lead.followups.find(
+      (f) => f.ciclo === lead.fup_ciclo && f.numero === acao.numero,
+    );
+
+    return moldura(
+      `Registrar o FUP ${acao.numero}:`,
+      (Object.keys(FOLLOWUP_LABELS) as FollowupResultado[]).map((resultado) => (
+        <Button
+          key={resultado}
+          size="sm"
+          variant={atual?.resultado === resultado ? "default" : "outline"}
+          onClick={() =>
+            acoes.registrarFollowup.mutate({
+              lead,
+              numero: acao.numero,
+              resultado,
+            })
+          }
+        >
+          {FOLLOWUP_LABELS[resultado]}
+        </Button>
+      )),
+    );
+  }
+
+  if (acao.tipo === "compareceu") {
+    return moldura(
+      "O casal compareceu?",
+      (["sim", "nao", "remarcou"] as Compareceu[]).map((valor) => (
+        <Button
+          key={valor}
+          size="sm"
+          variant={lead.compareceu === valor ? "default" : "outline"}
+          onClick={() => salvar({ compareceu: valor })}
+        >
+          {COMPARECEU_LABELS[valor]}
+        </Button>
+      )),
+    );
+  }
+
+  // Reagendamento: escolher a nova data devolve a visita para "pendente".
+  return (
+    <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+      <p className="text-xs text-muted-foreground">Nova data da visita:</p>
+      <DatePickerField
+        value={lead.data_agendamento ?? ""}
+        onChange={(valor) =>
+          salvar({
+            data_agendamento: valor || null,
+            compareceu: valor ? "pendente" : lead.compareceu,
+          })
+        }
+        placeholder="Escolher a nova data"
+      />
     </div>
   );
 }
