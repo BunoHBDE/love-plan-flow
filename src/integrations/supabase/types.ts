@@ -221,6 +221,330 @@ export type Database = {
           },
         ]
       }
+      crm_followups: {
+        Row: {
+          ciclo: number
+          id: string
+          lead_id: string
+          numero: number
+          registrado_em: string
+          resultado: string
+        }
+        Insert: {
+          ciclo?: number
+          id?: string
+          lead_id: string
+          numero: number
+          registrado_em?: string
+          resultado: string
+        }
+        Update: {
+          ciclo?: number
+          id?: string
+          lead_id?: string
+          numero?: number
+          registrado_em?: string
+          resultado?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_followups_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_events: {
+        Row: {
+          created_at: string
+          created_by: string
+          descricao: string
+          id: string
+          lead_id: string
+          meta: Json | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          descricao: string
+          id?: string
+          lead_id: string
+          meta?: Json | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          descricao?: string
+          id?: string
+          lead_id?: string
+          meta?: Json | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lead_stages: {
+        Row: {
+          id: string
+          lead_id: string
+          outcome_id: string | null
+          registrado_em: string
+          stage_id: string
+        }
+        Insert: {
+          id?: string
+          lead_id: string
+          outcome_id?: string | null
+          registrado_em?: string
+          stage_id: string
+        }
+        Update: {
+          id?: string
+          lead_id?: string
+          outcome_id?: string | null
+          registrado_em?: string
+          stage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_stages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_stages_outcome_id_fkey"
+            columns: ["outcome_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stage_outcomes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_stages_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_leads: {
+        Row: {
+          arquivado: boolean
+          cidade: string | null
+          client_id: string
+          compareceu: string | null
+          convidados: number | null
+          created_at: string
+          created_by: string
+          data_agendamento: string | null
+          data_evento: string | null
+          encerrado_em: string | null
+          entrada: string
+          fup_ciclo: number
+          id: string
+          motivo_objecao: string | null
+          observacoes: string | null
+          origem: string | null
+          ultima_msg: string | null
+          ultima_msg_manual: boolean
+          updated_at: string
+        }
+        Insert: {
+          arquivado?: boolean
+          cidade?: string | null
+          client_id: string
+          compareceu?: string | null
+          convidados?: number | null
+          created_at?: string
+          created_by: string
+          data_agendamento?: string | null
+          data_evento?: string | null
+          encerrado_em?: string | null
+          entrada?: string
+          fup_ciclo?: number
+          id?: string
+          motivo_objecao?: string | null
+          observacoes?: string | null
+          origem?: string | null
+          ultima_msg?: string | null
+          ultima_msg_manual?: boolean
+          updated_at?: string
+        }
+        Update: {
+          arquivado?: boolean
+          cidade?: string | null
+          client_id?: string
+          compareceu?: string | null
+          convidados?: number | null
+          created_at?: string
+          created_by?: string
+          data_agendamento?: string | null
+          data_evento?: string | null
+          encerrado_em?: string | null
+          entrada?: string
+          fup_ciclo?: number
+          id?: string
+          motivo_objecao?: string | null
+          observacoes?: string | null
+          origem?: string | null
+          ultima_msg?: string | null
+          ultima_msg_manual?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_lists: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          label: string
+          ordem: number
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          label: string
+          ordem: number
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          label?: string
+          ordem?: number
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crm_settings: {
+        Row: {
+          created_at: string
+          dias_analise_final: number
+          dias_confirmar_agendamento: number
+          dias_silencio: number
+          fup_dias: number[]
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dias_analise_final?: number
+          dias_confirmar_agendamento?: number
+          dias_silencio?: number
+          fup_dias?: number[]
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dias_analise_final?: number
+          dias_confirmar_agendamento?: number
+          dias_silencio?: number
+          fup_dias?: number[]
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crm_stage_outcomes: {
+        Row: {
+          acao_label: string | null
+          created_at: string
+          id: string
+          label: string
+          ordem: number
+          semantica: string
+          stage_id: string
+        }
+        Insert: {
+          acao_label?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          ordem: number
+          semantica: string
+          stage_id: string
+        }
+        Update: {
+          acao_label?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          ordem?: number
+          semantica?: string
+          stage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_stage_outcomes_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_stages: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       onboarding_data: {
         Row: {
           allow_contact: boolean | null
@@ -866,6 +1190,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      crm_bootstrap: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

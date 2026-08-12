@@ -1,0 +1,103 @@
+import { MessageCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { formatarData } from "@/lib/crm/dates";
+import {
+  SITUACAO_LABELS,
+  SITUACAO_STYLES,
+  type Situacao,
+  type Urgencia,
+} from "@/types/crm.types";
+
+export function SituacaoBadge({
+  situacao,
+  className,
+}: {
+  situacao: Situacao;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+        SITUACAO_STYLES[situacao],
+        className,
+      )}
+    >
+      {SITUACAO_LABELS[situacao]}
+    </span>
+  );
+}
+
+const URGENCIA_STYLES: Record<Urgencia, string> = {
+  atrasado: "bg-destructive/10 text-destructive border-destructive/20",
+  hoje: "bg-warning/15 text-warning-foreground border-warning/30",
+  futuro: "bg-muted text-muted-foreground border-border",
+};
+
+const URGENCIA_LABELS: Record<Urgencia, string> = {
+  atrasado: "Atrasado",
+  hoje: "Hoje",
+  futuro: "",
+};
+
+/** Mostra a data da ação, destacada quando está atrasada ou é para hoje. */
+export function QuandoBadge({
+  quando,
+  urgencia,
+  className,
+}: {
+  quando: string | null;
+  urgencia: Urgencia | null;
+  className?: string;
+}) {
+  if (!quando || !urgencia) {
+    return <span className={cn("text-xs text-muted-foreground", className)}>—</span>;
+  }
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+        URGENCIA_STYLES[urgencia],
+        className,
+      )}
+    >
+      {URGENCIA_LABELS[urgencia] && <strong>{URGENCIA_LABELS[urgencia]}</strong>}
+      {formatarData(quando)}
+    </span>
+  );
+}
+
+/** Abre a conversa no WhatsApp — o atalho que a planilha não tinha. */
+export function WhatsAppButton({
+  telefone,
+  size = "sm",
+}: {
+  telefone: string;
+  size?: "sm" | "icon";
+}) {
+  const digitos = telefone.replace(/\D/g, "");
+  if (!digitos) return null;
+
+  const numero = digitos.length <= 11 ? `55${digitos}` : digitos;
+
+  return (
+    <Button
+      variant="outline"
+      size={size}
+      asChild
+      onClick={(event) => event.stopPropagation()}
+    >
+      <a
+        href={`https://wa.me/${numero}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Abrir conversa no WhatsApp com ${telefone}`}
+      >
+        <MessageCircle className="h-4 w-4" />
+        {size === "sm" && <span>WhatsApp</span>}
+      </a>
+    </Button>
+  );
+}
