@@ -11,6 +11,7 @@ import {
   X,
   User,
   ScrollText,
+  Kanban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/", disabled: false },
+  { icon: Kanban, label: "CRM", path: "/crm", disabled: false },
   { icon: CalendarCheck, label: "Disponibilidade", path: "/disponibilidade", disabled: false },
   { icon: FileText, label: "Orçamentos", path: "/orcamentos", disabled: false },
   { icon: Users, label: "Clientes", path: "/clientes", disabled: false },

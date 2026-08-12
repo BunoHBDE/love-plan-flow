@@ -83,6 +83,12 @@ export const QUERY_KEYS = {
   // DATAS DISPONÍVEIS (dias de semana habilitados manualmente)
   // ==========================================
   AVAILABLE_DATES: ['available_dates'] as const,
+
+  // ==========================================
+  // CRM DE ATENDIMENTO
+  // ==========================================
+  CRM_CONFIG: ['crm', 'config'] as const,
+  CRM_LEADS: ['crm', 'leads'] as const,
 } as const;
 
 // ==========================================
@@ -122,7 +128,11 @@ export const invalidateQueries = {
 
   // Datas Disponíveis
   availableDates: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.AVAILABLE_DATES }),
-  
+
+  // CRM
+  crmConfig: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CRM_CONFIG }),
+  crmLeads: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CRM_LEADS }),
+
   // Invalida TUDO (use com cuidado!)
   all: () => queryClient.invalidateQueries(),
 };

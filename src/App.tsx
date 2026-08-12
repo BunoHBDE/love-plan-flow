@@ -20,6 +20,7 @@ import Termos from "./pages/Termos";
 import Privacidade from "./pages/Privacidade";
 import Cookies from "./pages/Cookies";
 import Clientes from "./pages/Clientes";
+import CRM from "./pages/CRM";
 import Orcamentos from "./pages/Orcamentos";
 import NovoOrcamento from "./pages/NovoOrcamento";
 import EditarOrcamento from "./pages/EditarOrcamento";
@@ -57,6 +58,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Index />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/crm"
+                  element={
+                    <ProtectedRoute>
+                      <CRM />
                     </ProtectedRoute>
                   }
                 />
