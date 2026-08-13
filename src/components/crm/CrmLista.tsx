@@ -255,22 +255,22 @@ function LinhaLead({
         derived.encerrado && "opacity-60",
       )}
     >
-      {/* Quem */}
+      {/* Quem é, junto do que já se sabe do casamento */}
       <div className="min-w-0 lg:flex-1">
         <p className="truncate font-medium">{lead.nome}</p>
         <p className="truncate text-xs text-muted-foreground">
           {lead.telefone}
           {lead.origem && ` · ${lead.origem}`}
         </p>
+        <QualificacaoNaLinha lead={lead} acoes={acoes} className="-ml-2 mt-1" />
       </div>
 
-      {/* Onde está, e o que já se sabe sobre o casamento */}
-      <div className="space-y-1.5 lg:w-60 lg:shrink-0">
+      {/* Onde está */}
+      <div className="lg:w-60 lg:shrink-0">
         <SituacaoBadge
           situacao={derived.situacao}
           etapa={derived.etapaAtual?.nome}
         />
-        <QualificacaoNaLinha lead={lead} acoes={acoes} className="-ml-2" />
       </div>
 
       {/* O que fazer */}
