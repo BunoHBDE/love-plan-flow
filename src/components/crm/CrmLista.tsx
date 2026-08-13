@@ -23,6 +23,7 @@ import type { CrmConfig, CrmLeadComputed } from "@/types/crm.types";
 import { QuandoBadge, SituacaoBadge, WhatsAppButton } from "./CrmBadges";
 import { AcaoRapidaLinha } from "./AcaoRapida";
 import { CadastroRapido } from "./CadastroRapido";
+import { QualificacaoNaLinha } from "./Qualificacao";
 
 type FiltroId = "hoje" | "aguardando" | "silencio" | "novos" | "todos";
 
@@ -263,12 +264,13 @@ function LinhaLead({
         </p>
       </div>
 
-      {/* Onde está */}
-      <div className="lg:w-60 lg:shrink-0">
+      {/* Onde está, e o que já se sabe sobre o casamento */}
+      <div className="space-y-1.5 lg:w-60 lg:shrink-0">
         <SituacaoBadge
           situacao={derived.situacao}
           etapa={derived.etapaAtual?.nome}
         />
+        <QualificacaoNaLinha lead={lead} acoes={acoes} className="-ml-2" />
       </div>
 
       {/* O que fazer */}
@@ -283,8 +285,9 @@ function LinhaLead({
         )}
       </div>
 
-      {/* Registrar */}
-      <div className="flex shrink-0 items-center gap-2 lg:justify-end">
+      {/* Registrar. Largura fixa: sem ela, a linha de um lead que não tem
+          botão primário encolhe aqui e desalinha todas as colunas. */}
+      <div className="flex shrink-0 items-center gap-2 lg:w-56 lg:justify-end">
         <AcaoRapidaLinha
           lead={lead}
           config={config}
