@@ -135,7 +135,10 @@ function ConteudoDrawer({
               {lead.telefone} · entrou em {formatarData(lead.entrada)}
             </SheetDescription>
           </div>
-          <SituacaoBadge situacao={derived.situacao} />
+          <SituacaoBadge
+            situacao={derived.situacao}
+            etapa={derived.etapaAtual?.nome}
+          />
         </div>
         <WhatsAppButton telefone={lead.telefone} />
       </SheetHeader>

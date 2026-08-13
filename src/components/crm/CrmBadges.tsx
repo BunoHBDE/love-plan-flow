@@ -9,11 +9,18 @@ import {
   type Urgencia,
 } from "@/types/crm.types";
 
+/**
+ * A situação do lead e, quando o atendimento está em aberto, a etapa em que
+ * ele parou — "Em conversa · Proposta". Leads encerrados não têm etapa atual,
+ * então mostram só a situação.
+ */
 export function SituacaoBadge({
   situacao,
+  etapa,
   className,
 }: {
   situacao: Situacao;
+  etapa?: string | null;
   className?: string;
 }) {
   return (
@@ -25,6 +32,12 @@ export function SituacaoBadge({
       )}
     >
       {SITUACAO_LABELS[situacao]}
+      {etapa && (
+        <>
+          <span className="mx-1.5 opacity-40">·</span>
+          <span className="font-semibold">{etapa}</span>
+        </>
+      )}
     </span>
   );
 }

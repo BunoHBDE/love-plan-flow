@@ -103,9 +103,9 @@ export function CrmFilaDoDia({
                 <TableHead className="w-12">#</TableHead>
                 <TableHead className="w-36">Quando</TableHead>
                 <TableHead>Lead</TableHead>
+                <TableHead className="w-56">Situação</TableHead>
                 <TableHead>Próximo passo</TableHead>
-                <TableHead className="w-44">Situação</TableHead>
-                <TableHead className="w-52 text-right">Registrar</TableHead>
+                <TableHead className="w-14" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -134,9 +134,11 @@ export function CrmFilaDoDia({
                       {lead.telefone}
                     </p>
                   </TableCell>
-                  <TableCell>{lead.derived.proximoPasso}</TableCell>
                   <TableCell>
-                    <SituacaoBadge situacao={lead.derived.situacao} />
+                    <SituacaoBadge
+                      situacao={lead.derived.situacao}
+                      etapa={lead.derived.etapaAtual?.nome}
+                    />
                     {lead.derived.diasEmSilencio !== null &&
                       lead.derived.diasEmSilencio > 0 && (
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -145,16 +147,23 @@ export function CrmFilaDoDia({
                         </p>
                       )}
                   </TableCell>
+
+                  {/* A ação fica junto do passo que ela resolve, e não na
+                      borda da tabela, longe do que se está lendo. */}
                   <TableCell>
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span>{lead.derived.proximoPasso}</span>
                       <AcaoRapidaMenu
                         lead={lead}
                         config={config}
                         acoes={acoes}
                         onAbrirLead={onAbrirLead}
                       />
-                      <WhatsAppButton telefone={lead.telefone} size="icon" />
                     </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <WhatsAppButton telefone={lead.telefone} size="icon" />
                   </TableCell>
                 </TableRow>
               ))}
