@@ -291,9 +291,11 @@ export function useCrmLeads(config: CrmConfig | null) {
         patch.compareceu = "pendente";
       }
 
-      if (outcome?.semantica === "recusou" || outcome?.semantica === "ganhou") {
-        patch.encerrado_em = hoje();
-      }
+      const encerra =
+        outcome?.semantica === "recusou" ||
+        outcome?.semantica === "desqualificado" ||
+        outcome?.semantica === "ganhou";
+      if (encerra) patch.encerrado_em = hoje();
 
       if (Object.keys(patch).length > 0) {
         const { error } = await supabase

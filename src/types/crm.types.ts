@@ -19,6 +19,7 @@ export const SEMANTICAS = [
   "agendou",
   "pendencia",
   "recusou",
+  "desqualificado",
   "ganhou",
   "voltou_fup",
 ] as const;
@@ -31,7 +32,8 @@ export const SEMANTICA_LABELS: Record<Semantica, string> = {
   silencio: "Sumiu — o lead fica em silêncio",
   agendou: "Agendou um compromisso",
   pendencia: "A bola está com você",
-  recusou: "Encerra como perdido",
+  recusou: "Encerra: o lead recusou",
+  desqualificado: "Encerra: o lead não serve para você",
   ganhou: "Encerra como contratado",
   voltou_fup: "Estava em silêncio e voltou",
 };
@@ -141,12 +143,16 @@ export type Situacao =
   | "em_conversa"
   | "em_silencio"
   | "perdido_recusa"
+  | "desqualificado"
   | "contratou";
 
 export const SITUACAO_LABELS: Record<Situacao, string> = {
   em_conversa: "Em conversa",
   em_silencio: "Em silêncio",
   perdido_recusa: "Encerrado — recusou",
+  // Quem descartou foi você, não o lead: são perdas de natureza diferente e
+  // o painel precisa saber distinguir uma da outra.
+  desqualificado: "Não qualificado",
   contratou: "Contratou",
 };
 
@@ -154,6 +160,7 @@ export const SITUACAO_STYLES: Record<Situacao, string> = {
   em_conversa: "bg-primary/10 text-primary",
   em_silencio: "bg-warning/25 text-warning-foreground",
   perdido_recusa: "bg-destructive/10 text-destructive",
+  desqualificado: "bg-muted text-muted-foreground",
   contratou: "bg-success/20 text-success",
 };
 
