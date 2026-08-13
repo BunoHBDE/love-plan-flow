@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { BarChart3, TableIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -18,6 +20,7 @@ import {
   pct,
 } from "@/lib/crm/metrics";
 import type { CrmConfig, CrmLeadComputed } from "@/types/crm.types";
+import { CrmFunil } from "./CrmFunil";
 
 export function CrmPainel({
   leads,
@@ -29,6 +32,7 @@ export function CrmPainel({
   const anoAtual = new Date().getFullYear();
   const [de, setDe] = useState(`${anoAtual}-01-01`);
   const [ate, setAte] = useState(`${anoAtual}-12-31`);
+  const [funilComoTabela, setFunilComoTabela] = useState(false);
 
   // O painel filtra pela data de entrada do lead, como na planilha.
   const filtrados = useMemo(
@@ -70,45 +74,68 @@ export function CrmPainel({
       <Bloco
         titulo="1 · Funil"
         descricao="Quantos leads passam por cada etapa. Uma queda forte numa etapa é problema da mensagem daquela etapa, não do lead."
+        acao={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFunilComoTabela((atual) => !atual)}
+          >
+            {funilComoTabela ? (
+              <>
+                <BarChart3 className="h-4 w-4" />
+                Ver em barras
+              </>
+            ) : (
+              <>
+                <TableIcon className="h-4 w-4" />
+                Ver tabela
+              </>
+            )}
+          </Button>
+        }
       >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Etapa</TableHead>
-              <TableHead className="text-right">Chegaram</TableHead>
-              <TableHead className="text-right">Responderam</TableHead>
-              <TableHead className="text-right">Ignoraram</TableHead>
-              <TableHead className="text-right">Taxa de resposta</TableHead>
-              <TableHead className="text-right">% do total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {funil.map((linha) => (
-              <TableRow key={linha.label}>
-                <TableCell
-                  className={cn(
-                    linha.derivada && "pl-8 text-muted-foreground",
-                    !linha.derivada && "font-medium",
-                  )}
-                >
-                  {linha.derivada && "→ "}
-                  {linha.label}
-                </TableCell>
-                <TableCell className="text-right">{linha.chegaram}</TableCell>
-                <TableCell className="text-right">
-                  {num(linha.responderam)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {num(linha.ignoraram)}
-                </TableCell>
-                <TableCell className="text-right">{pct(linha.taxa)}</TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {pct(linha.pctTotal)}
-                </TableCell>
+        {funilComoTabela ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Etapa</TableHead>
+                <TableHead className="text-right">Chegaram</TableHead>
+                <TableHead className="text-right">Responderam</TableHead>
+                <TableHead className="text-right">Ignoraram</TableHead>
+                <TableHead className="text-right">Taxa de resposta</TableHead>
+                <TableHead className="text-right">% do total</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {funil.map((linha) => (
+                <TableRow key={linha.label}>
+                  <TableCell
+                    className={cn(
+                      linha.derivada && "pl-8 text-muted-foreground",
+                      !linha.derivada && "font-medium",
+                    )}
+                  >
+                    {linha.derivada && "→ "}
+                    {linha.label}
+                  </TableCell>
+                  <TableCell className="text-right">{linha.chegaram}</TableCell>
+                  <TableCell className="text-right">
+                    {num(linha.responderam)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {num(linha.ignoraram)}
+                  </TableCell>
+                  <TableCell className="text-right">{pct(linha.taxa)}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {pct(linha.pctTotal)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <CrmFunil linhas={funil} />
+        )}
       </Bloco>
 
       {/* 2 · MENSAGENS IGNORADAS */}
@@ -192,16 +219,25 @@ export function CrmPainel({
 function Bloco({
   titulo,
   descricao,
+  acao,
   children,
 }: {
   titulo: string;
   descricao: string;
+  acao?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
-      <h2 className="font-display text-xl font-semibold">{titulo}</h2>
-      <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{descricao}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="font-display text-xl font-semibold">{titulo}</h2>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            {descricao}
+          </p>
+        </div>
+        {acao && <div className="shrink-0">{acao}</div>}
+      </div>
       <div className="mt-4 overflow-x-auto">{children}</div>
     </section>
   );
