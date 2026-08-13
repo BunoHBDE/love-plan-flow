@@ -131,16 +131,18 @@ function CardLead({
           <p className="mt-1 text-xs text-muted-foreground truncate">
             {derived.proximoPasso}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-2">
             <QuandoBadge quando={derived.quando} urgencia={derived.urgencia} />
-            <AcaoRapidaMenu
-              lead={lead}
-              config={config}
-              acoes={acoes}
-              onAbrirLead={onAbrirLead}
-              className="ml-auto max-w-[9rem]"
-            />
           </div>
+
+          {/* Ocupa a largura do card: fica no corpo, não espremida na borda. */}
+          <AcaoRapidaMenu
+            lead={lead}
+            config={config}
+            acoes={acoes}
+            onAbrirLead={onAbrirLead}
+            className="mt-3 w-full"
+          />
         </>
       ) : (
         <p className="mt-1 text-xs text-muted-foreground">

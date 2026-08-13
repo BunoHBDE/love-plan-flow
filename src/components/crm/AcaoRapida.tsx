@@ -185,7 +185,13 @@ export function AcaoRapidaMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button size="sm" variant="outline" className={cn("h-8", className)}>
+        {/* `justify-between` só tem efeito quando o botão ocupa a largura
+            toda; inline, o conteúdo continua colado. */}
+        <Button
+          size="sm"
+          variant="outline"
+          className={cn("h-8 justify-between", className)}
+        >
           <span className="truncate">{opcoes.titulo}</span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
         </Button>
