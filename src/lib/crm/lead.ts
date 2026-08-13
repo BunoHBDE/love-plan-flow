@@ -16,3 +16,23 @@ export function resumoDaData(lead: CrmLead): string | null {
   }
   return lead.data_evento ? formatarData(lead.data_evento) : null;
 }
+
+/** O ano do casamento, tenha ele data fechada ou só uma previsão. */
+export function anoDoCasamento(lead: CrmLead): string | null {
+  if (lead.data_evento_status === "sem_data") return lead.ano_evento;
+  return lead.data_evento?.slice(0, 4) ?? null;
+}
+
+/**
+ * O resumo que cabe numa linha de lista: ano e convidados são o que se lê de
+ * relance para saber se o lead é grande e se está perto. A data exata e o mês
+ * ficam no formulário, que é onde eles importam.
+ */
+export function resumoCurto(lead: CrmLead): string | null {
+  const partes = [
+    anoDoCasamento(lead),
+    lead.convidados ? `${lead.convidados} convidados` : null,
+  ].filter(Boolean);
+
+  return partes.length > 0 ? partes.join(" · ") : null;
+}

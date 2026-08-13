@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import { DatePickerField } from "@/components/ui/DatePickerField";
 import { MONTHS, getYearsArray } from "@/constants/visits";
 import { cn } from "@/lib/utils";
-import { resumoDaData } from "@/lib/crm/lead";
+import { resumoCurto } from "@/lib/crm/lead";
 import type { AtualizarLeadInput, useCrmLeads } from "@/hooks/useCrmLeads";
 import type { CrmLead, CrmLeadComputed } from "@/types/crm.types";
 
@@ -157,10 +157,7 @@ export function QualificacaoNaLinha({
   acoes: ReturnType<typeof useCrmLeads>;
   className?: string;
 }) {
-  const data = resumoDaData(lead);
-  const partes = [data, lead.convidados ? `${lead.convidados} convidados` : null]
-    .filter(Boolean)
-    .join(" · ");
+  const resumo = resumoCurto(lead);
 
   return (
     <Popover>
@@ -169,14 +166,14 @@ export function QualificacaoNaLinha({
           type="button"
           className={cn(
             "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-muted",
-            partes
+            resumo
               ? "text-muted-foreground"
               : "border border-dashed border-border text-muted-foreground/70",
             className,
           )}
         >
           <CalendarHeart className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{partes || "Dados do casamento"}</span>
+          <span className="truncate">{resumo || "Dados do casamento"}</span>
         </button>
       </PopoverTrigger>
 
