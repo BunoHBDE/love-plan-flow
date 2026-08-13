@@ -246,7 +246,13 @@ function LinhaLead({
       tabIndex={0}
       onClick={() => onAbrirLead(lead.id)}
       onKeyDown={(evento) => {
-        if (evento.key === "Enter") onAbrirLead(lead.id);
+        // Só o Enter na própria linha abre a gaveta. Sem esta checagem, o
+        // Enter dado dentro de um popover ou menu da linha sobe pela árvore
+        // do React — portal não isola evento — e abre a gaveta no meio da
+        // digitação.
+        if (evento.key === "Enter" && evento.target === evento.currentTarget) {
+          onAbrirLead(lead.id);
+        }
       }}
       className={cn(
         "flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/40 lg:flex-row lg:items-center",
