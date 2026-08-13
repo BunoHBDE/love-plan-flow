@@ -8,6 +8,8 @@ import {
   type CrmLeadComputed,
 } from "@/types/crm.types";
 import { QuandoBadge } from "./CrmBadges";
+import { AcaoRapidaMenu } from "./AcaoRapida";
+import type { useCrmLeads } from "@/hooks/useCrmLeads";
 
 interface Coluna {
   id: string;
@@ -18,10 +20,12 @@ interface Coluna {
 export function CrmKanban({
   leads,
   config,
+  acoes,
   onAbrirLead,
 }: {
   leads: CrmLeadComputed[];
   config: CrmConfig;
+  acoes: ReturnType<typeof useCrmLeads>;
   onAbrirLead: (id: string) => void;
 }) {
   const colunas: Coluna[] = [
@@ -72,7 +76,9 @@ export function CrmKanban({
                     <CardLead
                       key={lead.id}
                       lead={lead}
-                      onClick={() => onAbrirLead(lead.id)}
+                      config={config}
+                      acoes={acoes}
+                      onAbrirLead={onAbrirLead}
                     />
                   ))
                 )}
@@ -87,19 +93,30 @@ export function CrmKanban({
 
 function CardLead({
   lead,
-  onClick,
+  config,
+  acoes,
+  onAbrirLead,
 }: {
   lead: CrmLeadComputed;
-  onClick: () => void;
+  config: CrmConfig;
+  acoes: ReturnType<typeof useCrmLeads>;
+  onAbrirLead: (id: string) => void;
 }) {
   const { derived } = lead;
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onAbrirLead(lead.id)}
+      onKeyDown={(evento) => {
+        if (evento.key === "Enter" || evento.key === " ") {
+          evento.preventDefault();
+          onAbrirLead(lead.id);
+        }
+      }}
       className={cn(
-        "w-full rounded-lg border bg-card p-3 text-left transition-all hover:shadow-soft",
+        "w-full cursor-pointer rounded-lg border bg-card p-3 text-left transition-all hover:shadow-soft",
         derived.urgencia === "atrasado"
           ? "border-destructive/40"
           : derived.urgencia === "hoje"
@@ -114,8 +131,15 @@ function CardLead({
           <p className="mt-1 text-xs text-muted-foreground truncate">
             {derived.proximoPasso}
           </p>
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <QuandoBadge quando={derived.quando} urgencia={derived.urgencia} />
+            <AcaoRapidaMenu
+              lead={lead}
+              config={config}
+              acoes={acoes}
+              onAbrirLead={onAbrirLead}
+              className="ml-auto max-w-[9rem]"
+            />
           </div>
         </>
       ) : (
@@ -132,6 +156,6 @@ function CardLead({
           {derived.diasEmSilencio === 1 ? "" : "s"} em silêncio
         </p>
       )}
-    </button>
+    </div>
   );
 }

@@ -221,41 +221,6 @@ export type Database = {
           },
         ]
       }
-      crm_followups: {
-        Row: {
-          ciclo: number
-          id: string
-          lead_id: string
-          numero: number
-          registrado_em: string
-          resultado: string
-        }
-        Insert: {
-          ciclo?: number
-          id?: string
-          lead_id: string
-          numero: number
-          registrado_em?: string
-          resultado: string
-        }
-        Update: {
-          ciclo?: number
-          id?: string
-          lead_id?: string
-          numero?: number
-          registrado_em?: string
-          resultado?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "crm_followups_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "crm_leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       crm_lead_events: {
         Row: {
           created_at: string
@@ -355,7 +320,6 @@ export type Database = {
           data_evento_status: string
           encerrado_em: string | null
           entrada: string
-          fup_ciclo: number
           id: string
           mes_evento: string | null
           motivo_objecao: string | null
@@ -380,7 +344,6 @@ export type Database = {
           data_evento_status?: string
           encerrado_em?: string | null
           entrada?: string
-          fup_ciclo?: number
           id?: string
           mes_evento?: string | null
           motivo_objecao?: string | null
@@ -405,7 +368,6 @@ export type Database = {
           data_evento_status?: string
           encerrado_em?: string | null
           entrada?: string
-          fup_ciclo?: number
           id?: string
           mes_evento?: string | null
           motivo_objecao?: string | null
@@ -462,7 +424,6 @@ export type Database = {
           dias_analise_final: number
           dias_confirmar_agendamento: number
           dias_silencio: number
-          fup_dias: number[]
           id: string
           updated_at: string
           user_id: string
@@ -472,7 +433,6 @@ export type Database = {
           dias_analise_final?: number
           dias_confirmar_agendamento?: number
           dias_silencio?: number
-          fup_dias?: number[]
           id?: string
           updated_at?: string
           user_id: string
@@ -482,7 +442,6 @@ export type Database = {
           dias_analise_final?: number
           dias_confirmar_agendamento?: number
           dias_silencio?: number
-          fup_dias?: number[]
           id?: string
           updated_at?: string
           user_id?: string

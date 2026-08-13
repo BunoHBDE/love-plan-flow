@@ -2,8 +2,7 @@
  * TIPOS DO CRM DE ATENDIMENTO
  *
  * O CRM não controla apenas a etapa do funil: ele controla todo o processo de
- * atendimento — o que fazer com cada lead, quando fazer, e o ciclo de
- * follow-up quando o lead some.
+ * atendimento — o que fazer com cada lead e quando fazer.
  *
  * As etapas são configuráveis. Para que o motor continue inteligente sem
  * depender de rótulos, cada resultado de etapa carrega uma SEMÂNTICA.
@@ -29,12 +28,12 @@ export type Semantica = (typeof SEMANTICAS)[number];
 export const SEMANTICA_LABELS: Record<Semantica, string> = {
   aguardando: "Mensagem enviada, aguardando resposta",
   respondeu: "Respondeu, o atendimento segue",
-  silencio: "Sumiu — abre o ciclo de follow-up",
+  silencio: "Sumiu — o lead fica em silêncio",
   agendou: "Agendou um compromisso",
   pendencia: "A bola está com você",
   recusou: "Encerra como perdido",
   ganhou: "Encerra como contratado",
-  voltou_fup: "Voltou pelo follow-up",
+  voltou_fup: "Estava em silêncio e voltou",
 };
 
 // ==========================================
@@ -47,7 +46,6 @@ export interface CrmSettings {
   dias_silencio: number;
   dias_confirmar_agendamento: number;
   dias_analise_final: number;
-  fup_dias: number[];
 }
 
 export interface CrmOutcome {
@@ -95,30 +93,9 @@ export const COMPARECEU_LABELS: Record<Compareceu, string> = {
   remarcou: "Remarcou",
 };
 
-export type FollowupResultado =
-  | "enviado"
-  | "respondeu"
-  | "sem_resposta"
-  | "recusou";
-
-export const FOLLOWUP_LABELS: Record<FollowupResultado, string> = {
-  enviado: "Enviado",
-  respondeu: "Respondeu",
-  sem_resposta: "Sem resposta",
-  recusou: "Recusou",
-};
-
 export interface CrmLeadStageResult {
   stage_id: string;
   outcome_id: string | null;
-  registrado_em: string;
-}
-
-export interface CrmFollowup {
-  id: string;
-  ciclo: number;
-  numero: number;
-  resultado: FollowupResultado;
   registrado_em: string;
 }
 
@@ -136,7 +113,6 @@ export interface CrmLead {
   quando_manual: string | null;
   data_agendamento: string | null;
   compareceu: Compareceu | null;
-  fup_ciclo: number;
   data_evento_status: DataEventoStatus;
   data_evento: string | null;
   mes_evento: string | null;
@@ -155,7 +131,6 @@ export interface CrmLead {
 
   // Coleções
   etapas: CrmLeadStageResult[];
-  followups: CrmFollowup[];
 }
 
 // ==========================================
@@ -164,23 +139,20 @@ export interface CrmLead {
 
 export type Situacao =
   | "em_conversa"
-  | "em_followup"
-  | "perdido_fup"
+  | "em_silencio"
   | "perdido_recusa"
   | "contratou";
 
 export const SITUACAO_LABELS: Record<Situacao, string> = {
   em_conversa: "Em conversa",
-  em_followup: "Em follow-up",
-  perdido_fup: "Perdido nos follow-ups",
+  em_silencio: "Em silêncio",
   perdido_recusa: "Encerrado — recusou",
   contratou: "Contratou",
 };
 
 export const SITUACAO_STYLES: Record<Situacao, string> = {
   em_conversa: "bg-primary/10 text-primary border-primary/20",
-  em_followup: "bg-warning/15 text-warning-foreground border-warning/30",
-  perdido_fup: "bg-muted text-muted-foreground border-border",
+  em_silencio: "bg-warning/15 text-warning-foreground border-warning/30",
   perdido_recusa: "bg-destructive/10 text-destructive border-destructive/20",
   contratou: "bg-success/15 text-success border-success/30",
 };
@@ -193,7 +165,6 @@ export type Urgencia = "atrasado" | "hoje" | "futuro";
  */
 export type AcaoProximoPasso =
   | { tipo: "etapa"; stageId: string }
-  | { tipo: "followup"; numero: number }
   | { tipo: "compareceu" }
   | { tipo: "agendamento" };
 
@@ -210,10 +181,6 @@ export interface CrmDerived {
   etapaTravada: CrmStage | null;
   silencioDesde: string | null;
   diasEmSilencio: number | null;
-  /** Datas previstas de cada follow-up, na ordem de settings.fup_dias */
-  fupPrevistos: (string | null)[];
-  /** Próximo follow-up a disparar (1-based), ou null */
-  proximoFup: number | null;
   proximoPasso: string | null;
   /** O que resolve o próximo passo, para a ação rápida na gaveta. */
   acao: AcaoProximoPasso | null;
@@ -223,7 +190,6 @@ export interface CrmDerived {
   /** A data que o motor calcularia — útil para voltar ao automático. */
   quandoCalculado: string | null;
   urgencia: Urgencia | null;
-  recuperadoNoFup: boolean;
 }
 
 export type CrmLeadComputed = CrmLead & { derived: CrmDerived };

@@ -1,7 +1,6 @@
 /**
  * MOTOR DE DERIVAÇÃO DO CRM
  *
- * Reproduz — e generaliza — as fórmulas da planilha de atendimento.
  * São funções puras: recebem o lead e a configuração, devolvem os campos
  * calculados. Nada disso é gravado no banco, então mudar um prazo nos
  * parâmetros recalcula todo o histórico na hora, igual à planilha.
@@ -33,7 +32,11 @@ const SEMANTICAS_RESPOSTA: Semantica[] = [
   "pendencia",
 ];
 
-/** Semânticas que contam como "a mensagem daquela etapa foi ignorada". */
+/**
+ * Semânticas que contam como "a mensagem daquela etapa foi ignorada".
+ * `voltou_fup` entra aqui porque o lead voltou, mas a mensagem original
+ * ficou sem resposta uma vez — é isso que o painel precisa saber.
+ */
 const SEMANTICAS_SILENCIO: Semantica[] = ["silencio", "voltou_fup"];
 
 export function ehResposta(s: Semantica): boolean {
@@ -120,31 +123,22 @@ export function derivar(
   const contratou = listaResultados.some(
     (r) => r.outcome.semantica === "ganhou",
   );
-  const recusou =
-    listaResultados.some((r) => r.outcome.semantica === "recusou") ||
-    lead.followups.some((f) => f.resultado === "recusou");
-
-  const totalFups = settings.fup_dias.length;
-  const fupsDoCiclo = lead.followups.filter((f) => f.ciclo === lead.fup_ciclo);
-  const ultimoFup = fupsDoCiclo.find((f) => f.numero === totalFups);
+  const recusou = listaResultados.some(
+    (r) => r.outcome.semantica === "recusou",
+  );
 
   let situacao: Situacao;
   if (contratou) {
     situacao = "contratou";
   } else if (recusou) {
     situacao = "perdido_recusa";
-  } else if (!etapaTravada) {
-    situacao = "em_conversa";
-  } else if (ultimoFup?.resultado === "sem_resposta") {
-    situacao = "perdido_fup";
+  } else if (etapaTravada) {
+    situacao = "em_silencio";
   } else {
-    situacao = "em_followup";
+    situacao = "em_conversa";
   }
 
-  const encerrado =
-    situacao === "contratou" ||
-    situacao === "perdido_recusa" ||
-    situacao === "perdido_fup";
+  const encerrado = situacao === "contratou" || situacao === "perdido_recusa";
 
   // --- Silêncio desde ---
   // Regra normal: a data da última mensagem de etapa.
@@ -161,23 +155,6 @@ export function derivar(
         : (lead.ultima_msg ?? null);
   }
 
-  // --- Datas previstas dos follow-ups ---
-  // Todas contadas a partir do silêncio, nunca do follow-up anterior.
-  const fupPrevistos = settings.fup_dias.map((dias) =>
-    silencioDesde ? somarDias(silencioDesde, dias) : null,
-  );
-
-  // --- Próximo follow-up a disparar ---
-  let proximoFup: number | null = null;
-  if (situacao === "em_followup") {
-    for (let n = 1; n <= totalFups; n++) {
-      if (!fupsDoCiclo.some((f) => f.numero === n)) {
-        proximoFup = n;
-        break;
-      }
-    }
-  }
-
   // --- Próximo passo e quando ---
   const { proximoPasso, quando: quandoCalculado, acao } = calcularProximoPasso({
     lead,
@@ -188,9 +165,8 @@ export function derivar(
     resultados,
     listaResultados,
     agendamento,
+    etapaTravada,
     etapaPosAgendamento,
-    proximoFup,
-    fupPrevistos,
     hojeISO,
   });
 
@@ -217,15 +193,12 @@ export function derivar(
     etapaTravada,
     silencioDesde,
     diasEmSilencio: silencioDesde ? diffDias(silencioDesde, hojeISO) : null,
-    fupPrevistos,
-    proximoFup,
     proximoPasso,
     acao,
     quando,
     quandoManual,
     quandoCalculado,
     urgencia,
-    recuperadoNoFup: lead.followups.some((f) => f.resultado === "respondeu"),
   };
 }
 
@@ -242,9 +215,8 @@ interface ContextoPasso {
   resultados: Map<string, ResultadoEtapa>;
   listaResultados: ResultadoEtapa[];
   agendamento: ResultadoEtapa | undefined;
+  etapaTravada: CrmStage | null;
   etapaPosAgendamento: CrmStage | null;
-  proximoFup: number | null;
-  fupPrevistos: (string | null)[];
   hojeISO: string;
 }
 
@@ -267,9 +239,8 @@ function calcularProximoPasso(ctx: ContextoPasso): {
     resultados,
     listaResultados,
     agendamento,
+    etapaTravada,
     etapaPosAgendamento,
-    proximoFup,
-    fupPrevistos,
     hojeISO,
   } = ctx;
 
@@ -277,15 +248,13 @@ function calcularProximoPasso(ctx: ContextoPasso): {
     return { proximoPasso: null, quando: null, acao: null };
   }
 
-  // Lead em silêncio: a fila é a cadência de follow-up.
-  if (situacao === "em_followup") {
-    if (proximoFup === null) {
-      return { proximoPasso: null, quando: null, acao: null };
-    }
+  // Lead sumiu: o passo é retomar o contato. Sem cadência automática — a
+  // data fica em aberto e você a empurra na mão quando quiser tentar de novo.
+  if (situacao === "em_silencio" && etapaTravada) {
     return {
-      proximoPasso: `Enviar FUP ${proximoFup}`,
-      quando: fupPrevistos[proximoFup - 1],
-      acao: { tipo: "followup", numero: proximoFup },
+      proximoPasso: "Retomar o contato",
+      quando: hojeISO,
+      acao: { tipo: "etapa", stageId: etapaTravada.id },
     };
   }
 
@@ -399,9 +368,7 @@ function calcularColuna(args: {
   const { situacao, stages, resultados } = args;
 
   if (situacao === "contratou") return COLUNA_GANHO;
-  if (situacao === "perdido_recusa" || situacao === "perdido_fup") {
-    return COLUNA_PERDIDO;
-  }
+  if (situacao === "perdido_recusa") return COLUNA_PERDIDO;
 
   if (stages.length === 0) return COLUNA_PERDIDO;
 
