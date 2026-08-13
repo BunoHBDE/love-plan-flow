@@ -181,6 +181,11 @@ export interface CrmDerived {
   etapaTravada: CrmStage | null;
   silencioDesde: string | null;
   diasEmSilencio: number | null;
+  /**
+   * Você mandou uma mensagem e ainda não registrou o retorno. É a lista de
+   * quem pode ter respondido no WhatsApp sem você ter passado no sistema.
+   */
+  aguardandoResposta: boolean;
   proximoPasso: string | null;
   /** O que resolve o próximo passo, para a ação rápida na gaveta. */
   acao: AcaoProximoPasso | null;

@@ -404,6 +404,15 @@ function BlocoDados({
       />
 
       <div className="space-y-2">
+        {/* O cadastro rápido sempre grava hoje; a correção é aqui. */}
+        <Label className="text-sm">Entrada</Label>
+        <DatePickerField
+          value={lead.entrada}
+          onChange={(valor) => valor && salvar({ entrada: valor })}
+        />
+      </div>
+
+      <div className="space-y-2">
         <Label className="text-sm">WhatsApp</Label>
         <Input
           value={telefone}

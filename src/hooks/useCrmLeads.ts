@@ -103,6 +103,7 @@ export interface NovoLeadInput {
 }
 
 export interface AtualizarLeadInput {
+  entrada?: string;
   origem?: string | null;
   ultima_msg?: string | null;
   ultima_msg_manual?: boolean;
@@ -231,10 +232,11 @@ export function useCrmLeads(config: CrmConfig | null) {
       await registrarEvento(lead.id, createdBy, "criado", "Lead cadastrado");
       return lead.id;
     },
-    onSuccess: () => {
+    onSuccess: (_id, input) => {
       invalidateQueries.crmLeads();
       invalidateQueries.clients();
-      toast({ title: "Lead cadastrado!" });
+      // Cadastro em lote: confirma sem empilhar um aviso por contato.
+      confirmar(`${input.nome.trim()} cadastrado`);
     },
     onError: erro("criarLead"),
   });
