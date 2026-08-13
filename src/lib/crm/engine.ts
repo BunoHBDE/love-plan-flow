@@ -193,6 +193,9 @@ export function derivar(
     etapaTravada,
     silencioDesde,
     diasEmSilencio: silencioDesde ? diffDias(silencioDesde, hojeISO) : null,
+    aguardandoResposta:
+      !encerrado &&
+      listaResultados.some((r) => r.outcome.semantica === "aguardando"),
     proximoPasso,
     acao,
     quando,
