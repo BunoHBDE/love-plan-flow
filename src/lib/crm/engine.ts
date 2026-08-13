@@ -126,19 +126,27 @@ export function derivar(
   const recusou = listaResultados.some(
     (r) => r.outcome.semantica === "recusou",
   );
+  const desqualificado = listaResultados.some(
+    (r) => r.outcome.semantica === "desqualificado",
+  );
 
   let situacao: Situacao;
   if (contratou) {
     situacao = "contratou";
   } else if (recusou) {
     situacao = "perdido_recusa";
+  } else if (desqualificado) {
+    situacao = "desqualificado";
   } else if (etapaTravada) {
     situacao = "em_silencio";
   } else {
     situacao = "em_conversa";
   }
 
-  const encerrado = situacao === "contratou" || situacao === "perdido_recusa";
+  const encerrado =
+    situacao === "contratou" ||
+    situacao === "perdido_recusa" ||
+    situacao === "desqualificado";
 
   // --- Silêncio desde ---
   // Regra normal: a data da última mensagem de etapa.
@@ -371,7 +379,9 @@ function calcularColuna(args: {
   const { situacao, stages, resultados } = args;
 
   if (situacao === "contratou") return COLUNA_GANHO;
-  if (situacao === "perdido_recusa") return COLUNA_PERDIDO;
+  if (situacao === "perdido_recusa" || situacao === "desqualificado") {
+    return COLUNA_PERDIDO;
+  }
 
   if (stages.length === 0) return COLUNA_PERDIDO;
 
