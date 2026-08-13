@@ -64,6 +64,20 @@
     --sidebar-border: 11 30% 30%;
     --sidebar-ring: 40 46% 60%;
 
+    /*
+     * Rampa ordinal do funil — etapas são uma sequência, não categorias, então
+     * a cor carrega a posição: um matiz só, do mais claro ao mais escuro.
+     * O passo mais escuro fica no fim do funil, onde as barras são curtas e
+     * precisam de mais peso. Validada contra a superfície do card (#f9f4ec):
+     * lightness monótona, ΔL >= 0.06 entre passos, ponta clara a 2,16:1.
+     */
+    --funil-1: #c5a463;
+    --funil-2: #b69043;
+    --funil-3: #957637;
+    --funil-4: #735b2b;
+    --funil-5: #52411e;
+    --funil-6: #302612;
+
     /* Custom design tokens */
     --gold: 40 46% 60%;
     --gold-light: 40 46% 75%;
@@ -125,6 +139,18 @@
     --sidebar-accent-foreground: 39 53% 91%;
     --sidebar-border: 11 20% 20%;
     --sidebar-ring: 40 46% 55%;
+
+    /*
+     * No escuro a rampa inverte: mais claro é que ganha destaque, então o fim
+     * do funil recebe os passos claros. Validada contra o card escuro
+     * (#34221d), com todos os passos acima de 3:1 — nenhum some no fundo.
+     */
+    --funil-1: #8d7034;
+    --funil-2: #b38d42;
+    --funil-3: #c5a463;
+    --funil-4: #d3ba88;
+    --funil-5: #e1d0ad;
+    --funil-6: #eee5d2;
 
     --gold: 40 46% 55%;
     --gold-light: 40 40% 65%;
