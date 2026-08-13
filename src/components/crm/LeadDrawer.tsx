@@ -19,9 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DatePickerField } from "@/components/ui/DatePickerField";
-import { MONTHS, getYearsArray } from "@/constants/visits";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +41,7 @@ import {
 } from "@/types/crm.types";
 import { QuandoBadge, SituacaoBadge, WhatsAppButton } from "./CrmBadges";
 import { AcaoRapidaBotoes } from "./AcaoRapida";
+import { FormularioQualificacao } from "./Qualificacao";
 
 const SEM_VALOR = "__nenhum";
 
@@ -132,7 +131,7 @@ function ConteudoDrawer({
               {lead.nome}
             </SheetTitle>
             <SheetDescription className="mt-0.5">
-              {lead.telefone} · entrou em {formatarData(lead.entrada)}
+              Entrou em {formatarData(lead.entrada)}
             </SheetDescription>
           </div>
           <SituacaoBadge
@@ -178,6 +177,13 @@ function ConteudoDrawer({
       </Secao>
 
       <BlocoAgendamento lead={lead} config={config} salvar={salvar} />
+
+      <Secao
+        titulo="Qualificação"
+        descricao="O que decide se o lead é qualificado. Sai na etapa de perguntas."
+      >
+        <FormularioQualificacao lead={lead} acoes={acoes} idPrefixo="gaveta" />
+      </Secao>
 
       <BlocoDados lead={lead} config={config} acoes={acoes} salvar={salvar} />
 
@@ -379,18 +385,16 @@ function BlocoDados({
   acoes: ReturnType<typeof useCrmLeads>;
   salvar: (patch: AtualizarLeadInput) => void;
 }) {
-  const [convidados, setConvidados] = useState(
-    lead.convidados?.toString() ?? "",
-  );
   const [observacoes, setObservacoes] = useState(lead.observacoes ?? "");
   const [telefone, setTelefone] = useState(lead.telefone);
+  const [email, setEmail] = useState(lead.email ?? "");
 
   // Ao trocar de lead, recarrega os campos de texto.
   useEffect(() => {
-    setConvidados(lead.convidados?.toString() ?? "");
     setObservacoes(lead.observacoes ?? "");
     setTelefone(lead.telefone);
-  }, [lead.id, lead.convidados, lead.observacoes, lead.telefone]);
+    setEmail(lead.email ?? "");
+  }, [lead.id, lead.observacoes, lead.telefone, lead.email]);
 
   return (
     <Secao titulo="Dados">
@@ -428,18 +432,20 @@ function BlocoDados({
         />
       </div>
 
-      <DataDoCasamento lead={lead} salvar={salvar} />
-
       <div className="space-y-2">
-        <Label className="text-sm">Convidados</Label>
+        <Label className="text-sm">E-mail</Label>
         <Input
-          type="number"
-          min={0}
-          value={convidados}
-          onChange={(e) => setConvidados(e.target.value)}
-          onBlur={() =>
-            salvar({ convidados: convidados ? Number(convidados) : null })
-          }
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => {
+            if (email.trim() !== (lead.email ?? "")) {
+              acoes.atualizarContato.mutate({
+                clientId: lead.client_id,
+                patch: { email: email.trim() || null },
+              });
+            }
+          }}
         />
       </div>
 
@@ -477,100 +483,6 @@ function BlocoDados({
         />
       </div>
     </Secao>
-  );
-}
-
-/**
- * A data do casamento pode estar fechada ou ainda ser só uma previsão de
- * mês e ano — na prática, a maioria dos leads chega sem data definida.
- */
-function DataDoCasamento({
-  lead,
-  salvar,
-}: {
-  lead: CrmLeadComputed;
-  salvar: (patch: AtualizarLeadInput) => void;
-}) {
-  const comData = lead.data_evento_status !== "sem_data";
-  const anos = getYearsArray();
-
-  return (
-    <div className="space-y-3">
-      <Label className="text-sm">Data do casamento</Label>
-
-      <RadioGroup
-        value={lead.data_evento_status}
-        onValueChange={(valor) =>
-          salvar(
-            valor === "com_data"
-              ? { data_evento_status: "com_data", mes_evento: null, ano_evento: null }
-              : { data_evento_status: "sem_data", data_evento: null },
-          )
-        }
-        className="flex flex-wrap gap-4"
-      >
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="com_data" id="crm-data-definida" />
-          <Label htmlFor="crm-data-definida" className="cursor-pointer text-sm">
-            Data definida
-          </Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="sem_data" id="crm-data-indefinida" />
-          <Label htmlFor="crm-data-indefinida" className="cursor-pointer text-sm">
-            Ainda sem data
-          </Label>
-        </div>
-      </RadioGroup>
-
-      {comData ? (
-        <DatePickerField
-          value={lead.data_evento ?? ""}
-          onChange={(valor) => salvar({ data_evento: valor || null })}
-          placeholder="Escolher a data"
-        />
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          <Select
-            value={lead.mes_evento ?? SEM_VALOR}
-            onValueChange={(valor) =>
-              salvar({ mes_evento: valor === SEM_VALOR ? null : valor })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Mês" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={SEM_VALOR}>—</SelectItem>
-              {MONTHS.map((mes) => (
-                <SelectItem key={mes.value} value={mes.value}>
-                  {mes.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={lead.ano_evento ?? SEM_VALOR}
-            onValueChange={(valor) =>
-              salvar({ ano_evento: valor === SEM_VALOR ? null : valor })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Ano" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={SEM_VALOR}>—</SelectItem>
-              {anos.map((ano) => (
-                <SelectItem key={ano} value={ano}>
-                  {ano}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-    </div>
   );
 }
 
