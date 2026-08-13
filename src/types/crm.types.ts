@@ -151,10 +151,10 @@ export const SITUACAO_LABELS: Record<Situacao, string> = {
 };
 
 export const SITUACAO_STYLES: Record<Situacao, string> = {
-  em_conversa: "bg-primary/10 text-primary border-primary/20",
-  em_silencio: "bg-warning/15 text-warning-foreground border-warning/30",
-  perdido_recusa: "bg-destructive/10 text-destructive border-destructive/20",
-  contratou: "bg-success/15 text-success border-success/30",
+  em_conversa: "bg-primary/10 text-primary",
+  em_silencio: "bg-warning/25 text-warning-foreground",
+  perdido_recusa: "bg-destructive/10 text-destructive",
+  contratou: "bg-success/20 text-success",
 };
 
 export type Urgencia = "atrasado" | "hoje" | "futuro";
