@@ -255,7 +255,7 @@ function LinhaLead({
         }
       }}
       className={cn(
-        "flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/40 lg:flex-row lg:items-center",
+        "group flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/40 lg:flex-row lg:items-center",
         derived.urgencia === "atrasado" && "bg-destructive/5",
         derived.urgencia === "hoje" && "bg-warning/5",
         derived.encerrado && "opacity-60",
@@ -263,7 +263,10 @@ function LinhaLead({
     >
       {/* Quem é, junto do que já se sabe do casamento */}
       <div className="min-w-0 lg:flex-1">
-        <p className="truncate font-medium">{lead.nome}</p>
+        {/* O sublinhado no hover avisa que a linha toda abre o detalhe. */}
+        <p className="truncate font-medium underline-offset-4 group-hover:underline">
+          {lead.nome}
+        </p>
         <p className="truncate text-xs text-muted-foreground">
           {lead.telefone}
           {lead.origem && ` · ${lead.origem}`}

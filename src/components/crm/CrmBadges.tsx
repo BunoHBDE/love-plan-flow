@@ -10,6 +10,9 @@ import {
 } from "@/types/crm.types";
 
 /**
+ * Nesta página, borda significa "clicável". Os badges abaixo são informação
+ * pura, então não têm borda — só o fundo suave que os separa do texto.
+ *
  * A situação do lead e, quando o atendimento está em aberto, a etapa em que
  * ele parou — "Em conversa · Proposta". Leads encerrados não têm etapa atual,
  * então mostram só a situação.
@@ -26,7 +29,7 @@ export function SituacaoBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
         SITUACAO_STYLES[situacao],
         className,
       )}
@@ -43,9 +46,9 @@ export function SituacaoBadge({
 }
 
 const URGENCIA_STYLES: Record<Urgencia, string> = {
-  atrasado: "bg-destructive/10 text-destructive border-destructive/20",
-  hoje: "bg-warning/15 text-warning-foreground border-warning/30",
-  futuro: "bg-muted text-muted-foreground border-border",
+  atrasado: "bg-destructive/15 text-destructive",
+  hoje: "bg-warning/25 text-warning-foreground",
+  futuro: "bg-muted text-muted-foreground",
 };
 
 const URGENCIA_LABELS: Record<Urgencia, string> = {
@@ -71,7 +74,7 @@ export function QuandoBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
         URGENCIA_STYLES[urgencia],
         className,
       )}

@@ -162,13 +162,17 @@ export function QualificacaoNaLinha({
   return (
     <Popover>
       <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+        {/* Sempre com borda: nesta página borda quer dizer "isto é um
+            botão". Antes, quando havia dados, ele virava texto solto e
+            ninguém adivinhava que dava para clicar. */}
         <button
           type="button"
           className={cn(
-            "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-muted",
+            "flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-colors",
+            "hover:border-gold hover:bg-muted hover:text-foreground",
             resumo
-              ? "text-muted-foreground"
-              : "border border-dashed border-border text-muted-foreground/70",
+              ? "border-border text-muted-foreground"
+              : "border-dashed border-border text-muted-foreground/70",
             className,
           )}
         >
