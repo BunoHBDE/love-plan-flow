@@ -4,9 +4,9 @@
  * O lead é sempre salvo como cliente: criar um lead cria o registro em
  * `clients` e o registro de atendimento em `crm_leads`.
  *
- * Os campos calculados (situação, próximo passo, quando, follow-ups previstos)
- * NÃO são gravados — saem do motor em `@/lib/crm/engine` a cada leitura. Assim,
- * mudar um parâmetro recalcula a base inteira sem migração de dados.
+ * Os campos calculados (situação, próximo passo, quando) NÃO são gravados —
+ * saem do motor em `@/lib/crm/engine` a cada leitura. Assim, mudar um
+ * parâmetro recalcula a base inteira sem migração de dados.
  */
 
 import { useMemo } from "react";
@@ -18,14 +18,12 @@ import { getSafeErrorMessage } from "@/lib/errorHandler";
 import { QUERY_KEYS, invalidateQueries } from "@/lib/queryClient";
 import { derivar } from "@/lib/crm/engine";
 import { hoje } from "@/lib/crm/dates";
-import { FOLLOWUP_LABELS } from "@/types/crm.types";
 import type {
   Compareceu,
   CrmConfig,
   CrmLead,
   CrmLeadComputed,
   DataEventoStatus,
-  FollowupResultado,
 } from "@/types/crm.types";
 
 // ==========================================
@@ -34,12 +32,11 @@ import type {
 
 const SELECT_LEAD = `
   id, client_id, entrada, origem, ultima_msg, ultima_msg_manual, quando_manual,
-  data_agendamento, compareceu, fup_ciclo, convidados,
+  data_agendamento, compareceu, convidados,
   data_evento_status, data_evento, mes_evento, ano_evento,
   motivo_objecao, encerrado_em, observacoes, arquivado, created_at,
   clients ( nome, telefone, email ),
-  crm_lead_stages ( stage_id, outcome_id, registrado_em ),
-  crm_followups ( id, ciclo, numero, resultado, registrado_em )
+  crm_lead_stages ( stage_id, outcome_id, registrado_em )
 `;
 
 async function carregarLeads(): Promise<CrmLead[]> {
@@ -68,7 +65,6 @@ async function carregarLeads(): Promise<CrmLead[]> {
       quando_manual: row.quando_manual,
       data_agendamento: row.data_agendamento,
       compareceu: row.compareceu as Compareceu | null,
-      fup_ciclo: row.fup_ciclo,
       data_evento_status: row.data_evento_status as DataEventoStatus,
       data_evento: row.data_evento,
       mes_evento: row.mes_evento,
@@ -88,13 +84,6 @@ async function carregarLeads(): Promise<CrmLead[]> {
         stage_id: e.stage_id,
         outcome_id: e.outcome_id,
         registrado_em: e.registrado_em,
-      })),
-      followups: (row.crm_followups ?? []).map((f) => ({
-        id: f.id,
-        ciclo: f.ciclo,
-        numero: f.numero,
-        resultado: f.resultado as FollowupResultado,
-        registrado_em: f.registrado_em,
       })),
     };
   });
@@ -129,7 +118,7 @@ export interface AtualizarLeadInput {
   observacoes?: string | null;
   /** Preenchidos pelo próprio motor, não pelos formulários. */
   encerrado_em?: string | null;
-  fup_ciclo?: number;
+  arquivado?: boolean;
 }
 
 async function usuarioAtual(): Promise<string> {
@@ -304,15 +293,6 @@ export function useCrmLeads(config: CrmConfig | null) {
         patch.encerrado_em = hoje();
       }
 
-      if (outcome?.semantica === "voltou_fup") {
-        // O lead voltou: fecha o ciclo de follow-up atual preservando o
-        // histórico, para que um novo travamento comece um ciclo limpo.
-        const temRegistros = lead.followups.some(
-          (f) => f.ciclo === lead.fup_ciclo,
-        );
-        if (temRegistros) patch.fup_ciclo = lead.fup_ciclo + 1;
-      }
-
       if (Object.keys(patch).length > 0) {
         const { error } = await supabase
           .from("crm_leads")
@@ -333,67 +313,6 @@ export function useCrmLeads(config: CrmConfig | null) {
       confirmar(descricao);
     },
     onError: erro("registrarEtapa"),
-  });
-
-  // --- Registrar o resultado de um follow-up ---
-  const registrarFollowup = useMutation({
-    mutationFn: async (args: {
-      lead: CrmLeadComputed;
-      numero: number;
-      resultado: FollowupResultado | null;
-    }) => {
-      const { lead, numero, resultado } = args;
-      const createdBy = await usuarioAtual();
-
-      if (resultado === null) {
-        const { error } = await supabase
-          .from("crm_followups")
-          .delete()
-          .eq("lead_id", lead.id)
-          .eq("ciclo", lead.fup_ciclo)
-          .eq("numero", numero);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("crm_followups").upsert(
-          {
-            lead_id: lead.id,
-            ciclo: lead.fup_ciclo,
-            numero,
-            resultado,
-            registrado_em: new Date().toISOString(),
-          },
-          { onConflict: "lead_id,ciclo,numero" },
-        );
-        if (error) throw error;
-      }
-
-      const patch: AtualizarLeadInput = {};
-      // O follow-up seguinte tem data própria: a data ajustada na mão sai.
-      if (lead.quando_manual) patch.quando_manual = null;
-      if (resultado === "recusou") patch.encerrado_em = hoje();
-
-      if (Object.keys(patch).length > 0) {
-        const { error } = await supabase
-          .from("crm_leads")
-          .update(patch)
-          .eq("id", lead.id);
-        if (error) throw error;
-      }
-
-      // Importante: enviar follow-up NÃO mexe em `ultima_msg`. Essa data é o
-      // relógio da cadência — se ela andasse, os follow-ups se empurrariam.
-      const descricao = resultado
-        ? `FUP ${numero}: ${FOLLOWUP_LABELS[resultado]}`
-        : `FUP ${numero}: resultado removido`;
-
-      await registrarEvento(lead.id, createdBy, "followup", descricao);
-      return descricao;
-    },
-    onSuccess: (descricao) => {
-      invalidateQueries.crmLeads();
-      confirmar(descricao);
-    },
-    onError: erro("registrarFollowup"),
   });
 
   // --- Atualizar campos do lead ---
@@ -451,7 +370,6 @@ export function useCrmLeads(config: CrmConfig | null) {
     error: query.error,
     criarLead,
     registrarEtapa,
-    registrarFollowup,
     atualizarLead,
     atualizarContato,
     excluirLead,

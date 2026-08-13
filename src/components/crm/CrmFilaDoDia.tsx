@@ -20,6 +20,9 @@ import { compararFila } from "@/lib/crm/engine";
 import { hoje, somarDias } from "@/lib/crm/dates";
 import type { CrmLeadComputed } from "@/types/crm.types";
 import { QuandoBadge, SituacaoBadge, WhatsAppButton } from "./CrmBadges";
+import { AcaoRapidaMenu } from "./AcaoRapida";
+import type { useCrmLeads } from "@/hooks/useCrmLeads";
+import type { CrmConfig } from "@/types/crm.types";
 
 /**
  * A fila do dia: quem precisa de você, em ordem. Trabalhe de cima para baixo
@@ -27,9 +30,13 @@ import { QuandoBadge, SituacaoBadge, WhatsAppButton } from "./CrmBadges";
  */
 export function CrmFilaDoDia({
   leads,
+  config,
+  acoes,
   onAbrirLead,
 }: {
   leads: CrmLeadComputed[];
+  config: CrmConfig;
+  acoes: ReturnType<typeof useCrmLeads>;
   onAbrirLead: (id: string) => void;
 }) {
   const { fila, atrasados, paraHoje, proximos7, total } = useMemo(() => {
@@ -98,8 +105,7 @@ export function CrmFilaDoDia({
                 <TableHead>Lead</TableHead>
                 <TableHead>Próximo passo</TableHead>
                 <TableHead className="w-44">Situação</TableHead>
-                <TableHead className="w-20 text-right">Dias</TableHead>
-                <TableHead className="w-32" />
+                <TableHead className="w-52 text-right">Registrar</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -131,17 +137,24 @@ export function CrmFilaDoDia({
                   <TableCell>{lead.derived.proximoPasso}</TableCell>
                   <TableCell>
                     <SituacaoBadge situacao={lead.derived.situacao} />
-                    {lead.derived.etapaTravada && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        travou em {lead.derived.etapaTravada.nome}
-                      </p>
-                    )}
+                    {lead.derived.diasEmSilencio !== null &&
+                      lead.derived.diasEmSilencio > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          há {lead.derived.diasEmSilencio} dia
+                          {lead.derived.diasEmSilencio === 1 ? "" : "s"}
+                        </p>
+                      )}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {lead.derived.diasEmSilencio ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <WhatsAppButton telefone={lead.telefone} size="icon" />
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-2">
+                      <AcaoRapidaMenu
+                        lead={lead}
+                        config={config}
+                        acoes={acoes}
+                        onAbrirLead={onAbrirLead}
+                      />
+                      <WhatsAppButton telefone={lead.telefone} size="icon" />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

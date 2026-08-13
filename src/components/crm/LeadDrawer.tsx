@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowRight, RotateCcw, Trash2 } from "lucide-react";
+import { AlertCircle, Archive, ArrowRight, RotateCcw, Trash2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -37,13 +37,12 @@ import { formatarData } from "@/lib/crm/dates";
 import type { AtualizarLeadInput, useCrmLeads } from "@/hooks/useCrmLeads";
 import {
   COMPARECEU_LABELS,
-  FOLLOWUP_LABELS,
   type Compareceu,
   type CrmConfig,
   type CrmLeadComputed,
-  type FollowupResultado,
 } from "@/types/crm.types";
 import { QuandoBadge, SituacaoBadge, WhatsAppButton } from "./CrmBadges";
+import { AcaoRapidaBotoes } from "./AcaoRapida";
 
 const SEM_VALOR = "__nenhum";
 
@@ -80,9 +79,9 @@ export function LeadDrawer({ lead, config, acoes, onClose }: LeadDrawerProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir este lead do CRM?</AlertDialogTitle>
             <AlertDialogDescription>
-              O histórico de atendimento, etapas e follow-ups de{" "}
-              <strong>{lead?.nome}</strong> será apagado. O cadastro do cliente
-              continua na página Clientes.
+              O histórico de atendimento e as etapas de{" "}
+              <strong>{lead?.nome}</strong> serão apagados. O cadastro do
+              cliente continua na página Clientes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -177,20 +176,29 @@ function ConteudoDrawer({
 
       <BlocoAgendamento lead={lead} config={config} salvar={salvar} />
 
-      <BlocoFollowup lead={lead} config={config} acoes={acoes} />
-
       <BlocoDados lead={lead} config={config} acoes={acoes} salvar={salvar} />
 
       <Separator />
 
-      <Button
-        variant="ghost"
-        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-        onClick={onExcluir}
-      >
-        <Trash2 className="h-4 w-4" />
-        Excluir lead
-      </Button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        {/* Saída para o lead que sumiu de vez: sai da fila, guarda o histórico. */}
+        <Button
+          variant="outline"
+          className="flex-1"
+          onClick={() => salvar({ arquivado: true })}
+        >
+          <Archive className="h-4 w-4" />
+          Arquivar
+        </Button>
+        <Button
+          variant="ghost"
+          className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+          onClick={onExcluir}
+        >
+          <Trash2 className="h-4 w-4" />
+          Excluir
+        </Button>
+      </div>
     </div>
   );
 }
@@ -295,118 +303,11 @@ function ProximoPasso({
         </p>
       )}
 
-      <AcaoRapida lead={lead} config={config} acoes={acoes} salvar={salvar} />
-    </div>
-  );
-}
-
-/**
- * Resolve o próximo passo ali mesmo, sem rolar a gaveta atrás do controle
- * certo. Qual controle resolve o quê vem do motor, não daqui.
- */
-function AcaoRapida({
-  lead,
-  config,
-  acoes,
-  salvar,
-}: {
-  lead: CrmLeadComputed;
-  config: CrmConfig;
-  acoes: ReturnType<typeof useCrmLeads>;
-  salvar: (patch: AtualizarLeadInput) => void;
-}) {
-  const acao = lead.derived.acao;
-  if (!acao) return null;
-
-  const moldura = (dica: string, children: React.ReactNode) => (
-    <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
-      <p className="text-xs text-muted-foreground">{dica}</p>
-      <div className="flex flex-wrap gap-2">{children}</div>
-    </div>
-  );
-
-  if (acao.tipo === "etapa") {
-    const stage = config.stages.find((s) => s.id === acao.stageId);
-    if (!stage) return null;
-
-    const atual = lead.etapas.find((e) => e.stage_id === stage.id);
-
-    return moldura(
-      `Registrar em ${stage.nome}:`,
-      stage.outcomes.map((outcome) => (
-        <Button
-          key={outcome.id}
-          size="sm"
-          variant={atual?.outcome_id === outcome.id ? "default" : "outline"}
-          onClick={() =>
-            acoes.registrarEtapa.mutate({
-              lead,
-              stageId: stage.id,
-              outcomeId: outcome.id,
-            })
-          }
-        >
-          {outcome.label}
-        </Button>
-      )),
-    );
-  }
-
-  if (acao.tipo === "followup") {
-    const atual = lead.followups.find(
-      (f) => f.ciclo === lead.fup_ciclo && f.numero === acao.numero,
-    );
-
-    return moldura(
-      `Registrar o FUP ${acao.numero}:`,
-      (Object.keys(FOLLOWUP_LABELS) as FollowupResultado[]).map((resultado) => (
-        <Button
-          key={resultado}
-          size="sm"
-          variant={atual?.resultado === resultado ? "default" : "outline"}
-          onClick={() =>
-            acoes.registrarFollowup.mutate({
-              lead,
-              numero: acao.numero,
-              resultado,
-            })
-          }
-        >
-          {FOLLOWUP_LABELS[resultado]}
-        </Button>
-      )),
-    );
-  }
-
-  if (acao.tipo === "compareceu") {
-    return moldura(
-      "O casal compareceu?",
-      (["sim", "nao", "remarcou"] as Compareceu[]).map((valor) => (
-        <Button
-          key={valor}
-          size="sm"
-          variant={lead.compareceu === valor ? "default" : "outline"}
-          onClick={() => salvar({ compareceu: valor })}
-        >
-          {COMPARECEU_LABELS[valor]}
-        </Button>
-      )),
-    );
-  }
-
-  // Reagendamento: escolher a nova data devolve a visita para "pendente".
-  return (
-    <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
-      <p className="text-xs text-muted-foreground">Nova data da visita:</p>
-      <DatePickerField
-        value={lead.data_agendamento ?? ""}
-        onChange={(valor) =>
-          salvar({
-            data_agendamento: valor || null,
-            compareceu: valor ? "pendente" : lead.compareceu,
-          })
-        }
-        placeholder="Escolher a nova data"
+      <AcaoRapidaBotoes
+        lead={lead}
+        config={config}
+        acoes={acoes}
+        salvar={salvar}
       />
     </div>
   );
@@ -460,70 +361,6 @@ function BlocoAgendamento({
           label,
         }))}
       />
-    </Secao>
-  );
-}
-
-function BlocoFollowup({
-  lead,
-  config,
-  acoes,
-}: {
-  lead: CrmLeadComputed;
-  config: CrmConfig;
-  acoes: ReturnType<typeof useCrmLeads>;
-}) {
-  const { derived } = lead;
-  const temHistorico = lead.followups.length > 0;
-
-  if (derived.situacao !== "em_followup" && !temHistorico) return null;
-
-  return (
-    <Secao
-      titulo="Follow-up"
-      descricao={
-        derived.silencioDesde
-          ? `Silêncio desde ${formatarData(derived.silencioDesde)}. As quatro datas contam a partir daí — nunca do follow-up anterior.`
-          : undefined
-      }
-    >
-      {config.settings.fup_dias.map((dias, indice) => {
-        const numero = indice + 1;
-        const registro = lead.followups.find(
-          (f) => f.ciclo === lead.fup_ciclo && f.numero === numero,
-        );
-        const previsto = derived.fupPrevistos[indice];
-        const eProximo = derived.proximoFup === numero;
-
-        return (
-          <CampoSelect
-            key={numero}
-            label={`FUP ${numero} · ${dias}d`}
-            sublabel={previsto ? formatarData(previsto) : undefined}
-            destaque={eProximo}
-            value={registro?.resultado ?? SEM_VALOR}
-            onChange={(valor) =>
-              acoes.registrarFollowup.mutate({
-                lead,
-                numero,
-                resultado:
-                  valor === SEM_VALOR ? null : (valor as FollowupResultado),
-              })
-            }
-            opcoes={Object.entries(FOLLOWUP_LABELS).map(([value, label]) => ({
-              value,
-              label,
-            }))}
-          />
-        );
-      })}
-
-      {lead.fup_ciclo > 1 && (
-        <p className="text-xs text-muted-foreground">
-          Este é o {lead.fup_ciclo}º ciclo de follow-up deste lead. Os ciclos
-          anteriores ficam guardados no histórico.
-        </p>
-      )}
     </Secao>
   );
 }

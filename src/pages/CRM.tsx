@@ -95,13 +95,19 @@ export default function CRM() {
               </div>
 
               <TabsContent value="fila" className="mt-0">
-                <CrmFilaDoDia leads={filtrados} onAbrirLead={setLeadAberto} />
+                <CrmFilaDoDia
+                  leads={filtrados}
+                  config={config}
+                  acoes={acoes}
+                  onAbrirLead={setLeadAberto}
+                />
               </TabsContent>
 
               <TabsContent value="kanban" className="mt-0">
                 <CrmKanban
                   leads={filtrados}
                   config={config}
+                  acoes={acoes}
                   onAbrirLead={setLeadAberto}
                 />
               </TabsContent>

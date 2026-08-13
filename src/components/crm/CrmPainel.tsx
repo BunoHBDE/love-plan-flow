@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { DatePickerField } from "@/components/ui/DatePickerField";
 import { cn } from "@/lib/utils";
 import {
-  calcularFollowups,
   calcularFunil,
   calcularIgnoradas,
   calcularOrigens,
@@ -45,17 +44,10 @@ export function CrmPainel({
     () => calcularIgnoradas(filtrados, config.stages),
     [filtrados, config.stages],
   );
-  const followups = useMemo(
-    () => calcularFollowups(filtrados, config.settings.fup_dias),
-    [filtrados, config.settings.fup_dias],
-  );
   const origens = useMemo(
     () => calcularOrigens(filtrados, config),
     [filtrados, config],
   );
-
-  const pctSobre = (valor: number, base: number) =>
-    base > 0 ? pct(valor / base) : "—";
 
   return (
     <div className="space-y-8">
@@ -122,7 +114,7 @@ export function CrmPainel({
       {/* 2 · MENSAGENS IGNORADAS */}
       <Bloco
         titulo="2 · Mensagens ignoradas por etapa"
-        descricao="Aponta qual mensagem reescrever primeiro. Conta mensagens, não leads — um lead que travou, voltou pelo follow-up e travou de novo aparece duas vezes."
+        descricao="Aponta qual mensagem reescrever primeiro. Conta mensagens, não leads — um lead que ficou em silêncio, voltou e sumiu de novo aparece duas vezes."
       >
         <Table>
           <TableHeader>
@@ -151,91 +143,9 @@ export function CrmPainel({
         </Table>
       </Bloco>
 
-      {/* 3 · FOLLOW-UPS */}
+      {/* 3 · POR ORIGEM */}
       <Bloco
-        titulo="3 · Desempenho dos follow-ups"
-        descricao="Se o último follow-up recupera quase ninguém, ele custa tempo sem retorno e a cadência pode encurtar."
-      >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Follow-up</TableHead>
-              <TableHead className="text-right">Enviados</TableHead>
-              <TableHead className="text-right">Responderam</TableHead>
-              <TableHead className="text-right">Recusaram</TableHead>
-              <TableHead className="text-right">Sem resposta</TableHead>
-              <TableHead className="text-right">Taxa de resposta</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {followups.linhas.map((linha) => (
-              <TableRow key={linha.label}>
-                <TableCell>{linha.label}</TableCell>
-                <TableCell className="text-right">{linha.enviados}</TableCell>
-                <TableCell className="text-right">{linha.responderam}</TableCell>
-                <TableCell className="text-right">{linha.recusaram}</TableCell>
-                <TableCell className="text-right">{linha.semResposta}</TableCell>
-                <TableCell className="text-right">{pct(linha.taxa)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-        <Table className="mt-6">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Resumo</TableHead>
-              <TableHead className="text-right">Leads</TableHead>
-              <TableHead className="text-right">
-                % dos que entraram em follow-up
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell>Entraram em follow-up</TableCell>
-              <TableCell className="text-right">
-                {followups.resumo.entraram}
-              </TableCell>
-              <TableCell />
-            </TableRow>
-            <TableRow>
-              <TableCell>Recuperados por algum follow-up</TableCell>
-              <TableCell className="text-right">
-                {followups.resumo.recuperados}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground">
-                {pctSobre(
-                  followups.resumo.recuperados,
-                  followups.resumo.entraram,
-                )}
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>Perdidos depois de todos os follow-ups</TableCell>
-              <TableCell className="text-right">
-                {followups.resumo.perdidos}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground">
-                {pctSobre(followups.resumo.perdidos, followups.resumo.entraram)}
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>Ainda em follow-up</TableCell>
-              <TableCell className="text-right">
-                {followups.resumo.aindaEm}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground">
-                {pctSobre(followups.resumo.aindaEm, followups.resumo.entraram)}
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </Bloco>
-
-      {/* 4 · POR ORIGEM */}
-      <Bloco
-        titulo="4 · Desempenho por origem"
+        titulo="3 · Desempenho por origem"
         descricao="Compare os canais pela taxa lead → contrato, não pelo volume de leads."
       >
         <Table>

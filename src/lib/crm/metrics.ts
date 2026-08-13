@@ -1,9 +1,8 @@
 /**
  * MÉTRICAS DO PAINEL
  *
- * Reproduz os blocos do painel da planilha, generalizados para etapas
- * configuráveis. Como o motor trabalha por semântica, os blocos continuam
- * corretos mesmo que as etapas sejam renomeadas ou reordenadas.
+ * Como o motor trabalha por semântica, os blocos continuam corretos mesmo
+ * que as etapas sejam renomeadas ou reordenadas.
  */
 
 import type {
@@ -130,7 +129,7 @@ export function calcularFunil(
 }
 
 // ==========================================
-// 4 · MENSAGENS IGNORADAS POR ETAPA
+// 2 · MENSAGENS IGNORADAS POR ETAPA
 // ==========================================
 
 export interface LinhaIgnoradas {
@@ -167,69 +166,7 @@ export function calcularIgnoradas(
 }
 
 // ==========================================
-// 5 · DESEMPENHO DOS FOLLOW-UPS
-// ==========================================
-
-export interface LinhaFollowup {
-  label: string;
-  enviados: number;
-  responderam: number;
-  recusaram: number;
-  semResposta: number;
-  taxa: number | null;
-}
-
-export interface ResumoFollowup {
-  entraram: number;
-  recuperados: number;
-  perdidos: number;
-  aindaEm: number;
-}
-
-export function calcularFollowups(
-  leads: CrmLeadComputed[],
-  fupDias: number[],
-): { linhas: LinhaFollowup[]; resumo: ResumoFollowup } {
-  const linhas = fupDias.map((dias, i) => {
-    const numero = i + 1;
-    const registros = leads.flatMap((l) =>
-      l.followups.filter((f) => f.numero === numero),
-    );
-
-    const enviados = registros.length;
-    const responderam = registros.filter(
-      (f) => f.resultado === "respondeu",
-    ).length;
-    const recusaram = registros.filter((f) => f.resultado === "recusou").length;
-    const semResposta = registros.filter(
-      (f) => f.resultado === "sem_resposta",
-    ).length;
-
-    return {
-      label: `FUP ${numero} · ${dias} dias`,
-      enviados,
-      responderam,
-      recusaram,
-      semResposta,
-      taxa: enviados > 0 ? responderam / enviados : null,
-    };
-  });
-
-  const entraram = leads.filter((l) => l.followups.length > 0).length;
-
-  return {
-    linhas,
-    resumo: {
-      entraram,
-      recuperados: leads.filter((l) => l.derived.recuperadoNoFup).length,
-      perdidos: leads.filter((l) => l.derived.situacao === "perdido_fup").length,
-      aindaEm: leads.filter((l) => l.derived.situacao === "em_followup").length,
-    },
-  };
-}
-
-// ==========================================
-// 6 · DESEMPENHO POR ORIGEM
+// 3 · DESEMPENHO POR ORIGEM
 // ==========================================
 
 export interface LinhaOrigem {
