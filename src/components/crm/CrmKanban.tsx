@@ -110,6 +110,10 @@ function CardLead({
       tabIndex={0}
       onClick={() => onAbrirLead(lead.id)}
       onKeyDown={(evento) => {
+        // Só teclas dadas no próprio card abrem a gaveta: o que vem de um
+        // menu aberto dentro dele sobe pela árvore do React e não deve
+        // contar — o espaço, ainda por cima, seria digitado num campo.
+        if (evento.target !== evento.currentTarget) return;
         if (evento.key === "Enter" || evento.key === " ") {
           evento.preventDefault();
           onAbrirLead(lead.id);
