@@ -276,8 +276,34 @@ export function useCrmLeads(config: CrmConfig | null) {
         if (error) throw error;
       }
 
+      // O lead recuou para esta etapa: o que veio depois não vale mais.
+      // É o "Faltou" — a visita não aconteceu, então o agendamento sai do
+      // caminho para que um novo possa ser marcado. Sem isso o segundo
+      // agendamento não teria onde entrar, já que cada etapa guarda um
+      // resultado só.
+      if (outcome?.semantica === "recuou" && stage) {
+        const posteriores = (config?.stages ?? [])
+          .filter((s) => s.ordem > stage.ordem)
+          .map((s) => s.id);
+
+        if (posteriores.length > 0) {
+          const { error } = await supabase
+            .from("crm_lead_stages")
+            .delete()
+            .eq("lead_id", lead.id)
+            .in("stage_id", posteriores);
+          if (error) throw error;
+        }
+      }
+
       // Efeitos colaterais no lead, conforme a semântica do resultado.
       const patch: AtualizarLeadInput = {};
+
+      if (outcome?.semantica === "recuou") {
+        patch.data_agendamento = null;
+        patch.compareceu = null;
+        patch.encerrado_em = null;
+      }
 
       // O passo pendente mudou, então a data ajustada na mão perde o sentido.
       if (lead.quando_manual) patch.quando_manual = null;
