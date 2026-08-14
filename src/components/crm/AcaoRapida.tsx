@@ -33,20 +33,27 @@ import {
 const COMPARECEU_OPCOES: Compareceu[] = ["sim", "nao", "remarcou"];
 
 /**
- * O resultado mais provável da etapa, dado onde ela está agora. Vira botão
- * direto, para que o caso comum custe um clique em vez de abrir o menu.
+ * Os resultados mais prováveis da etapa, dado onde ela está agora. O primeiro
+ * que a etapa oferecer vira botão direto, para que o caso comum custe um
+ * clique em vez de abrir o menu.
  *
+ *   etapa ainda vazia   → você acabou de mandar a mensagem
  *   esperando resposta  → o lead respondeu
  *   em silêncio         → o lead voltou
- *   etapa ainda vazia   → você acabou de mandar a mensagem
+ *   faltou              → você chama de novo
  *
- * Pendências (negociação, faltou) não têm desfecho provável: só menu.
+ * É uma lista, e não um valor só, porque nem toda etapa é "mandei e espero":
+ * a Visita Agendada não tem "Aguardando" — ela é um fato com data — e o
+ * provável ali é justamente agendar.
+ *
+ * Negociação não tem desfecho provável: só menu.
  */
-function semanticaProvavel(atual: Semantica | null): Semantica | null {
-  if (atual === null) return "aguardando";
-  if (atual === "aguardando") return "respondeu";
-  if (atual === "silencio") return "voltou_fup";
-  return null;
+function semanticasProvaveis(atual: Semantica | null): Semantica[] {
+  if (atual === null) return ["aguardando", "agendou"];
+  if (atual === "aguardando") return ["respondeu"];
+  if (atual === "silencio") return ["voltou_fup"];
+  if (atual === "recuou") return ["aguardando"];
+  return [];
 }
 
 /**
@@ -65,10 +72,12 @@ function opcoesDaAcao(lead: CrmLeadComputed, config: CrmConfig) {
     const atual =
       stage.outcomes.find((o) => o.id === registro?.outcome_id) ?? null;
 
-    const provavel = semanticaProvavel(atual?.semantica ?? null);
-    const sugerida = provavel
-      ? stage.outcomes.find((o) => o.semantica === provavel)
-      : undefined;
+    const provaveis = semanticasProvaveis(atual?.semantica ?? null);
+    const sugerida = provaveis.reduce<(typeof stage.outcomes)[number] | undefined>(
+      (achado, semantica) =>
+        achado ?? stage.outcomes.find((o) => o.semantica === semantica),
+      undefined,
+    );
 
     return {
       titulo: stage.nome,

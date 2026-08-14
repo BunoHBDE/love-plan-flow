@@ -24,12 +24,17 @@ import {
 } from "@/types/crm.types";
 import { diffDias, hoje, maiorData, somarDias } from "./dates";
 
-/** Semânticas que contam como "o lead respondeu à mensagem daquela etapa". */
+/**
+ * Semânticas que contam como "o lead respondeu à mensagem daquela etapa".
+ * `recuou` entra aqui porque quem faltou tinha respondido ao convite e
+ * marcado a visita — o que não aconteceu foi o comparecimento, não a resposta.
+ */
 const SEMANTICAS_RESPOSTA: Semantica[] = [
   "respondeu",
   "agendou",
   "ganhou",
   "pendencia",
+  "recuou",
 ];
 
 /**
@@ -269,9 +274,11 @@ function calcularProximoPasso(ctx: ContextoPasso): {
     };
   }
 
-  // 1. A bola está com você (ex.: o casal entrou em negociação).
+  // 1. A bola está com você: uma negociação a responder, ou uma visita que
+  //    não aconteceu e precisa ser remarcada.
   const pendencia = listaResultados.find(
-    (r) => r.outcome.semantica === "pendencia",
+    (r) =>
+      r.outcome.semantica === "pendencia" || r.outcome.semantica === "recuou",
   );
   if (pendencia) {
     return {
@@ -308,7 +315,9 @@ function calcularProximoPasso(ctx: ContextoPasso): {
   if (posAgendamento?.outcome.semantica === "aguardando") {
     const base = maiorData(lead.ultima_msg, lead.data_agendamento);
     return {
-      proximoPasso: "Conferir se assinaram",
+      // O pós-visita é onde o casal ainda decide, não onde assina: a cobrança
+      // aqui é pela decisão, e o Contrato só entra quando ela vem.
+      proximoPasso: "Conferir se decidiram",
       quando: base ? somarDias(base, settings.dias_analise_final) : null,
       acao: { tipo: "etapa", stageId: posAgendamento.stage.id },
     };
@@ -353,8 +362,19 @@ function calcularProximoPasso(ctx: ContextoPasso): {
   }
 
   // 8. O lead respondeu e espera a sua próxima mensagem: a ação é registrar
-  //    o envio na primeira etapa ainda em branco.
-  const proximaEmBranco = stages.find((stage) => !resultados.has(stage.id));
+  //    o envio na próxima etapa em branco.
+  //
+  //    "Próxima" conta a partir de onde o lead está, não do começo da lista:
+  //    etapas podem ser puladas — quem aprova a proposta na hora vai direto ao
+  //    convite — e apontar para o buraco que ficou para trás mandaria você
+  //    preencher uma conversa que não aconteceu.
+  const ultimoIndice = listaResultados.reduce(
+    (maior, r) => Math.max(maior, r.indice),
+    -1,
+  );
+  const proximaEmBranco =
+    stages.find((stage, i) => i > ultimoIndice && !resultados.has(stage.id)) ??
+    stages.find((stage) => !resultados.has(stage.id));
   return {
     proximoPasso: "Seguir o atendimento",
     quando: hojeISO,

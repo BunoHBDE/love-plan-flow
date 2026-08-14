@@ -22,6 +22,7 @@ export const SEMANTICAS = [
   "desqualificado",
   "ganhou",
   "voltou_fup",
+  "recuou",
 ] as const;
 
 export type Semantica = (typeof SEMANTICAS)[number];
@@ -36,6 +37,9 @@ export const SEMANTICA_LABELS: Record<Semantica, string> = {
   desqualificado: "Encerra: o lead não serve para você",
   ganhou: "Encerra como contratado",
   voltou_fup: "Estava em silêncio e voltou",
+  // Desfaz o progresso: o lead volta para esta etapa e o que veio depois é
+  // apagado. É o "Faltou" — a visita não aconteceu, então recomeça daqui.
+  recuou: "Voltou para esta etapa e apaga o que veio depois",
 };
 
 // ==========================================

@@ -1,4 +1,5 @@
-import { Clock } from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatarData } from "@/lib/crm/dates";
 import {
@@ -28,14 +29,25 @@ export function CrmKanban({
   acoes: ReturnType<typeof useCrmLeads>;
   onAbrirLead: (id: string) => void;
 }) {
+  // Perdidos é arquivo morto do dia a dia e, com oito etapas, custa uma tela
+  // inteira de rolagem. Fica recolhido até você pedir. "Contratou" continua
+  // à vista: é a boa notícia.
+  const [mostrarPerdidos, setMostrarPerdidos] = useState(false);
+
+  const totalPerdidos = leads.filter(
+    (lead) => lead.derived.coluna === COLUNA_PERDIDO,
+  ).length;
+
   const colunas: Coluna[] = [
     ...config.stages.map((stage, i) => ({
       id: stage.id,
       titulo: `${i + 1} · ${stage.nome}`,
       variante: "etapa" as const,
     })),
-    { id: COLUNA_GANHO, titulo: "Contratou", variante: "ganho" },
-    { id: COLUNA_PERDIDO, titulo: "Perdidos", variante: "perdido" },
+    { id: COLUNA_GANHO, titulo: "Contratou", variante: "ganho" as const },
+    ...(mostrarPerdidos
+      ? [{ id: COLUNA_PERDIDO, titulo: "Perdidos", variante: "perdido" as const }]
+      : []),
   ];
 
   return (
@@ -86,6 +98,22 @@ export function CrmKanban({
             </div>
           );
         })}
+
+        <button
+          type="button"
+          onClick={() => setMostrarPerdidos((aberto) => !aberto)}
+          aria-expanded={mostrarPerdidos}
+          className="flex w-11 shrink-0 flex-col items-center gap-2 self-start rounded-lg border border-dashed border-border bg-muted/20 py-3 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {mostrarPerdidos ? (
+            <ChevronRight className="h-4 w-4 shrink-0" />
+          ) : (
+            <ChevronLeft className="h-4 w-4 shrink-0" />
+          )}
+          <span className="text-xs font-medium [writing-mode:vertical-rl]">
+            {mostrarPerdidos ? "Ocultar" : `Perdidos (${totalPerdidos})`}
+          </span>
+        </button>
       </div>
     </div>
   );
