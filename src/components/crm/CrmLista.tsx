@@ -11,13 +11,27 @@
  *   Aguardando resposta → quem pode ter respondido sem você registrar
  *   Em silêncio         → quem sumiu
  *   Novos               → o que você cadastrou hoje
+ *
+ * Abaixo deles vêm os REFINOS — etapa e data do casamento. Eles não competem
+ * com os filtros de cima, se somam: "quem vence hoje, está na Proposta e quer
+ * casar em março de 2027" é uma pergunta só, e é assim que se escolhe com quem
+ * falar quando a lista fica grande.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Search, X } from "lucide-react";
+import { CheckCircle2, ListFilter, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { MONTHS } from "@/constants/visits";
 import { hoje } from "@/lib/crm/dates";
+import { anoDoCasamento, mesDoCasamento } from "@/lib/crm/lead";
 import type { useCrmLeads } from "@/hooks/useCrmLeads";
 import type { CrmConfig, CrmLeadComputed } from "@/types/crm.types";
 import { QuandoBadge, SituacaoBadge, WhatsAppButton } from "./CrmBadges";
@@ -26,6 +40,17 @@ import { CadastroRapido } from "./CadastroRapido";
 import { QualificacaoNaLinha } from "./Qualificacao";
 
 type FiltroId = "hoje" | "aguardando" | "silencio" | "novos" | "todos";
+
+/** Refino desligado. Não pode ser "" — o Radix reserva a string vazia. */
+const TODOS = "__todos";
+
+/** Quem ainda não disse quando casa: é a lista de quem falta perguntar. */
+const SEM_ANO = "__sem_ano";
+
+const OPCOES_MES = [
+  { valor: TODOS, label: "Qualquer mês" },
+  ...MONTHS.map((mes) => ({ valor: mes.value, label: mes.label })),
+];
 
 interface Filtro {
   id: FiltroId;
@@ -82,6 +107,9 @@ export function CrmLista({
 }) {
   const [filtro, setFiltro] = useState<FiltroId>("hoje");
   const [busca, setBusca] = useState("");
+  const [etapa, setEtapa] = useState(TODOS);
+  const [ano, setAno] = useState(TODOS);
+  const [mes, setMes] = useState(TODOS);
   const campoBusca = useRef<HTMLInputElement>(null);
 
   // "/" devolve o foco para a busca de qualquer lugar da página.
@@ -103,13 +131,63 @@ export function CrmLista({
     return () => window.removeEventListener("keydown", aoTeclar);
   }, []);
 
+  const opcoesEtapa = useMemo(
+    () => [
+      { valor: TODOS, label: "Todas as etapas" },
+      ...config.stages.map((s) => ({ valor: s.id, label: s.nome })),
+    ],
+    [config.stages],
+  );
+
+  // Só os anos que alguém realmente citou: uma lista fixa de anos futuros
+  // encheria o menu de opções que não devolvem ninguém. O ano escolhido entra
+  // junto mesmo que suma dos dados, senão o campo ficaria em branco.
+  const opcoesAno = useMemo(() => {
+    const encontrados = new Set<string>();
+    leads.forEach((lead) => {
+      const doLead = anoDoCasamento(lead);
+      if (doLead) encontrados.add(doLead);
+    });
+    if (ano !== TODOS && ano !== SEM_ANO) encontrados.add(ano);
+
+    return [
+      { valor: TODOS, label: "Qualquer ano" },
+      ...[...encontrados].sort().map((a) => ({ valor: a, label: a })),
+      { valor: SEM_ANO, label: "Ainda sem ano" },
+    ];
+  }, [leads, ano]);
+
+  const refinando = etapa !== TODOS || ano !== TODOS || mes !== TODOS;
+
+  // Etapa e data do casamento estreitam a base ANTES dos filtros de rotina,
+  // para que as contagens dos chips digam quantos sobram de fato — um "Hoje 12"
+  // que na verdade são 3 depois do refino seria pior do que não contar.
+  const refinados = useMemo(() => {
+    if (!refinando) return leads;
+
+    return leads.filter((lead) => {
+      // Encerrados não têm etapa atual: filtrar por etapa é olhar o que está
+      // em aberto, e é isso que se espera ao escolher "Proposta".
+      if (etapa !== TODOS && lead.derived.etapaAtual?.id !== etapa) return false;
+
+      if (ano !== TODOS) {
+        const doLead = anoDoCasamento(lead);
+        if (ano === SEM_ANO ? doLead !== null : doLead !== ano) return false;
+      }
+
+      if (mes !== TODOS && mesDoCasamento(lead) !== mes) return false;
+
+      return true;
+    });
+  }, [leads, refinando, etapa, ano, mes]);
+
   const contagens = useMemo(() => {
     const mapa = {} as Record<FiltroId, number>;
     FILTROS.forEach((f) => {
-      mapa[f.id] = leads.filter(f.inclui).length;
+      mapa[f.id] = refinados.filter(f.inclui).length;
     });
     return mapa;
-  }, [leads]);
+  }, [refinados]);
 
   const visiveis = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -122,13 +200,29 @@ export function CrmLista({
             l.nome.toLowerCase().includes(termo) ||
             l.telefone.replace(/\D/g, "").includes(termo.replace(/\D/g, "")),
         )
-      : leads.filter(ativo.inclui);
+      : refinados.filter(ativo.inclui);
 
     return [...base].sort(ordenar(filtro, !!termo));
-  }, [leads, filtro, busca]);
+  }, [leads, refinados, filtro, busca]);
 
   const filtroAtivo = FILTROS.find((f) => f.id === filtro)!;
   const buscando = busca.trim() !== "";
+
+  /**
+   * Mexer num refino sai da busca, como já acontece ao clicar num filtro: a
+   * busca ignora os filtros de propósito, então deixar as duas coisas ligadas
+   * ao mesmo tempo mostraria um resultado que contraria os campos na tela.
+   */
+  const escolher = (definir: (valor: string) => void) => (valor: string) => {
+    definir(valor);
+    setBusca("");
+  };
+
+  const limparRefinos = () => {
+    setEtapa(TODOS);
+    setAno(TODOS);
+    setMes(TODOS);
+  };
 
   return (
     <div className="space-y-4">
@@ -197,6 +291,44 @@ export function CrmLista({
         ))}
       </div>
 
+      {/* Refinos: cruzam com o filtro de cima em vez de substituí-lo. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <ListFilter className="h-4 w-4 shrink-0 text-muted-foreground" />
+
+        <SelectFiltro
+          rotulo="Filtrar por etapa"
+          valor={etapa}
+          aoMudar={escolher(setEtapa)}
+          opcoes={opcoesEtapa}
+          largura="w-52"
+        />
+        <SelectFiltro
+          rotulo="Filtrar por ano do casamento"
+          valor={ano}
+          aoMudar={escolher(setAno)}
+          opcoes={opcoesAno}
+          largura="w-40"
+        />
+        <SelectFiltro
+          rotulo="Filtrar por mês do casamento"
+          valor={mes}
+          aoMudar={escolher(setMes)}
+          opcoes={OPCOES_MES}
+          largura="w-40"
+        />
+
+        {refinando && (
+          <button
+            type="button"
+            onClick={limparRefinos}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+            Limpar
+          </button>
+        )}
+      </div>
+
       <p className="text-sm text-muted-foreground">
         {buscando
           ? `${visiveis.length} resultado${visiveis.length === 1 ? "" : "s"} para “${busca.trim()}”`
@@ -205,7 +337,7 @@ export function CrmLista({
 
       {/* Linhas */}
       {visiveis.length === 0 ? (
-        <Vazio buscando={buscando} filtro={filtro} />
+        <Vazio buscando={buscando} refinando={refinando} filtro={filtro} />
       ) : (
         <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
           {visiveis.map((lead) => (
@@ -337,7 +469,50 @@ function ordenar(filtro: FiltroId, buscando: boolean) {
   };
 }
 
-function Vazio({ buscando, filtro }: { buscando: boolean; filtro: FiltroId }) {
+/**
+ * Um select de refino. Todos têm uma opção "qualquer" como primeiro item e
+ * nunca ficam sem valor, então o gatilho já mostra o que está escolhido e não
+ * precisa de placeholder. A largura é fixa para a linha não pular de tamanho
+ * quando o rótulo selecionado é mais curto que o anterior.
+ */
+function SelectFiltro({
+  rotulo,
+  valor,
+  aoMudar,
+  opcoes,
+  largura,
+}: {
+  rotulo: string;
+  valor: string;
+  aoMudar: (valor: string) => void;
+  opcoes: { valor: string; label: string }[];
+  largura: string;
+}) {
+  return (
+    <Select value={valor} onValueChange={aoMudar}>
+      <SelectTrigger aria-label={rotulo} className={cn("h-9 bg-card", largura)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {opcoes.map((opcao) => (
+          <SelectItem key={opcao.valor} value={opcao.valor}>
+            {opcao.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function Vazio({
+  buscando,
+  refinando,
+  filtro,
+}: {
+  buscando: boolean;
+  refinando: boolean;
+  filtro: FiltroId;
+}) {
   const mensagens: Record<FiltroId, { titulo: string; dica: string }> = {
     hoje: {
       titulo: "Nada pendente para hoje",
@@ -361,13 +536,26 @@ function Vazio({ buscando, filtro }: { buscando: boolean; filtro: FiltroId }) {
     },
   };
 
+  // Com um refino ligado o vazio não é boa notícia, é uma seleção que não
+  // devolveu ninguém — dizer "você já falou com todo mundo" seria mentira.
   const { titulo, dica } = buscando
     ? { titulo: "Nada encontrado", dica: "Tente outro nome ou telefone." }
-    : mensagens[filtro];
+    : refinando
+      ? {
+          titulo: "Nenhum lead com esses filtros",
+          dica: "Troque a etapa ou a data do casamento — ou limpe os filtros.",
+        }
+      : mensagens[filtro];
+
+  const semResultado = buscando || refinando;
 
   return (
     <div className="rounded-lg border border-border bg-card py-16 text-center">
-      <CheckCircle2 className="mx-auto h-10 w-10 text-success" />
+      {semResultado ? (
+        <ListFilter className="mx-auto h-10 w-10 text-muted-foreground" />
+      ) : (
+        <CheckCircle2 className="mx-auto h-10 w-10 text-success" />
+      )}
       <p className="mt-3 font-medium">{titulo}</p>
       <p className="mt-1 text-sm text-muted-foreground">{dica}</p>
     </div>
