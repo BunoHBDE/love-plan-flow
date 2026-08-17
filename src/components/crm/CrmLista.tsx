@@ -190,15 +190,20 @@ export function CrmLista({
   }, [refinados]);
 
   const visiveis = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
+    const termo = normalizar(busca);
+    const digitos = busca.replace(/\D/g, "");
     const ativo = FILTROS.find((f) => f.id === filtro)!;
 
     // A busca varre tudo: procurar alguém não deve depender do filtro aberto.
     const base = termo
       ? leads.filter(
           (l) =>
-            l.nome.toLowerCase().includes(termo) ||
-            l.telefone.replace(/\D/g, "").includes(termo.replace(/\D/g, "")),
+            normalizar(l.nome).includes(termo) ||
+            // O telefone só entra quando você digitou algum número. Sem esta
+            // guarda, procurar por nome deixava `digitos` vazio e
+            // `includes("")` é sempre verdadeiro — todo lead passava por aqui
+            // e a busca devolvia a lista inteira, como se não filtrasse nada.
+            (digitos !== "" && l.telefone.replace(/\D/g, "").includes(digitos)),
         )
       : refinados.filter(ativo.inclui);
 
@@ -444,6 +449,19 @@ function LinhaLead({
 // ==========================================
 // AUXILIARES
 // ==========================================
+
+/**
+ * Deixa o texto comparável: sem espaço nas pontas, sem caixa e sem acento.
+ * O acento sai porque ninguém digita "Thainá" com o acento no meio do
+ * expediente — e sem isso o nome certo simplesmente não aparece.
+ */
+function normalizar(texto: string): string {
+  return texto
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
 
 /**
  * Cada filtro tem a sua urgência: a fila do dia vai por data, o silêncio vai
