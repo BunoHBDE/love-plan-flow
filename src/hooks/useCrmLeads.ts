@@ -283,9 +283,10 @@ export function useCrmLeads(config: CrmConfig | null) {
   /** Leads com todos os campos calculados pelo motor. */
   const leads = useMemo<CrmLeadComputed[]>(() => {
     if (!config || !query.data) return [];
+    const hojeISO = hoje();
     return query.data.map((lead) => ({
       ...lead,
-      derived: derivar(lead, config.stages, config.settings),
+      derived: derivar(lead, config.stages, config.settings, hojeISO),
     }));
   }, [query.data, config]);
 
