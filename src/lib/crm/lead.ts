@@ -24,6 +24,16 @@ export function anoDoCasamento(lead: CrmLead): string | null {
 }
 
 /**
+ * O mês do casamento no formato de `MONTHS` ("01".."12"), tenha ele data
+ * fechada ou só uma previsão. Serve para juntar num mesmo filtro quem já
+ * marcou o dia e quem por enquanto só sabe o mês.
+ */
+export function mesDoCasamento(lead: CrmLead): string | null {
+  if (lead.data_evento_status === "sem_data") return lead.mes_evento;
+  return lead.data_evento?.slice(5, 7) ?? null;
+}
+
+/**
  * O resumo que cabe numa linha de lista: ano e convidados são o que se lê de
  * relance para saber se o lead é grande e se está perto. A data exata e o mês
  * ficam no formulário, que é onde eles importam.
