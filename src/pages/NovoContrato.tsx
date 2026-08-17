@@ -55,6 +55,7 @@ import type { ExtraItem } from "@/components/quotes/ExtrasForm";
 
 // Lib
 import { replacePlaceholders, DEFAULT_CONTRACT_TEMPLATE, PLACEHOLDER_CATEGORIES } from "@/lib/contractPlaceholders";
+import { formatPhone } from "@/lib/masks";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -439,7 +440,9 @@ export default function NovoContrato() {
                               <Label className="text-xs">Telefone</Label>
                               <Input
                                 value={dadosCliente.telefone}
-                                onChange={(e) => setDadosCliente(prev => ({ ...prev, telefone: e.target.value }))}
+                                onChange={(e) => setDadosCliente(prev => ({ ...prev, telefone: formatPhone(e.target.value) }))}
+                                inputMode="tel"
+                                placeholder="(00) 00000-0000"
                                 className="h-8 text-sm"
                               />
                             </div>
@@ -574,7 +577,9 @@ export default function NovoContrato() {
                               <Label className="text-xs">Telefone</Label>
                               <Input
                                 value={dadosEmpresa.telefone || ""}
-                                onChange={(e) => setDadosEmpresa(prev => ({ ...prev, telefone: e.target.value }))}
+                                onChange={(e) => setDadosEmpresa(prev => ({ ...prev, telefone: formatPhone(e.target.value) }))}
+                                inputMode="tel"
+                                placeholder="(00) 00000-0000"
                                 className="h-8 text-sm"
                               />
                             </div>

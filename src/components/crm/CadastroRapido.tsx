@@ -19,10 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { hoje } from "@/lib/crm/dates";
+import { formatPhone, isValidPhone, phoneDigits } from "@/lib/masks";
 import type { useCrmLeads } from "@/hooks/useCrmLeads";
 import type { CrmConfig, CrmLeadComputed } from "@/types/crm.types";
-
-const so_digitos = (valor: string) => valor.replace(/\D/g, "");
 
 export function CadastroRapido({
   config,
@@ -46,13 +45,19 @@ export function CadastroRapido({
   }, [aberto]);
 
   // Aviso de duplicado: o mesmo casal costuma chamar mais de uma vez.
-  const digitos = so_digitos(telefone);
+  // Compara por dígitos, então acha o duplicado mesmo se o antigo tiver
+  // entrado sem máscara.
+  const digitos = phoneDigits(telefone);
   const duplicado =
     digitos.length >= 8
-      ? leads.find((lead) => so_digitos(lead.telefone).endsWith(digitos))
+      ? leads.find((lead) => phoneDigits(lead.telefone).endsWith(digitos))
       : undefined;
 
-  const podeSalvar = nome.trim() !== "" && telefone.trim() !== "";
+  // O telefone é o único jeito de falar com o lead: um número pela metade
+  // não pode ser salvo.
+  const telefoneCompleto = isValidPhone(telefone);
+  const telefoneIncompleto = telefone.trim() !== "" && !telefoneCompleto;
+  const podeSalvar = nome.trim() !== "" && telefoneCompleto;
 
   const salvar = () => {
     if (!podeSalvar) return;
@@ -100,9 +105,11 @@ export function CadastroRapido({
         />
         <Input
           value={telefone}
-          onChange={(e) => setTelefone(e.target.value)}
+          onChange={(e) => setTelefone(formatPhone(e.target.value))}
           onKeyDown={aoTeclar}
-          placeholder="WhatsApp"
+          placeholder="(11) 99999-9999"
+          inputMode="tel"
+          aria-invalid={telefoneIncompleto}
           className="sm:w-44"
         />
         <Select value={origem} onValueChange={setOrigem}>
@@ -132,7 +139,12 @@ export function CadastroRapido({
         </div>
       </div>
 
-      {duplicado ? (
+      {telefoneIncompleto ? (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Falta número: o WhatsApp precisa do DDD e de 8 ou 9 dígitos.
+        </p>
+      ) : duplicado ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-warning-foreground">
           <AlertTriangle className="h-3.5 w-3.5" />
           Este WhatsApp já está em{" "}

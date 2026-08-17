@@ -19,6 +19,7 @@ import {
 import { MapPin, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Client } from "@/hooks/useClients";
+import { formatPhone, isValidPhone } from "@/lib/masks";
 
 export interface ClientFormData {
   name: string;
@@ -86,7 +87,7 @@ export function ClientFormDialog({
       setFormData({
         name: editingClient.nome,
         email: editingClient.email || "",
-        phone: editingClient.telefone,
+        phone: formatPhone(editingClient.telefone),
         cpf: editingClient.cpf || "",
         address: {
           street: editingClient.rua || "",
@@ -115,14 +116,6 @@ export function ClientFormDialog({
   const formatCEP = (value: string) => {
     const numbers = value.replace(/\D/g, "");
     return numbers.slice(0, 8).replace(/(\d{5})(\d)/, "$1-$2");
-  };
-
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    return numbers
-      .slice(0, 11)
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{5})(\d)/, "$1-$2");
   };
 
   const handleCepLookup = async (cep: string) => {
@@ -175,6 +168,17 @@ export function ClientFormDialog({
       toast({
         title: "Campos obrigatórios",
         description: "Por favor, preencha o nome do cliente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // O telefone é opcional aqui, mas se veio, veio inteiro: meio número não
+    // serve para ligar nem para achar o cliente depois.
+    if (formData.phone.trim() && !isValidPhone(formData.phone)) {
+      toast({
+        title: "Telefone incompleto",
+        description: "Use o formato (00) 00000-0000, com DDD.",
         variant: "destructive",
       });
       return;
