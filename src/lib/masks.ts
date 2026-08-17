@@ -1,3 +1,12 @@
+import type { ClipboardEvent } from "react";
+
+/**
+ * O maior valor que formatPhone() produz: "(00) 00000-0000".
+ * É o maxLength dos inputs de telefone — o limite duro, no campo, além do
+ * que a máscara já garante.
+ */
+export const PHONE_MAX_LENGTH = 15;
+
 /**
  * Só os dígitos de um telefone, já sem o DDI.
  *
@@ -45,6 +54,22 @@ export function formatPhone(value: string): string {
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
   }
   return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+}
+
+/**
+ * Colagem em campo de telefone.
+ *
+ * O maxLength corta o texto colado ANTES do onChange, e "+55 11 99663-0347"
+ * tem 17 caracteres: cortado no 15 viraria "(55) 11996-6303" — outro número,
+ * sem aviso nenhum. Este handler assume a colagem e formata o texto inteiro,
+ * então o DDI continua saindo fora como deve.
+ */
+export function handlePhonePaste(
+  event: ClipboardEvent<HTMLInputElement>,
+  aplicar: (valor: string) => void,
+): void {
+  event.preventDefault();
+  aplicar(formatPhone(event.clipboardData.getData("text")));
 }
 
 /**

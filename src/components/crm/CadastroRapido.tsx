@@ -19,7 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { hoje } from "@/lib/crm/dates";
-import { formatPhone, isValidPhone, phoneDigits } from "@/lib/masks";
+import {
+  PHONE_MAX_LENGTH,
+  formatPhone,
+  handlePhonePaste,
+  isValidPhone,
+  phoneDigits,
+} from "@/lib/masks";
 import type { useCrmLeads } from "@/hooks/useCrmLeads";
 import type { CrmConfig, CrmLeadComputed } from "@/types/crm.types";
 
@@ -106,9 +112,11 @@ export function CadastroRapido({
         <Input
           value={telefone}
           onChange={(e) => setTelefone(formatPhone(e.target.value))}
+          onPaste={(e) => handlePhonePaste(e, setTelefone)}
           onKeyDown={aoTeclar}
           placeholder="(11) 99999-9999"
           inputMode="tel"
+          maxLength={PHONE_MAX_LENGTH}
           aria-invalid={telefoneIncompleto}
           className="sm:w-44"
         />

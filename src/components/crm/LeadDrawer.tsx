@@ -32,7 +32,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { formatarData } from "@/lib/crm/dates";
-import { formatPhone, isValidPhone } from "@/lib/masks";
+import {
+  PHONE_MAX_LENGTH,
+  formatPhone,
+  handlePhonePaste,
+  isValidPhone,
+} from "@/lib/masks";
 import type { AtualizarLeadInput, useCrmLeads } from "@/hooks/useCrmLeads";
 import {
   COMPARECEU_LABELS,
@@ -422,8 +427,10 @@ function BlocoDados({
         <Input
           value={telefone}
           onChange={(e) => setTelefone(formatPhone(e.target.value))}
+          onPaste={(e) => handlePhonePaste(e, setTelefone)}
           inputMode="tel"
           placeholder="(11) 99999-9999"
+          maxLength={PHONE_MAX_LENGTH}
           aria-invalid={telefone.trim() !== "" && !isValidPhone(telefone)}
           onBlur={() => {
             // Número pela metade não é salvo: o campo volta ao valor atual
