@@ -450,6 +450,10 @@ function LinhaLeadBase({
       }}
       className={cn(
         "group flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/40 lg:flex-row lg:items-center",
+        // O navegador pula layout e pintura das linhas fora da tela — no
+        // "Todos" com a base grande é o que mantém a rolagem leve. O
+        // intrinsic-size é só a estimativa da altura enquanto não renderiza.
+        "[content-visibility:auto] [contain-intrinsic-size:auto_74px]",
         derived.urgencia === "atrasado" && "bg-destructive/5",
         derived.urgencia === "hoje" && "bg-warning/5",
         derived.encerrado && "opacity-60",

@@ -72,8 +72,11 @@ export function indexarResultados(
 ): Map<string, ResultadoEtapa> {
   const mapa = new Map<string, ResultadoEtapa>();
 
+  // Registros por etapa de uma vez: evita varrer `lead.etapas` a cada stage.
+  const porEtapa = new Map(lead.etapas.map((e) => [e.stage_id, e]));
+
   stages.forEach((stage, indice) => {
-    const registro = lead.etapas.find((e) => e.stage_id === stage.id);
+    const registro = porEtapa.get(stage.id);
     if (!registro?.outcome_id) return;
 
     const outcome = stage.outcomes.find((o) => o.id === registro.outcome_id);
@@ -93,8 +96,9 @@ export function derivar(
   lead: CrmLead,
   stages: CrmStage[],
   settings: CrmSettings,
+  // Quem deriva a base inteira calcula o "hoje" uma vez e passa adiante.
+  hojeISO: string = hoje(),
 ): CrmDerived {
-  const hojeISO = hoje();
   const resultados = indexarResultados(lead, stages);
   const listaResultados = [...resultados.values()];
 
