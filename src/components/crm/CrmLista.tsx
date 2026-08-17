@@ -18,7 +18,14 @@
  * falar quando a lista fica grande.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { CheckCircle2, ListFilter, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -56,7 +63,7 @@ interface Filtro {
   id: FiltroId;
   label: string;
   descricao: string;
-  inclui: (lead: CrmLeadComputed) => boolean;
+  inclui: (lead: CrmLeadComputed, hojeISO: string) => boolean;
 }
 
 const FILTROS: Filtro[] = [
@@ -84,7 +91,7 @@ const FILTROS: Filtro[] = [
     id: "novos",
     label: "Novos",
     descricao: "Cadastrados hoje.",
-    inclui: (l) => l.entrada === hoje(),
+    inclui: (l, hojeISO) => l.entrada === hojeISO,
   },
   {
     id: "todos",
@@ -111,6 +118,11 @@ export function CrmLista({
   const [ano, setAno] = useState(TODOS);
   const [mes, setMes] = useState(TODOS);
   const campoBusca = useRef<HTMLInputElement>(null);
+
+  // O campo responde a cada tecla; a lista pode vir um instante depois.
+  // Sem isso, refazer o filtro + re-renderizar todas as linhas dentro do
+  // mesmo ciclo do keystroke segurava a digitação.
+  const buscaAdiada = useDeferredValue(busca);
 
   // "/" devolve o foco para a busca de qualquer lugar da página.
   useEffect(() => {
@@ -182,36 +194,65 @@ export function CrmLista({
   }, [leads, refinando, etapa, ano, mes]);
 
   const contagens = useMemo(() => {
-    const mapa = {} as Record<FiltroId, number>;
-    FILTROS.forEach((f) => {
-      mapa[f.id] = refinados.filter(f.inclui).length;
+    const hojeISO = hoje();
+    const mapa: Record<FiltroId, number> = {
+      hoje: 0,
+      aguardando: 0,
+      silencio: 0,
+      novos: 0,
+      todos: 0,
+    };
+    // Uma passada só pela base, em vez de um `filter` por chip.
+    refinados.forEach((lead) => {
+      FILTROS.forEach((f) => {
+        if (f.inclui(lead, hojeISO)) mapa[f.id] += 1;
+      });
     });
     return mapa;
   }, [refinados]);
 
+  // Nome e telefone comparáveis, calculados uma vez por carga — normalizar
+  // a base inteira a cada tecla era parte da travada da busca.
+  const indiceBusca = useMemo(() => {
+    const mapa = new Map<string, { nome: string; telefone: string }>();
+    leads.forEach((l) => {
+      mapa.set(l.id, {
+        nome: normalizar(l.nome),
+        telefone: l.telefone.replace(/\D/g, ""),
+      });
+    });
+    return mapa;
+  }, [leads]);
+
   const visiveis = useMemo(() => {
-    const termo = normalizar(busca);
-    const digitos = busca.replace(/\D/g, "");
+    const termo = normalizar(buscaAdiada);
+    const digitos = buscaAdiada.replace(/\D/g, "");
+    const hojeISO = hoje();
     const ativo = FILTROS.find((f) => f.id === filtro)!;
 
     // A busca varre tudo: procurar alguém não deve depender do filtro aberto.
     const base = termo
-      ? leads.filter(
-          (l) =>
-            normalizar(l.nome).includes(termo) ||
+      ? leads.filter((l) => {
+          const chaves = indiceBusca.get(l.id);
+          return (
+            chaves?.nome.includes(termo) ||
             // O telefone só entra quando você digitou algum número. Sem esta
             // guarda, procurar por nome deixava `digitos` vazio e
             // `includes("")` é sempre verdadeiro — todo lead passava por aqui
             // e a busca devolvia a lista inteira, como se não filtrasse nada.
-            (digitos !== "" && l.telefone.replace(/\D/g, "").includes(digitos)),
-        )
-      : refinados.filter(ativo.inclui);
+            (digitos !== "" && chaves?.telefone.includes(digitos))
+          );
+        })
+      : refinados.filter((l) => ativo.inclui(l, hojeISO));
 
     return [...base].sort(ordenar(filtro, !!termo));
-  }, [leads, refinados, filtro, busca]);
+  }, [leads, indiceBusca, refinados, filtro, buscaAdiada]);
 
   const filtroAtivo = FILTROS.find((f) => f.id === filtro)!;
   const buscando = busca.trim() !== "";
+  // A lista, a contagem e o vazio seguem o valor adiado, para nunca
+  // legendarem um resultado que ainda é da tecla anterior.
+  const mostrandoBusca = buscaAdiada.trim() !== "";
 
   /**
    * Mexer num refino sai da busca, como já acontece ao clicar num filtro: a
@@ -335,14 +376,14 @@ export function CrmLista({
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {buscando
-          ? `${visiveis.length} resultado${visiveis.length === 1 ? "" : "s"} para “${busca.trim()}”`
+        {mostrandoBusca
+          ? `${visiveis.length} resultado${visiveis.length === 1 ? "" : "s"} para “${buscaAdiada.trim()}”`
           : filtroAtivo.descricao}
       </p>
 
       {/* Linhas */}
       {visiveis.length === 0 ? (
-        <Vazio buscando={buscando} refinando={refinando} filtro={filtro} />
+        <Vazio buscando={mostrandoBusca} refinando={refinando} filtro={filtro} />
       ) : (
         <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
           {visiveis.map((lead) => (
@@ -364,7 +405,23 @@ export function CrmLista({
 // LINHA
 // ==========================================
 
-function LinhaLead({
+/**
+ * Memoizada: digitar na busca re-renderiza a lista inteira, e sem isto cada
+ * tecla remontava todas as linhas — era a maior parte da travada.
+ *
+ * O comparador ignora `acoes` de propósito: o objeto nasce novo a cada
+ * render do hook, mas a linha só usa os `mutate`, que o React Query mantém
+ * estáveis — comparar `acoes` anularia o memo sem ganhar corretude.
+ */
+const LinhaLead = memo(
+  LinhaLeadBase,
+  (anterior, proxima) =>
+    anterior.lead === proxima.lead &&
+    anterior.config === proxima.config &&
+    anterior.onAbrirLead === proxima.onAbrirLead,
+);
+
+function LinhaLeadBase({
   lead,
   config,
   acoes,

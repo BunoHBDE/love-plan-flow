@@ -15,7 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonner } from "sonner";
 import { getSafeErrorMessage } from "@/lib/errorHandler";
-import { QUERY_KEYS, invalidateQueries } from "@/lib/queryClient";
+import { QUERY_KEYS, invalidateQueries, queryClient } from "@/lib/queryClient";
 import { derivar } from "@/lib/crm/engine";
 import { hoje } from "@/lib/crm/dates";
 import type {
@@ -123,11 +123,12 @@ export interface AtualizarLeadInput {
 }
 
 async function usuarioAtual(): Promise<string> {
+  // `getSession` lê da memória; `getUser` iria à rede a cada gravação.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Sessão expirada. Entre novamente.");
-  return user.id;
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user) throw new Error("Sessão expirada. Entre novamente.");
+  return session.user.id;
 }
 
 /**
@@ -138,18 +139,133 @@ function confirmar(mensagem: string) {
   sonner.success(mensagem, { id: "crm-salvo", duration: 1800 });
 }
 
-async function registrarEvento(
+/**
+ * O evento é só trilha de auditoria: não precisa segurar a resposta ao
+ * usuário. Dispara em segundo plano e apenas loga se falhar.
+ */
+function registrarEvento(
   leadId: string,
   createdBy: string,
   tipo: string,
   descricao: string,
 ) {
-  await supabase.from("crm_lead_events").insert({
-    lead_id: leadId,
-    created_by: createdBy,
-    tipo,
-    descricao,
-  });
+  void supabase
+    .from("crm_lead_events")
+    .insert({
+      lead_id: leadId,
+      created_by: createdBy,
+      tipo,
+      descricao,
+    })
+    .then(({ error }) => {
+      if (error) console.error("crm: falha ao registrar evento", error);
+    });
+}
+
+// ==========================================
+// ATUALIZAÇÃO OTIMISTA
+// ==========================================
+//
+// A tela reflete a mudança na hora, direto no cache; o refetch que vem no
+// `onSettled` só confirma (ou corrige) o que o servidor gravou de fato.
+
+interface ContextoOtimista {
+  anterior: CrmLead[] | undefined;
+}
+
+async function iniciarOtimista(
+  atualizar: (leads: CrmLead[]) => CrmLead[],
+): Promise<ContextoOtimista> {
+  await queryClient.cancelQueries({ queryKey: QUERY_KEYS.CRM_LEADS });
+  const anterior = queryClient.getQueryData<CrmLead[]>(QUERY_KEYS.CRM_LEADS);
+  if (anterior) {
+    queryClient.setQueryData<CrmLead[]>(
+      QUERY_KEYS.CRM_LEADS,
+      atualizar(anterior),
+    );
+  }
+  return { anterior };
+}
+
+function reverterOtimista(contexto: ContextoOtimista | undefined) {
+  if (contexto?.anterior) {
+    queryClient.setQueryData(QUERY_KEYS.CRM_LEADS, contexto.anterior);
+  }
+}
+
+/**
+ * O que registrar um resultado de etapa muda no lead — tanto no banco quanto
+ * no cache. É função pura para que a mutação e a atualização otimista
+ * apliquem exatamente a mesma regra.
+ */
+function planejarEtapa(
+  lead: CrmLeadComputed,
+  stageId: string,
+  outcomeId: string | null,
+  config: CrmConfig | null,
+) {
+  const stage = config?.stages.find((s) => s.id === stageId);
+  const outcome = stage?.outcomes.find((o) => o.id === outcomeId);
+
+  let etapas = lead.etapas.filter((e) => e.stage_id !== stageId);
+  if (outcomeId !== null) {
+    etapas = [
+      ...etapas,
+      {
+        stage_id: stageId,
+        outcome_id: outcomeId,
+        registrado_em: new Date().toISOString(),
+      },
+    ];
+  }
+
+  // O lead recuou para esta etapa: o que veio depois não vale mais.
+  // É o "Faltou" — a visita não aconteceu, então o agendamento sai do
+  // caminho para que um novo possa ser marcado. Sem isso o segundo
+  // agendamento não teria onde entrar, já que cada etapa guarda um
+  // resultado só.
+  let posterioresRemovidos: string[] = [];
+  if (outcome?.semantica === "recuou" && stage) {
+    posterioresRemovidos = (config?.stages ?? [])
+      .filter((s) => s.ordem > stage.ordem)
+      .map((s) => s.id);
+    if (posterioresRemovidos.length > 0) {
+      etapas = etapas.filter((e) => !posterioresRemovidos.includes(e.stage_id));
+    }
+  }
+
+  // Efeitos colaterais no lead, conforme a semântica do resultado.
+  const patch: AtualizarLeadInput = {};
+
+  if (outcome?.semantica === "recuou") {
+    patch.data_agendamento = null;
+    patch.compareceu = null;
+    patch.encerrado_em = null;
+  }
+
+  // O passo pendente mudou, então a data ajustada na mão perde o sentido.
+  if (lead.quando_manual) patch.quando_manual = null;
+
+  if (outcome?.semantica === "aguardando" && !lead.ultima_msg_manual) {
+    // Você acabou de enviar a mensagem desta etapa: o relógio reinicia.
+    patch.ultima_msg = hoje();
+  }
+
+  if (outcome?.semantica === "agendou" && !lead.compareceu) {
+    patch.compareceu = "pendente";
+  }
+
+  const encerra =
+    outcome?.semantica === "recusou" ||
+    outcome?.semantica === "desqualificado" ||
+    outcome?.semantica === "ganhou";
+  if (encerra) patch.encerrado_em = hoje();
+
+  const descricao = outcome
+    ? `${stage?.nome}: ${outcome.label}`
+    : `${stage?.nome}: resultado removido`;
+
+  return { etapas, patch, posterioresRemovidos, descricao };
 }
 
 // ==========================================
@@ -229,7 +345,7 @@ export function useCrmLeads(config: CrmConfig | null) {
         });
       }
 
-      await registrarEvento(lead.id, createdBy, "criado", "Lead cadastrado");
+      registrarEvento(lead.id, createdBy, "criado", "Lead cadastrado");
       return lead.id;
     },
     onSuccess: (_id, input) => {
@@ -249,10 +365,8 @@ export function useCrmLeads(config: CrmConfig | null) {
       outcomeId: string | null;
     }) => {
       const { lead, stageId, outcomeId } = args;
+      const plano = planejarEtapa(lead, stageId, outcomeId, config);
       const createdBy = await usuarioAtual();
-
-      const stage = config?.stages.find((s) => s.id === stageId);
-      const outcome = stage?.outcomes.find((o) => o.id === outcomeId);
 
       if (outcomeId === null) {
         const { error } = await supabase
@@ -276,73 +390,40 @@ export function useCrmLeads(config: CrmConfig | null) {
         if (error) throw error;
       }
 
-      // O lead recuou para esta etapa: o que veio depois não vale mais.
-      // É o "Faltou" — a visita não aconteceu, então o agendamento sai do
-      // caminho para que um novo possa ser marcado. Sem isso o segundo
-      // agendamento não teria onde entrar, já que cada etapa guarda um
-      // resultado só.
-      if (outcome?.semantica === "recuou" && stage) {
-        const posteriores = (config?.stages ?? [])
-          .filter((s) => s.ordem > stage.ordem)
-          .map((s) => s.id);
-
-        if (posteriores.length > 0) {
-          const { error } = await supabase
-            .from("crm_lead_stages")
-            .delete()
-            .eq("lead_id", lead.id)
-            .in("stage_id", posteriores);
-          if (error) throw error;
-        }
+      if (plano.posterioresRemovidos.length > 0) {
+        const { error } = await supabase
+          .from("crm_lead_stages")
+          .delete()
+          .eq("lead_id", lead.id)
+          .in("stage_id", plano.posterioresRemovidos);
+        if (error) throw error;
       }
 
-      // Efeitos colaterais no lead, conforme a semântica do resultado.
-      const patch: AtualizarLeadInput = {};
-
-      if (outcome?.semantica === "recuou") {
-        patch.data_agendamento = null;
-        patch.compareceu = null;
-        patch.encerrado_em = null;
-      }
-
-      // O passo pendente mudou, então a data ajustada na mão perde o sentido.
-      if (lead.quando_manual) patch.quando_manual = null;
-
-      if (outcome?.semantica === "aguardando" && !lead.ultima_msg_manual) {
-        // Você acabou de enviar a mensagem desta etapa: o relógio reinicia.
-        patch.ultima_msg = hoje();
-      }
-
-      if (outcome?.semantica === "agendou" && !lead.compareceu) {
-        patch.compareceu = "pendente";
-      }
-
-      const encerra =
-        outcome?.semantica === "recusou" ||
-        outcome?.semantica === "desqualificado" ||
-        outcome?.semantica === "ganhou";
-      if (encerra) patch.encerrado_em = hoje();
-
-      if (Object.keys(patch).length > 0) {
+      if (Object.keys(plano.patch).length > 0) {
         const { error } = await supabase
           .from("crm_leads")
-          .update(patch)
+          .update(plano.patch)
           .eq("id", lead.id);
         if (error) throw error;
       }
 
-      const descricao = outcome
-        ? `${stage?.nome}: ${outcome.label}`
-        : `${stage?.nome}: resultado removido`;
-
-      await registrarEvento(lead.id, createdBy, "etapa", descricao);
-      return descricao;
+      registrarEvento(lead.id, createdBy, "etapa", plano.descricao);
+      return plano.descricao;
     },
-    onSuccess: (descricao) => {
-      invalidateQueries.crmLeads();
-      confirmar(descricao);
+    onMutate: ({ lead, stageId, outcomeId }) => {
+      const plano = planejarEtapa(lead, stageId, outcomeId, config);
+      return iniciarOtimista((leads) =>
+        leads.map((l) =>
+          l.id === lead.id ? { ...l, ...plano.patch, etapas: plano.etapas } : l,
+        ),
+      );
     },
-    onError: erro("registrarEtapa"),
+    onSuccess: (descricao) => confirmar(descricao),
+    onError: (error, _args, contexto) => {
+      reverterOtimista(contexto);
+      erro("registrarEtapa")(error);
+    },
+    onSettled: () => invalidateQueries.crmLeads(),
   });
 
   // --- Atualizar campos do lead ---
@@ -354,11 +435,16 @@ export function useCrmLeads(config: CrmConfig | null) {
         .eq("id", args.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      invalidateQueries.crmLeads();
-      confirmar("Alterações salvas");
+    onMutate: ({ id, patch }) =>
+      iniciarOtimista((leads) =>
+        leads.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+      ),
+    onSuccess: () => confirmar("Alterações salvas"),
+    onError: (error, _args, contexto) => {
+      reverterOtimista(contexto);
+      erro("atualizarLead")(error);
     },
-    onError: erro("atualizarLead"),
+    onSettled: () => invalidateQueries.crmLeads(),
   });
 
   // --- Atualizar dados de contato (moram na tabela de clientes) ---
@@ -373,12 +459,19 @@ export function useCrmLeads(config: CrmConfig | null) {
         .eq("id", args.clientId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: ({ clientId, patch }) =>
+      iniciarOtimista((leads) =>
+        leads.map((l) => (l.client_id === clientId ? { ...l, ...patch } : l)),
+      ),
+    onSuccess: () => confirmar("Alterações salvas"),
+    onError: (error, _args, contexto) => {
+      reverterOtimista(contexto);
+      erro("atualizarContato")(error);
+    },
+    onSettled: () => {
       invalidateQueries.crmLeads();
       invalidateQueries.clients();
-      confirmar("Alterações salvas");
     },
-    onError: erro("atualizarContato"),
   });
 
   // --- Excluir lead (o cadastro do cliente permanece) ---
@@ -387,11 +480,14 @@ export function useCrmLeads(config: CrmConfig | null) {
       const { error } = await supabase.from("crm_leads").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      invalidateQueries.crmLeads();
-      toast({ title: "Lead excluído do CRM" });
+    onMutate: (id) =>
+      iniciarOtimista((leads) => leads.filter((l) => l.id !== id)),
+    onSuccess: () => toast({ title: "Lead excluído do CRM" }),
+    onError: (error, _id, contexto) => {
+      reverterOtimista(contexto);
+      erro("excluirLead")(error);
     },
-    onError: erro("excluirLead"),
+    onSettled: () => invalidateQueries.crmLeads(),
   });
 
   return {
