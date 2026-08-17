@@ -414,7 +414,7 @@ function BlocoDados({
       />
 
       <div className="space-y-2">
-        {/* O cadastro rápido sempre grava hoje; a correção é aqui. */}
+        {/* O cadastro rápido já escolhe a entrada; aqui é a correção depois. */}
         <Label className="text-sm">Entrada</Label>
         <DatePickerField
           value={lead.entrada}

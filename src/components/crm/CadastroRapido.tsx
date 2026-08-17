@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { hoje } from "@/lib/crm/dates";
+import { DatePickerField } from "@/components/ui/DatePickerField";
+import { formatarData, hoje } from "@/lib/crm/dates";
 import {
   PHONE_MAX_LENGTH,
   formatPhone,
@@ -44,6 +45,10 @@ export function CadastroRapido({
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [origem, setOrigem] = useState("");
+  // Já vem como hoje, que é o caso normal. Editável porque o lote atrasado
+  // existe: o contato de ontem cadastrado hoje precisa da data de ontem, ou
+  // o relógio do follow-up começa errado.
+  const [entrada, setEntrada] = useState(hoje());
   const campoNome = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -63,16 +68,23 @@ export function CadastroRapido({
   // não pode ser salvo.
   const telefoneCompleto = isValidPhone(telefone);
   const telefoneIncompleto = telefone.trim() !== "" && !telefoneCompleto;
-  const podeSalvar = nome.trim() !== "" && telefoneCompleto;
+
+  // A entrada é a data da sua primeira mensagem, então não existe no futuro:
+  // seria um prazo de follow-up contando para trás.
+  const entradaNoFuturo = entrada > hoje();
+
+  const podeSalvar =
+    nome.trim() !== "" && telefoneCompleto && entrada !== "" && !entradaNoFuturo;
 
   const salvar = () => {
     if (!podeSalvar) return;
 
     acoes.criarLead.mutate(
-      { nome, telefone, origem: origem || null, entrada: hoje() },
+      { nome, telefone, origem: origem || null, entrada },
       {
         onSuccess: () => {
-          // Origem se mantém: um lote costuma vir do mesmo canal.
+          // Origem e entrada se mantêm: um lote costuma vir do mesmo canal e
+          // do mesmo dia.
           setNome("");
           setTelefone("");
           campoNome.current?.focus();
@@ -132,6 +144,12 @@ export function CadastroRapido({
             ))}
           </SelectContent>
         </Select>
+        <DatePickerField
+          value={entrada}
+          onChange={setEntrada}
+          placeholder="Entrada"
+          className="sm:w-40"
+        />
 
         <div className="flex gap-2">
           <Button
@@ -147,7 +165,13 @@ export function CadastroRapido({
         </div>
       </div>
 
-      {telefoneIncompleto ? (
+      {entradaNoFuturo ? (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
+          <AlertTriangle className="h-3.5 w-3.5" />
+          A entrada é o dia em que o contato chegou, então não pode ser depois
+          de hoje.
+        </p>
+      ) : telefoneIncompleto ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
           <AlertTriangle className="h-3.5 w-3.5" />
           Falta número: o WhatsApp precisa do DDD e de 8 ou 9 dígitos.
@@ -166,8 +190,18 @@ export function CadastroRapido({
         </p>
       ) : (
         <p className="mt-2 text-xs text-muted-foreground">
-          Enter cadastra e já libera o próximo. A entrada fica como hoje e a
-          primeira etapa entra como “aguardando”.
+          Enter cadastra e já libera o próximo. A primeira etapa entra como
+          “aguardando”.
+          {/* A entrada não volta para hoje sozinha: se ficou em outro dia, é
+              melhor dizer, senão o lote seguinte entra com a data errada. */}
+          {entrada !== hoje() && (
+            <>
+              {" "}
+              A entrada segue em{" "}
+              <strong className="font-semibold">{formatarData(entrada)}</strong>{" "}
+              até você trocar.
+            </>
+          )}
         </p>
       )}
     </div>
