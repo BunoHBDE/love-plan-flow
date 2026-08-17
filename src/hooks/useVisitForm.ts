@@ -1,4 +1,6 @@
 import { useState, useCallback } from "react";
+// Máscara única do app — o mesmo (00) 00000-0000 que o banco normaliza.
+import { formatPhone } from "@/lib/masks";
 
 // Importa constantes do arquivo centralizado
 // Assim não precisamos duplicar a lista de meses aqui
@@ -37,33 +39,6 @@ const initialFormData: VisitFormData = {
   weddingDate: "",
   weddingMonthEstimate: "",
   weddingYearEstimate: "",
-};
-
-/**
- * Formata número de telefone no padrão brasileiro
- * Formato: (00) 00000-0000 ou (00) 0000-0000
- * @param value - Valor digitado pelo usuário
- * @returns Telefone formatado
- */
-const formatPhoneNumber = (value: string): string => {
-  // Remove tudo que não é número
-  const numbers = value.replace(/\D/g, '');
-  
-  // Limita a 11 dígitos (DDD + 9 dígitos)
-  const limited = numbers.slice(0, 11);
-  
-  // Aplica formatação baseada na quantidade de dígitos
-  if (limited.length <= 10) {
-    // Telefone fixo: (00) 0000-0000
-    return limited
-      .replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3')
-      .replace(/-$/, '');
-  } else {
-    // Celular: (00) 00000-0000
-    return limited
-      .replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3')
-      .replace(/-$/, '');
-  }
 };
 
 /**
@@ -159,7 +134,7 @@ export function useVisitForm(defaultValues?: Partial<VisitFormData>) {
    * @param value - Valor digitado
    */
   const updatePhone = useCallback((value: string) => {
-    const formatted = formatPhoneNumber(value);
+    const formatted = formatPhone(value);
     setFormData((prev) => ({ ...prev, phone: formatted }));
   }, []);
 

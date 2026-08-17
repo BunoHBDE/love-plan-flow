@@ -32,6 +32,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { formatarData } from "@/lib/crm/dates";
+import {
+  PHONE_MAX_LENGTH,
+  formatPhone,
+  handlePhonePaste,
+  isValidPhone,
+} from "@/lib/masks";
 import type { AtualizarLeadInput, useCrmLeads } from "@/hooks/useCrmLeads";
 import {
   COMPARECEU_LABELS,
@@ -386,13 +392,13 @@ function BlocoDados({
   salvar: (patch: AtualizarLeadInput) => void;
 }) {
   const [observacoes, setObservacoes] = useState(lead.observacoes ?? "");
-  const [telefone, setTelefone] = useState(lead.telefone);
+  const [telefone, setTelefone] = useState(formatPhone(lead.telefone));
   const [email, setEmail] = useState(lead.email ?? "");
 
   // Ao trocar de lead, recarrega os campos de texto.
   useEffect(() => {
     setObservacoes(lead.observacoes ?? "");
-    setTelefone(lead.telefone);
+    setTelefone(formatPhone(lead.telefone));
     setEmail(lead.email ?? "");
   }, [lead.id, lead.observacoes, lead.telefone, lead.email]);
 
@@ -420,12 +426,23 @@ function BlocoDados({
         <Label className="text-sm">WhatsApp</Label>
         <Input
           value={telefone}
-          onChange={(e) => setTelefone(e.target.value)}
+          onChange={(e) => setTelefone(formatPhone(e.target.value))}
+          onPaste={(e) => handlePhonePaste(e, setTelefone)}
+          inputMode="tel"
+          placeholder="(11) 99999-9999"
+          maxLength={PHONE_MAX_LENGTH}
+          aria-invalid={telefone.trim() !== "" && !isValidPhone(telefone)}
           onBlur={() => {
-            if (telefone.trim() && telefone !== lead.telefone) {
+            // Número pela metade não é salvo: o campo volta ao valor atual
+            // em vez de gravar algo com que ninguém consegue falar.
+            if (!isValidPhone(telefone)) {
+              setTelefone(formatPhone(lead.telefone));
+              return;
+            }
+            if (telefone !== lead.telefone) {
               acoes.atualizarContato.mutate({
                 clientId: lead.client_id,
-                patch: { telefone: telefone.trim() },
+                patch: { telefone },
               });
             }
           }}
