@@ -11,6 +11,7 @@ import { Check, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { formatPhone } from "@/lib/masks";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   diffDaSugestao,
@@ -50,6 +51,11 @@ function CartaoSugestao({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">{s.lead_nome}</span>
+            {s.telefone && (
+              <span className="text-sm tabular-nums text-muted-foreground">
+                {formatPhone(s.telefone)}
+              </span>
+            )}
             <Badge variant="secondary" className={corDaConfianca(s.confianca)}>
               {s.confianca === null ? "sem nota" : `confiança ${s.confianca}`}
             </Badge>
