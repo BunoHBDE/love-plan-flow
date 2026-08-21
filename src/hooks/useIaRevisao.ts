@@ -14,6 +14,16 @@ import { toast as sonner } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { QUERY_KEYS, invalidateQueries } from "@/lib/queryClient";
 
+/**
+ * `integrations/supabase/types.ts` é gerado a partir do schema e ainda não
+ * conhece a tabela `ia_sugestoes` nem as funções da revisão: ele não foi
+ * regerado depois que elas entraram. Até lá estas chamadas passam por um
+ * cliente sem tipos — o formato do retorno está declarado nas interfaces
+ * deste arquivo, que é o que o resto do app consome.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
+
 /** Um campo que a sugestão muda, já pareado com o valor que ele tinha. */
 export interface CampoAlterado {
   campo: string;
@@ -25,6 +35,7 @@ export interface SugestaoRevisao {
   lead_id: string;
   sugestao_id: string;
   lead_nome: string;
+  telefone: string | null;
   etapa: string | null;
   semantica: string | null;
   qualificacao: string | null;
@@ -85,7 +96,7 @@ function resumirData(lado: Record<string, unknown> | undefined): string | null {
 }
 
 async function carregar(): Promise<SugestaoRevisao[]> {
-  const { data, error } = await supabase.rpc("ia_revisao_lista");
+  const { data, error } = await db.rpc("ia_revisao_lista");
   if (error) throw error;
   return (data ?? []) as unknown as SugestaoRevisao[];
 }
@@ -101,7 +112,7 @@ export function useIaRevisao() {
   // para a aplicação automática em lote, não para você.
   const aprovar = useMutation({
     mutationFn: async (leadId: string) => {
-      const { data, error } = await supabase.rpc("aplicar_sugestoes_ia", {
+      const { data, error } = await db.rpc("aplicar_sugestoes_ia", {
         p_lead_ids: [leadId],
         p_confianca_min: 0,
         p_dry_run: false,
@@ -121,7 +132,7 @@ export function useIaRevisao() {
 
   const rejeitar = useMutation({
     mutationFn: async (sugestaoId: string) => {
-      const { error } = await supabase
+      const { error } = await db
         .from("ia_sugestoes")
         .update({ status: "rejeitada", revisado_em: new Date().toISOString() })
         .eq("id", sugestaoId);
@@ -136,7 +147,7 @@ export function useIaRevisao() {
 
   const desfazer = useMutation({
     mutationFn: async (eventoId: string) => {
-      const { data, error } = await supabase.rpc("reverter_evento_ia", { p_event_id: eventoId });
+      const { data, error } = await db.rpc("reverter_evento_ia", { p_event_id: eventoId });
       if (error) throw error;
       const r = data as { ok?: boolean; motivo?: string } | null;
       if (!r?.ok) throw new Error(r?.motivo ?? "reversão não aplicada");
