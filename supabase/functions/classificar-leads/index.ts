@@ -42,7 +42,8 @@ REGRAS:
 4. NUNCA invente dados. Se a conversa não menciona um campo, deixe null.
 5. DATA DO CASAMENTO: extraia mes_evento, ano_evento e dia_evento SEPARADOS. mes_evento SEMPRE como número de dois dígitos: 01=janeiro, 02=fevereiro, 03=março, 04=abril, 05=maio, 06=junho, 07=julho, 08=agosto, 09=setembro, 10=outubro, 11=novembro, 12=dezembro. ano_evento com 4 dígitos (ex '2027'). dia_evento como número (ex '18') ou null. Preencha só o que a conversa disser explicitamente — se só disse mês e ano, dia_evento=null; se só o ano, mes_evento=null. NUNCA invente. NÃO confunda data do CASAMENTO com data de uma VISITA/agendamento (ex: 'sabado dia 29' costuma ser visita). Só preencha se for claramente a data do casamento.
 6. CONVIDADOS: se faixa ('90 a 100'), convidados_texto = faixa e convidados_num = maior valor. Se número único, os dois iguais.
-7. Se a conversa estiver confusa, com papéis trocados, ou sem segurança, use precisa_revisao=true e confianca baixa.
+7. CIDADE: é a cidade onde o LEAD mora / de onde ele vem, dita por ele na conversa. NUNCA preencha com "São Lourenço da Serra" só porque é a cidade do Sítio — essa informação está neste prompt, não na conversa. Só use "São Lourenço da Serra" se o próprio lead disser que mora lá. Se a conversa não disser de onde o lead é, cidade = null.
+8. Se a conversa estiver confusa, com papéis trocados, ou sem segurança, use precisa_revisao=true e confianca baixa.
 
 Responda APENAS em JSON válido, sem texto fora do JSON:
 {"etapa":"...","semantica":"...","resultado_label":"...","qualificacao":"qualificado|desqualificado|indefinido","nome_extraido":"... ou null","convidados_texto":"... ou null","convidados_num":0 ou null,"dia_evento":"... ou null","mes_evento":"01-12 ou null","ano_evento":"AAAA ou null","cidade":"... ou null","confianca":0.0,"precisa_revisao":false,"justificativa":"1 frase curta"}`;
@@ -81,6 +82,19 @@ function aplicarTravaDesqualificado(c: any): any {
   return c;
 }
 
+function normalizar(t: string): string {
+  return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+// A cidade so vale se estiver escrita na conversa. Sem esta trava a IA
+// devolve "Sao Lourenco da Serra" mesmo quando o lead nunca disse de onde e:
+// a cidade do Sitio esta no prompt, e o modelo a repete como se fosse dado.
+function validarCidade(c: any, conversa: string): any {
+  if (!c?.cidade) return c;
+  if (!normalizar(conversa).includes(normalizar(String(c.cidade)))) c.cidade = null;
+  return c;
+}
+
 Deno.serve(async (req: Request) => {
   const debug: any = {};
   try {
@@ -114,7 +128,8 @@ Deno.serve(async (req: Request) => {
       const ultimaGeral = msgs[msgs.length-1];
 
       try {
-        const c = aplicarTravaDesqualificado(await classificarConversa(conversa));
+        const c = validarCidade(
+          aplicarTravaDesqualificado(await classificarConversa(conversa)), conversa);
         // Uma etapa pode ter mais de um outcome com a mesma semântica
         // (ex: Dúvidas tem "Aguardando" e "Vai consultar", ambos 'aguardando').
         // Pegamos o de menor ordem — o resultado genérico da etapa.
