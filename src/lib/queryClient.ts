@@ -89,6 +89,7 @@ export const QUERY_KEYS = {
   // ==========================================
   CRM_CONFIG: ['crm', 'config'] as const,
   CRM_LEADS: ['crm', 'leads'] as const,
+  IA_REVISAO: ['crm', 'ia-revisao'] as const,
 } as const;
 
 // ==========================================
@@ -132,6 +133,7 @@ export const invalidateQueries = {
   // CRM
   crmConfig: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CRM_CONFIG }),
   crmLeads: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CRM_LEADS }),
+  iaRevisao: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.IA_REVISAO }),
 
   // Invalida TUDO (use com cuidado!)
   all: () => queryClient.invalidateQueries(),
