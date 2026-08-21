@@ -11,6 +11,16 @@ const SYSTEM_PROMPT = `Você é um analista de CRM do Sítio Canto da Mata, espa
 
 FUNIL (8 etapas em ordem): Saudação, Perguntas, Proposta, Dúvidas, Convite para Visita, Visita Agendada, Pós-visita, Contrato.
 
+COMBINAÇÕES VÁLIDAS (etapa -> semânticas aceitas). Use SOMENTE uma combinação desta lista; qualquer outra é inválida:
+- Saudação: aguardando, respondeu, silencio, voltou_fup
+- Perguntas: aguardando, respondeu, desqualificado, silencio
+- Proposta: aguardando, respondeu, recusou, silencio, voltou_fup
+- Dúvidas: aguardando, respondeu, recusou, silencio, voltou_fup
+- Convite para Visita: aguardando, respondeu, recusou, recuou, silencio, voltou_fup
+- Visita Agendada: agendou, recusou, silencio, voltou_fup  (ATENÇÃO: não existe 'aguardando' nem 'respondeu' aqui — se a visita está marcada e o dia ainda não chegou, a semântica é 'agendou')
+- Pós-visita: aguardando, respondeu, recusou, silencio, voltou_fup
+- Contrato: aguardando, ganhou, pendencia, recusou, silencio, voltou_fup
+
 SEMÂNTICAS possíveis por resultado:
 - aguardando: mensagem enviada pelo Sítio, esperando resposta do lead. IMPORTANTE: se a última mensagem da conversa foi do [SITIO], a semântica é quase sempre 'aguardando' (o Sítio respondeu e espera a reação do lead), MESMO que a conversa esteja ativa com troca de dúvidas. EXCEÇÃO: leads desqualificados nunca ficam 'aguardando' — ver REGRA 1.
 - respondeu: use só quando a última mensagem foi do [NOIVA] e a etapa avança (o lead deu a resposta que faltava).
@@ -105,11 +115,18 @@ Deno.serve(async (req: Request) => {
 
       try {
         const c = aplicarTravaDesqualificado(await classificarConversa(conversa));
+        // Uma etapa pode ter mais de um outcome com a mesma semântica
+        // (ex: Dúvidas tem "Aguardando" e "Vai consultar", ambos 'aguardando').
+        // Pegamos o de menor ordem — o resultado genérico da etapa.
         let outcomeId: string | null = null;
         const { data: outcome } = await supabase.from("crm_stage_outcomes")
-          .select("id, crm_stages!inner(nome)")
-          .eq("semantica", c.semantica).eq("crm_stages.nome", c.etapa).maybeSingle();
+          .select("id, ordem, crm_stages!inner(nome)")
+          .eq("semantica", c.semantica).eq("crm_stages.nome", c.etapa)
+          .order("ordem", { ascending: true }).limit(1).maybeSingle();
         if (outcome) outcomeId = outcome.id;
+        // Combinação etapa+semântica inexistente no CRM: não dá para gravar,
+        // então marcamos para revisão manual em vez de deixar passar calado.
+        if (!outcomeId) c.precisa_revisao = true;
 
         const { error: eIns } = await supabase.from("ia_sugestoes").insert({
           lead_id: leadId,
