@@ -185,6 +185,14 @@ export function RevisaoIA() {
 
   return (
     <div className="space-y-4">
+      {/* Sem esta nota o cartao mente por omissao: ele mostra a etapa que a IA
+          sugeriu, mas ela nao aparece no diff porque nao vai ser gravada. */}
+      <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+        A IA está gravando <strong className="text-foreground">só o número de convidados</strong>.
+        A etapa sugerida aparece em cada cartão como leitura, mas não é aplicada no
+        funil — a data e a etapa entram nos próximos estágios.
+      </p>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs value={filtro} onValueChange={(v) => setFiltro(v as Filtro)}>
           <TabsList>
