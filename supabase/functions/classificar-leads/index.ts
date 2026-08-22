@@ -26,7 +26,7 @@ SEMÂNTICAS possíveis por resultado:
 - respondeu: use só quando a última mensagem foi do [NOIVA] e a etapa avança (o lead deu a resposta que faltava).
 - silencio: o lead parou de responder há tempo.
 - desqualificado: existe SOMENTE na etapa Perguntas — lead não serve (convidados > 100, data impossível, ou fora do escopo). Descarte do Sítio.
-- recusou: da Proposta em diante — o lead disse não (geralmente preço). Decisão do lead.
+- recusou: da Proposta em diante — o lead desistiu do Sítio (preço, escolheu outro lugar). ATENÇÃO: cancelar ou remarcar VISITA não é recusar o negócio — ver REGRA 9.
 - agendou / ganhou / pendencia / voltou_fup / recuou: casos das etapas finais.
 
 REGRAS:
@@ -52,6 +52,9 @@ REGRAS:
 6. CONVIDADOS: se faixa ('90 a 100'), convidados_texto = faixa e convidados_num = maior valor. Se número único, os dois iguais.
 7. CIDADE: é a cidade onde o LEAD mora / de onde ele vem, dita por ele na conversa. NUNCA preencha com "São Lourenço da Serra" só porque é a cidade do Sítio — essa informação está neste prompt, não na conversa. Só use "São Lourenço da Serra" se o próprio lead disser que mora lá. Se a conversa não disser de onde o lead é, cidade = null.
 8. Se a conversa estiver confusa, com papéis trocados, ou sem segurança, use precisa_revisao=true e confianca baixa.
+9. CANCELAR OU REMARCAR A VISITA NÃO É RECUSAR O NEGÓCIO. Se a noiva cancela a visita, diz que não pode no dia, ou pede outra data, e a conversa segue viva — ela pergunta quando pode ser, ou o Sítio ofereceu remarcar — a etapa é "Convite para Visita" com semantica "aguardando". A visita deixa de existir, o convite volta a estar de pé esperando ela escolher um dia.
+   Falas reais que SÃO reagendamento, e nunca "recusou": "Pode cancelar por favor"; "Não vamos conseguir ir"; "Fora amanhã, quando você consegue?"; "Quando tiver desistência você entra em contato comigo?".
+   "recusou" é só quando ela desiste do Sítio: achou caro, escolheu outro lugar, ou disse que não quer mais. Na dúvida entre os dois, use "Convite para Visita"/"aguardando": manter um lead vivo custa uma mensagem, encerrar um lead vivo custa o casamento.
 
 Responda APENAS em JSON válido, sem texto fora do JSON:
 {"etapa":"...","semantica":"...","resultado_label":"...","qualificacao":"qualificado|desqualificado|indefinido","nome_extraido":"... ou null","convidados_texto":"... ou null","convidados_num":0 ou null,"dia_evento":"... ou null","mes_evento":"01-12 ou null","ano_evento":"AAAA ou null","cidade":"... ou null","confianca":0.0,"precisa_revisao":false,"justificativa":"1 frase curta"}`;
@@ -122,6 +125,22 @@ function validarAnoDaNoiva(c: any, textoNoiva: string, textoSitio: string): any 
   return c;
 }
 
+// Quem falou por ultimo decide entre 'respondeu' e 'aguardando'. O proprio
+// prompt ja diz isso, e mesmo assim 6 dos 11 leads marcados como 'respondeu'
+// tinham o Sitio falando por ultimo. Regra mecanica: codigo verifica melhor.
+//
+// So corrigimos nesse sentido. O inverso - virar 'aguardando' em 'respondeu'
+// porque a noiva falou por ultimo - avancaria o funil por conta propria, e a
+// ultima fala dela pode ser um "ok, obrigada" que nao responde nada.
+function validarSemanticaPelaUltima(c: any, ultimaDe: string): any {
+  if (c?.semantica === "respondeu" && ultimaDe === "sitio") {
+    c.semantica = "aguardando";
+    c.justificativa =
+      `[trava: 'respondeu' com o Sitio falando por ultimo] ${c.justificativa ?? ""}`.trim();
+  }
+  return c;
+}
+
 Deno.serve(async (req: Request) => {
   const debug: any = {};
   try {
@@ -163,10 +182,13 @@ Deno.serve(async (req: Request) => {
       const ultimaGeral = msgs[msgs.length-1];
 
       try {
-        const c = validarAnoDaNoiva(
-          validarCidade(
-            aplicarTravaDesqualificado(await classificarConversa(conversa)), conversa),
-          textoNoiva, textoSitio);
+        const ultimaDe = ultimaGeral.direction === "inbound" ? "noiva" : "sitio";
+        const c = validarSemanticaPelaUltima(
+          validarAnoDaNoiva(
+            validarCidade(
+              aplicarTravaDesqualificado(await classificarConversa(conversa)), conversa),
+            textoNoiva, textoSitio),
+          ultimaDe);
         // Uma etapa pode ter mais de um outcome com a mesma semântica
         // (ex: Dúvidas tem "Aguardando" e "Vai consultar", ambos 'aguardando').
         // Pegamos o de menor ordem — o resultado genérico da etapa.
@@ -200,7 +222,7 @@ Deno.serve(async (req: Request) => {
           qtd_mensagens: msgs.length,
           ultima_msg_noiva: inbound.length ? inbound[inbound.length-1].sent_at : null,
           ultima_msg_sitio: outbound.length ? outbound[outbound.length-1].sent_at : null,
-          ultima_de: ultimaGeral.direction === "inbound" ? "noiva" : "sitio",
+          ultima_de: ultimaDe,
         });
         if (eIns) resultados.push({ leadId, ok:false, insertErro: eIns.message });
         else resultados.push({ leadId, ok:true, etapa:c.etapa, semantica:c.semantica });
