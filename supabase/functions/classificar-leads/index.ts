@@ -40,7 +40,15 @@ REGRAS:
 2. Nome real: extraia o nome do lead do TEXTO da conversa (ex: "me chamo Guilherme"), não de um nome comercial.
 3. Infira pelo contexto mesmo em conversa curta.
 4. NUNCA invente dados. Se a conversa não menciona um campo, deixe null.
-5. DATA DO CASAMENTO: extraia mes_evento, ano_evento e dia_evento SEPARADOS. mes_evento SEMPRE como número de dois dígitos: 01=janeiro, 02=fevereiro, 03=março, 04=abril, 05=maio, 06=junho, 07=julho, 08=agosto, 09=setembro, 10=outubro, 11=novembro, 12=dezembro. ano_evento com 4 dígitos (ex '2027'). dia_evento como número (ex '18') ou null. Preencha só o que a conversa disser explicitamente — se só disse mês e ano, dia_evento=null; se só o ano, mes_evento=null. NUNCA invente. NÃO confunda data do CASAMENTO com data de uma VISITA/agendamento (ex: 'sabado dia 29' costuma ser visita). Só preencha se for claramente a data do casamento.
+5. DATA DO CASAMENTO — extraia SOMENTE o que a NOIVA disse. O que o SÍTIO escreve nunca é a data dela.
+   - A primeira linha da conversa diz que dia é hoje. Use-a para resolver referências relativas: "ano que vem", "desse ano", "daqui a dois anos". Se ela disser um mês que já passou neste ano, é do ano que vem.
+   - Formato: mes_evento com dois dígitos (01=janeiro ... 12=dezembro), ano_evento com 4 dígitos, dia_evento como número ou null.
+   - NUNCA tire data de mensagem marcada [SITIO]. Em especial, IGNORE: "proposta para casamentos em 2027" (é a nossa tabela de preços, não a data dela); "nossa visita marcada para esse domingo (23/08)" e qualquer agendamento de visita; "reajuste a partir de setembro" (é preço nosso).
+   - FAIXA de meses ("setembro a dezembro", "por volta de março e abril"): NÃO escolha um mês. Deixe mes_evento null e preencha só o ano.
+   - mes_evento só existe acompanhado de ano_evento. Se souber o mês mas não o ano, os dois vão null.
+   - Dois dias possíveis ("29 ou 30 de maio"): dia_evento null, mês e ano preenchidos.
+   - Se ela disser que ainda não tem data, os três vão null. Não deduza a partir do que respondemos.
+   - Se ela mudar de ideia ao longo da conversa, vale a ÚLTIMA data que ela disse.
 6. CONVIDADOS: se faixa ('90 a 100'), convidados_texto = faixa e convidados_num = maior valor. Se número único, os dois iguais.
 7. CIDADE: é a cidade onde o LEAD mora / de onde ele vem, dita por ele na conversa. NUNCA preencha com "São Lourenço da Serra" só porque é a cidade do Sítio — essa informação está neste prompt, não na conversa. Só use "São Lourenço da Serra" se o próprio lead disser que mora lá. Se a conversa não disser de onde o lead é, cidade = null.
 8. Se a conversa estiver confusa, com papéis trocados, ou sem segurança, use precisa_revisao=true e confianca baixa.
@@ -95,6 +103,25 @@ function validarCidade(c: any, conversa: string): any {
   return c;
 }
 
+// O ano so vale se vier da noiva. Sem esta trava a IA le "proposta para
+// casamentos em 2027" — mensagem NOSSA — e devolve 2027 como se ela tivesse
+// dito, invertendo a precedencia: o ano da proposta so pode entrar pela
+// cascata no banco, e so quando o lead nao tem data nenhuma.
+const INDICIO_TEMPORAL =
+  /(\b20[2-9]\d\b|janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|ano\s*(que|q)\s*vem|pr[oó]x|daqui|ano seguinte)/i;
+
+function validarAnoDaNoiva(c: any, textoNoiva: string, textoSitio: string): any {
+  if (!c?.ano_evento) return c;
+  const ano = String(c.ano_evento);
+  if (textoNoiva.includes(ano)) return c;           // ela disse o ano
+  // Ela pode ter dito o tempo de outro jeito ("ano q vem", "setembro a
+  // dezembro"). Na duvida a trava se cala: derrubar um ano legitimo custa
+  // mais do que deixar passar um que a cascata no banco ainda filtra.
+  if (INDICIO_TEMPORAL.test(textoNoiva)) return c;
+  if (textoSitio.includes(ano)) c.ano_evento = null;
+  return c;
+}
+
 Deno.serve(async (req: Request) => {
   const debug: any = {};
   try {
@@ -121,15 +148,25 @@ Deno.serve(async (req: Request) => {
         .eq("crm_lead_id", leadId).order("sent_at", { ascending: true });
       if (!msgs || msgs.length === 0) { resultados.push({ leadId, ok:false, motivo:"sem msgs" }); continue; }
 
-      const conversa = msgs.map((m: any) =>
-        (m.direction === "inbound" ? "[NOIVA] " : "[SITIO] ") + (m.body ?? `(${m.msg_type})`)).join("\n");
+      const linhas = msgs.map((m: any) =>
+        (m.direction === "inbound" ? "[NOIVA] " : "[SITIO] ") + (m.body ?? `(${m.msg_type})`));
+      // Sem isto o modelo nao resolve "desse ano" nem "ano que vem": ele nao
+      // tem relogio. Foi o que fez "20 de novembro, desse ano" virar 2024.
+      const hoje = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+      const conversa = `Hoje e ${hoje}.\n\n` + linhas.join("\n");
+      const textoNoiva = msgs.filter((m: any) => m.direction === "inbound")
+        .map((m: any) => m.body ?? "").join("\n");
+      const textoSitio = msgs.filter((m: any) => m.direction === "outbound")
+        .map((m: any) => m.body ?? "").join("\n");
       const inbound = msgs.filter((m: any) => m.direction === "inbound");
       const outbound = msgs.filter((m: any) => m.direction === "outbound");
       const ultimaGeral = msgs[msgs.length-1];
 
       try {
-        const c = validarCidade(
-          aplicarTravaDesqualificado(await classificarConversa(conversa)), conversa);
+        const c = validarAnoDaNoiva(
+          validarCidade(
+            aplicarTravaDesqualificado(await classificarConversa(conversa)), conversa),
+          textoNoiva, textoSitio);
         // Uma etapa pode ter mais de um outcome com a mesma semântica
         // (ex: Dúvidas tem "Aguardando" e "Vai consultar", ambos 'aguardando').
         // Pegamos o de menor ordem — o resultado genérico da etapa.
