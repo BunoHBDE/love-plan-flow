@@ -26,7 +26,7 @@ SEMÂNTICAS possíveis por resultado:
 - respondeu: use só quando a última mensagem foi do [NOIVA] e a etapa avança (o lead deu a resposta que faltava).
 - silencio: o lead parou de responder há tempo.
 - desqualificado: existe SOMENTE na etapa Perguntas — lead não serve (convidados > 100, data impossível, ou fora do escopo). Descarte do Sítio.
-- recusou: da Proposta em diante — o lead disse não (geralmente preço). Decisão do lead.
+- recusou: da Proposta em diante — o lead desistiu do Sítio (preço, escolheu outro lugar). ATENÇÃO: cancelar ou remarcar VISITA não é recusar o negócio — ver REGRA 9.
 - agendou / ganhou / pendencia / voltou_fup / recuou: casos das etapas finais.
 
 REGRAS:
@@ -52,6 +52,9 @@ REGRAS:
 6. CONVIDADOS: se faixa ('90 a 100'), convidados_texto = faixa e convidados_num = maior valor. Se número único, os dois iguais.
 7. CIDADE: é a cidade onde o LEAD mora / de onde ele vem, dita por ele na conversa. NUNCA preencha com "São Lourenço da Serra" só porque é a cidade do Sítio — essa informação está neste prompt, não na conversa. Só use "São Lourenço da Serra" se o próprio lead disser que mora lá. Se a conversa não disser de onde o lead é, cidade = null.
 8. Se a conversa estiver confusa, com papéis trocados, ou sem segurança, use precisa_revisao=true e confianca baixa.
+9. CANCELAR OU REMARCAR A VISITA NÃO É RECUSAR O NEGÓCIO. Se a noiva cancela a visita, diz que não pode no dia, ou pede outra data, e a conversa segue viva — ela pergunta quando pode ser, ou o Sítio ofereceu remarcar — a etapa é "Convite para Visita" com semantica "aguardando". A visita deixa de existir, o convite volta a estar de pé esperando ela escolher um dia.
+   Falas reais que SÃO reagendamento, e nunca "recusou": "Pode cancelar por favor"; "Não vamos conseguir ir"; "Fora amanhã, quando você consegue?"; "Quando tiver desistência você entra em contato comigo?".
+   "recusou" é só quando ela desiste do Sítio: achou caro, escolheu outro lugar, ou disse que não quer mais. Na dúvida entre os dois, use "Convite para Visita"/"aguardando": manter um lead vivo custa uma mensagem, encerrar um lead vivo custa o casamento.
 
 Responda APENAS em JSON válido, sem texto fora do JSON:
 {"etapa":"...","semantica":"...","resultado_label":"...","qualificacao":"qualificado|desqualificado|indefinido","nome_extraido":"... ou null","convidados_texto":"... ou null","convidados_num":0 ou null,"dia_evento":"... ou null","mes_evento":"01-12 ou null","ano_evento":"AAAA ou null","cidade":"... ou null","confianca":0.0,"precisa_revisao":false,"justificativa":"1 frase curta"}`;
