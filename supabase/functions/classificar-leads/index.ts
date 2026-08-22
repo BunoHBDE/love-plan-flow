@@ -125,6 +125,22 @@ function validarAnoDaNoiva(c: any, textoNoiva: string, textoSitio: string): any 
   return c;
 }
 
+// Quem falou por ultimo decide entre 'respondeu' e 'aguardando'. O proprio
+// prompt ja diz isso, e mesmo assim 6 dos 11 leads marcados como 'respondeu'
+// tinham o Sitio falando por ultimo. Regra mecanica: codigo verifica melhor.
+//
+// So corrigimos nesse sentido. O inverso - virar 'aguardando' em 'respondeu'
+// porque a noiva falou por ultimo - avancaria o funil por conta propria, e a
+// ultima fala dela pode ser um "ok, obrigada" que nao responde nada.
+function validarSemanticaPelaUltima(c: any, ultimaDe: string): any {
+  if (c?.semantica === "respondeu" && ultimaDe === "sitio") {
+    c.semantica = "aguardando";
+    c.justificativa =
+      `[trava: 'respondeu' com o Sitio falando por ultimo] ${c.justificativa ?? ""}`.trim();
+  }
+  return c;
+}
+
 Deno.serve(async (req: Request) => {
   const debug: any = {};
   try {
@@ -166,10 +182,13 @@ Deno.serve(async (req: Request) => {
       const ultimaGeral = msgs[msgs.length-1];
 
       try {
-        const c = validarAnoDaNoiva(
-          validarCidade(
-            aplicarTravaDesqualificado(await classificarConversa(conversa)), conversa),
-          textoNoiva, textoSitio);
+        const ultimaDe = ultimaGeral.direction === "inbound" ? "noiva" : "sitio";
+        const c = validarSemanticaPelaUltima(
+          validarAnoDaNoiva(
+            validarCidade(
+              aplicarTravaDesqualificado(await classificarConversa(conversa)), conversa),
+            textoNoiva, textoSitio),
+          ultimaDe);
         // Uma etapa pode ter mais de um outcome com a mesma semântica
         // (ex: Dúvidas tem "Aguardando" e "Vai consultar", ambos 'aguardando').
         // Pegamos o de menor ordem — o resultado genérico da etapa.
@@ -203,7 +222,7 @@ Deno.serve(async (req: Request) => {
           qtd_mensagens: msgs.length,
           ultima_msg_noiva: inbound.length ? inbound[inbound.length-1].sent_at : null,
           ultima_msg_sitio: outbound.length ? outbound[outbound.length-1].sent_at : null,
-          ultima_de: ultimaGeral.direction === "inbound" ? "noiva" : "sitio",
+          ultima_de: ultimaDe,
         });
         if (eIns) resultados.push({ leadId, ok:false, insertErro: eIns.message });
         else resultados.push({ leadId, ok:true, etapa:c.etapa, semantica:c.semantica });
