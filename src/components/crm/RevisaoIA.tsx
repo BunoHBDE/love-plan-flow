@@ -185,12 +185,12 @@ export function RevisaoIA() {
 
   return (
     <div className="space-y-4">
-      {/* Sem esta nota o cartao mente por omissao: ele mostra a etapa que a IA
-          sugeriu, mas ela nao aparece no diff porque nao vai ser gravada. */}
+      {/* A gravacao automatica roda 3x por dia; esta tela existe para o que
+          ficou de fora dela e para desfazer o que entrou errado. */}
       <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-        A IA está gravando <strong className="text-foreground">só o número de convidados</strong>.
-        A etapa sugerida aparece em cada cartão como leitura, mas não é aplicada no
-        funil — a data e a etapa entram nos próximos estágios.
+        A IA grava sozinha <strong className="text-foreground">3x por dia</strong>: etapa,
+        convidados e data do casamento. Ela nunca mexe em etapa que você
+        preencheu, e toda gravação pode ser desfeita aqui.
       </p>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
