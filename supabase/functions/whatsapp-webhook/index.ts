@@ -15,6 +15,21 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+/**
+ * Impressao digital de uma string: SHA-256 truncado em 12 hex.
+ * Serve para comparar valores no log sem registrar o valor em si —
+ * o hash nao volta para a string de origem.
+ */
+async function digital(valor: string): Promise<string> {
+  if (valor === "") return "(vazio)";
+  const bytes = new TextEncoder().encode(valor);
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 12);
+}
+
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
 
@@ -32,8 +47,11 @@ Deno.serve(async (req: Request) => {
 
     // Diagnostico do 403. A Meta so mostra "nao foi possivel validar",
     // sem dizer qual das condicoes falhou, entao o log precisa dizer.
-    // Nunca registra o conteudo dos tokens: so o tamanho e o veredito,
-    // que ja basta para separar secret vazio, whitespace e valor errado.
+    // Nunca registra o conteudo dos tokens: so o tamanho, o veredito e
+    // uma impressao digital (SHA-256 truncado), que identifica QUAL
+    // valor esta guardado sem permitir reconstruir o valor a partir do
+    // log. E o que separa "o secret nao foi atualizado" de "o secret
+    // esta certo e o problema e outro".
     console.error("whatsapp-webhook: handshake recusado", JSON.stringify({
       modo: mode,
       tem_challenge: challenge !== null,
@@ -41,6 +59,8 @@ Deno.serve(async (req: Request) => {
       tamanho_token_esperado: VERIFY_TOKEN.length,
       secret_configurado: VERIFY_TOKEN !== "",
       tokens_conferem: token === VERIFY_TOKEN,
+      digital_recebido: await digital(token),
+      digital_esperado: await digital(VERIFY_TOKEN),
     }));
 
     return new Response("Forbidden", { status: 403 });
