@@ -114,6 +114,12 @@ export function derivar(
     lead.compareceu === "remarcou" ||
     (lead.data_agendamento !== null && lead.compareceu !== "sim");
 
+  // A situação sai da conversa de verdade, não de uma data editada na mão:
+  // quem falou por último no WhatsApp decide se a bola está com a gente
+  // (mandamos e esperamos) ou com o lead (ele respondeu, esperamos nós
+  // mandarmos de novo). Sem mensagem ligada ao lead ainda, cai para o
+  // cálculo antigo pela data do CRM — é o caso de quem entrou antes da
+  // integração ou cuja conversa não foi casada com o lead.
   let situacao: Situacao;
   if (lead.encerramento === "contratou") {
     situacao = "contratou";
@@ -121,10 +127,13 @@ export function derivar(
     situacao = "perdido_recusa";
   } else if (lead.encerramento === "desqualificado") {
     situacao = "desqualificado";
-  } else if (!visitaPendente && diasParado >= prazo) {
-    situacao = "em_silencio";
+  } else if (lead.ultimaMensagem?.direcao === "inbound") {
+    situacao = "respondeu";
+  } else if (lead.ultimaMensagem?.direcao === "outbound") {
+    const diasSemResposta = diffDias(lead.ultimaMensagem.em.slice(0, 10), hojeISO);
+    situacao = !visitaPendente && diasSemResposta >= prazo ? "em_silencio" : "aguardando";
   } else {
-    situacao = "em_conversa";
+    situacao = !visitaPendente && diasParado >= prazo ? "em_silencio" : "aguardando";
   }
 
   // --- Próximo passo e quando ---

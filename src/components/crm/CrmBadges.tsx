@@ -14,7 +14,7 @@ import {
  * pura, então não têm borda — só o fundo suave que os separa do texto.
  *
  * A situação do lead e, quando o atendimento está em aberto, a etapa em que
- * ele parou — "Em conversa · Proposta". Leads encerrados não têm etapa atual,
+ * ele parou — "Aguardando · Proposta". Leads encerrados não têm etapa atual,
  * então mostram só a situação.
  */
 export function SituacaoBadge({
