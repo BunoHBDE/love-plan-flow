@@ -38,13 +38,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { useCrmLeads } from "@/hooks/useCrmLeads";
 import type {
@@ -73,7 +67,6 @@ const DESFECHOS: { valor: Encerramento; label: string; ajuda: string }[] = [
 
 export function EncerrarLead({
   lead,
-  config,
   acoes,
   aberto,
   inicial = "recusou",
@@ -150,19 +143,14 @@ export function EncerrarLead({
           {/* Quem contratou não tem objeção a registrar. */}
           {!ganhou && (
             <div className="space-y-2">
-              <Label htmlFor="motivo-objecao">Motivo</Label>
-              <Select value={motivo} onValueChange={setMotivo}>
-                <SelectTrigger id="motivo-objecao">
-                  <SelectValue placeholder="Escolha o motivo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {config.motivos.map((m) => (
-                    <SelectItem key={m.id} value={m.label}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="encerrar-motivo-objecao">Motivo / objeção</Label>
+              <Textarea
+                id="encerrar-motivo-objecao"
+                rows={2}
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Preço, escolheu outro lugar, mudou de ideia..."
+              />
             </div>
           )}
         </div>
@@ -174,12 +162,12 @@ export function EncerrarLead({
           <Button
             variant={ganhou ? "default" : "destructive"}
             className={cn(ganhou && "bg-success text-success-foreground hover:bg-success/90")}
-            disabled={!ganhou && !motivo}
+            disabled={!ganhou && !motivo.trim()}
             onClick={() => {
               acoes.encerrar.mutate({
                 lead,
                 encerramento: tipo,
-                motivo: ganhou ? null : motivo,
+                motivo: ganhou ? null : motivo.trim(),
               });
               onFechar();
             }}
