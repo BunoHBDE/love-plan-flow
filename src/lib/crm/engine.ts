@@ -77,7 +77,11 @@ export function derivar(
 ): CrmDerived {
   const posicao = posicaoAtual(lead, stages);
   const etapaAtual = posicao?.stage ?? stages[0] ?? null;
-  const proximaEtapa = posicao ? (stages[posicao.indice + 1] ?? null) : null;
+  // Lead novo ainda não tem entrada em crm_lead_stages: `posicao` é nulo, mas
+  // ele está implicitamente na primeira etapa, então a próxima é a segunda —
+  // não pular direto para "sem próxima etapa", que acionaria o fechamento.
+  const indiceAtual = posicao?.indice ?? (stages.length > 0 ? 0 : -1);
+  const proximaEtapa = indiceAtual >= 0 ? (stages[indiceAtual + 1] ?? null) : null;
 
   // --- Situação ---
   // O encerramento é um fato gravado no lead, não uma inferência: ele vence
