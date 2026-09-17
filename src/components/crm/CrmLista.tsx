@@ -400,11 +400,11 @@ export function CrmLista({
             )}
           >
             <span>Lead</span>
-            <span>Situação</span>
-            <span>Fase</span>
-            <span>Próxima etapa</span>
-            <span>Últ. contato</span>
-            <span>Ações</span>
+            <span className="text-center">Situação</span>
+            <span className="text-center">Fase</span>
+            <span className="text-center">Próxima etapa</span>
+            <span className="text-center">Últ. contato</span>
+            <span className="text-center">Ações</span>
           </div>
 
           <div className="divide-y divide-border">
@@ -513,24 +513,26 @@ function LinhaLeadBase({
       </div>
 
       {/* Situação */}
-      <div>
+      <div className="flex lg:justify-center">
         <SituacaoBadge situacao={derived.situacao} />
       </div>
 
       {/* Fase */}
-      <div>
+      <div className="flex lg:justify-center">
         <FaseBadge nome={derived.etapaAtual?.nome ?? null} />
       </div>
 
       {/* Próxima etapa, com o prazo dela */}
-      <ProximaEtapaCelula derived={derived} />
+      <ProximaEtapaCelula derived={derived} className="lg:text-center" />
 
       {/* Últ. contato */}
-      <span className="text-xs text-muted-foreground">{ultimoContato}</span>
+      <span className="text-xs text-muted-foreground lg:text-center">
+        {ultimoContato}
+      </span>
 
       {/* Ações. Largura fixa: sem ela, a linha de um lead que não tem
           botão primário encolhe aqui e desalinha todas as colunas. */}
-      <div className="flex shrink-0 items-center gap-2 lg:justify-end">
+      <div className="flex shrink-0 items-center gap-2 lg:justify-center">
         <AcaoRapidaLinha
           lead={lead}
           config={config}
