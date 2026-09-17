@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
-  ArrowRight,
   ChevronDown,
   MessageCircle,
   RotateCcw,
@@ -177,7 +176,12 @@ function ConteudoDrawer({
 
       {/* Os campos mais usados no dia a dia ficam logo no topo, antes até do próximo passo. */}
       <Secao titulo="Dados principais">
-        <FormularioQualificacao lead={lead} acoes={acoes} idPrefixo="gaveta" />
+        <FormularioQualificacao
+          lead={lead}
+          acoes={acoes}
+          idPrefixo="gaveta"
+          mostrarNome={false}
+        />
 
         <CampoSelect
           label="Origem"
@@ -358,14 +362,11 @@ function ProximoPasso({
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">Próximo passo</p>
-            {!repeteNoBotao && (
-              <p className="font-medium truncate">{derived.proximoPasso}</p>
-            )}
-          </div>
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">Próximo passo</p>
+          {!repeteNoBotao && (
+            <p className="font-medium truncate">{derived.proximoPasso}</p>
+          )}
         </div>
 
         <button
@@ -544,21 +545,6 @@ function BlocoDados({
             }
           }}
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-sm">Última mensagem minha</Label>
-        <DatePickerField
-          value={lead.ultima_msg ?? ""}
-          onChange={(valor) =>
-            salvar({ ultima_msg: valor || null, ultima_msg_manual: true })
-          }
-        />
-        <p className="text-xs text-muted-foreground">
-          {lead.ultima_msg_manual
-            ? "Definida manualmente — o sistema não vai mais atualizar sozinho."
-            : "Atualizada sozinha a cada mensagem de etapa enviada. Enviar follow-up não mexe nela."}
-        </p>
       </div>
 
       <div className="space-y-2">
