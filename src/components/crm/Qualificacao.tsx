@@ -204,10 +204,13 @@ export function FormularioQualificacao({
   lead,
   acoes,
   idPrefixo,
+  mostrarNome = true,
 }: {
   lead: CrmLeadComputed;
   acoes: ReturnType<typeof useCrmLeads>;
   idPrefixo: string;
+  /** A gaveta já edita o nome no cabeçalho — aqui ele só repetiria o campo. */
+  mostrarNome?: boolean;
 }) {
   const [nome, setNome] = useState(lead.nome);
   const [convidados, setConvidados] = useState(
@@ -234,18 +237,20 @@ export function FormularioQualificacao({
 
   return (
     <>
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefixo}-nome`} className="text-sm">
-          Nome dos noivos
-        </Label>
-        <Input
-          id={`${idPrefixo}-nome`}
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          onBlur={salvarNome}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-        />
-      </div>
+      {mostrarNome && (
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefixo}-nome`} className="text-sm">
+            Nome dos noivos
+          </Label>
+          <Input
+            id={`${idPrefixo}-nome`}
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            onBlur={salvarNome}
+            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+          />
+        </div>
+      )}
 
       <DataDoCasamento lead={lead} salvar={salvar} idPrefixo={idPrefixo} />
 
