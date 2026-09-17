@@ -88,7 +88,7 @@ function Barra({
         <p className="truncate text-sm font-medium">{linha.label}</p>
         {linha.taxa !== null && (
           <p className="truncate text-xs text-muted-foreground">
-            {pct(linha.taxa)} responderam
+            {pct(linha.taxa)} avançaram
           </p>
         )}
       </div>
@@ -109,8 +109,8 @@ function Barra({
         <TooltipContent side="top" className="text-xs">
           <p className="font-medium">{linha.label}</p>
           <p>{linha.chegaram} chegaram aqui</p>
-          {linha.responderam !== null && <p>{linha.responderam} responderam</p>}
-          {linha.ignoraram !== null && <p>{linha.ignoraram} ignoraram</p>}
+          {linha.avancaram !== null && <p>{linha.avancaram} avançaram</p>}
+          {linha.perderam !== null && <p>{linha.perderam} perderam aqui</p>}
         </TooltipContent>
       </Tooltip>
 

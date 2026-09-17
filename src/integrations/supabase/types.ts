@@ -261,6 +261,7 @@ export type Database = {
       }
       crm_lead_stages: {
         Row: {
+          entrou_em: string
           id: string
           lead_id: string
           outcome_id: string | null
@@ -268,6 +269,7 @@ export type Database = {
           stage_id: string
         }
         Insert: {
+          entrou_em?: string
           id?: string
           lead_id: string
           outcome_id?: string | null
@@ -275,6 +277,7 @@ export type Database = {
           stage_id: string
         }
         Update: {
+          entrou_em?: string
           id?: string
           lead_id?: string
           outcome_id?: string | null
@@ -319,6 +322,8 @@ export type Database = {
           data_evento: string | null
           data_evento_status: string
           encerrado_em: string | null
+          encerrado_stage_id: string | null
+          encerramento: string | null
           entrada: string
           id: string
           mes_evento: string | null
@@ -343,6 +348,8 @@ export type Database = {
           data_evento?: string | null
           data_evento_status?: string
           encerrado_em?: string | null
+          encerrado_stage_id?: string | null
+          encerramento?: string | null
           entrada?: string
           id?: string
           mes_evento?: string | null
@@ -367,6 +374,8 @@ export type Database = {
           data_evento?: string | null
           data_evento_status?: string
           encerrado_em?: string | null
+          encerrado_stage_id?: string | null
+          encerramento?: string | null
           entrada?: string
           id?: string
           mes_evento?: string | null
@@ -490,6 +499,7 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          dias_prazo: number
           id: string
           nome: string
           ordem: number
@@ -499,6 +509,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
+          dias_prazo?: number
           id?: string
           nome: string
           ordem: number
@@ -508,6 +519,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           created_at?: string
+          dias_prazo?: number
           id?: string
           nome?: string
           ordem?: number

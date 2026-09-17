@@ -23,7 +23,9 @@ import type {
   CrmConfig,
   CrmLead,
   CrmLeadComputed,
+  CrmStage,
   DataEventoStatus,
+  Encerramento,
 } from "@/types/crm.types";
 
 // ==========================================
@@ -34,9 +36,10 @@ const SELECT_LEAD = `
   id, client_id, entrada, origem, ultima_msg, ultima_msg_manual, quando_manual,
   data_agendamento, compareceu, convidados,
   data_evento_status, data_evento, mes_evento, ano_evento,
-  motivo_objecao, encerrado_em, observacoes, arquivado, created_at,
+  motivo_objecao, encerramento, encerrado_stage_id, encerrado_em,
+  observacoes, arquivado, created_at,
   clients ( nome, telefone, email ),
-  crm_lead_stages ( stage_id, outcome_id, registrado_em )
+  crm_lead_stages ( stage_id, entrou_em )
 `;
 
 async function carregarLeads(): Promise<CrmLead[]> {
@@ -71,6 +74,8 @@ async function carregarLeads(): Promise<CrmLead[]> {
       ano_evento: row.ano_evento,
       convidados: row.convidados,
       motivo_objecao: row.motivo_objecao,
+      encerramento: row.encerramento as Encerramento | null,
+      encerrado_stage_id: row.encerrado_stage_id,
       encerrado_em: row.encerrado_em,
       observacoes: row.observacoes,
       arquivado: row.arquivado,
@@ -82,8 +87,7 @@ async function carregarLeads(): Promise<CrmLead[]> {
 
       etapas: (row.crm_lead_stages ?? []).map((e) => ({
         stage_id: e.stage_id,
-        outcome_id: e.outcome_id,
-        registrado_em: e.registrado_em,
+        entrou_em: e.entrou_em,
       })),
     };
   });
@@ -118,6 +122,8 @@ export interface AtualizarLeadInput {
   motivo_objecao?: string | null;
   observacoes?: string | null;
   /** Preenchidos pelo próprio motor, não pelos formulários. */
+  encerramento?: Encerramento | null;
+  encerrado_stage_id?: string | null;
   encerrado_em?: string | null;
   arquivado?: boolean;
 }
@@ -194,78 +200,140 @@ function reverterOtimista(contexto: ContextoOtimista | undefined) {
 }
 
 /**
- * O que registrar um resultado de etapa muda no lead — tanto no banco quanto
- * no cache. É função pura para que a mutação e a atualização otimista
- * apliquem exatamente a mesma regra.
+ * O QUE CADA AÇÃO MUDA NO LEAD
+ *
+ * São funções puras para que a gravação e a atualização otimista apliquem
+ * exatamente a mesma regra — a tela nunca mostra algo que o banco não vá
+ * confirmar.
+ *
+ * Cada uma devolve a lista de entradas resultante, o patch do lead, as etapas
+ * a remover e a frase que vai para a trilha de auditoria.
  */
-function planejarEtapa(
-  lead: CrmLeadComputed,
-  stageId: string,
-  outcomeId: string | null,
-  config: CrmConfig | null,
-) {
-  const stage = config?.stages.find((s) => s.id === stageId);
-  const outcome = stage?.outcomes.find((o) => o.id === outcomeId);
+/** O que a interface manda: o lead e para onde (ou como) movê-lo. */
+export interface MoverArgs {
+  lead: CrmLeadComputed;
+  stageId?: string;
+  encerramento?: Encerramento | null;
+  motivo?: string | null;
+}
 
-  let etapas = lead.etapas.filter((e) => e.stage_id !== stageId);
-  if (outcomeId !== null) {
-    etapas = [
-      ...etapas,
-      {
-        stage_id: stageId,
-        outcome_id: outcomeId,
-        registrado_em: new Date().toISOString(),
-      },
-    ];
-  }
+interface Plano {
+  etapas: CrmLead["etapas"];
+  patch: AtualizarLeadInput;
+  entrar: string | null;
+  remover: string[];
+  descricao: string;
+}
 
-  // O lead recuou para esta etapa: o que veio depois não vale mais.
-  // É o "Faltou" — a visita não aconteceu, então o agendamento sai do
-  // caminho para que um novo possa ser marcado. Sem isso o segundo
-  // agendamento não teria onde entrar, já que cada etapa guarda um
-  // resultado só.
-  let posterioresRemovidos: string[] = [];
-  if (outcome?.semantica === "recuou" && stage) {
-    posterioresRemovidos = (config?.stages ?? [])
-      .filter((s) => s.ordem > stage.ordem)
-      .map((s) => s.id);
-    if (posterioresRemovidos.length > 0) {
-      etapas = etapas.filter((e) => !posterioresRemovidos.includes(e.stage_id));
-    }
-  }
-
-  // Efeitos colaterais no lead, conforme a semântica do resultado.
+/**
+ * Avançar: o lead entra na etapa seguinte.
+ *
+ * `ultima_msg` reinicia junto, porque avançar quer dizer que houve conversa
+ * hoje — é ela que faz o relógio do silêncio voltar a zero. Quem fixou a data
+ * na mão (`ultima_msg_manual`) manda, e não é sobrescrito.
+ */
+function planejarAvanco(lead: CrmLeadComputed, destino: CrmStage): Plano {
   const patch: AtualizarLeadInput = {};
 
-  if (outcome?.semantica === "recuou") {
-    patch.data_agendamento = null;
-    patch.compareceu = null;
-    patch.encerrado_em = null;
-  }
-
+  if (!lead.ultima_msg_manual) patch.ultima_msg = hoje();
   // O passo pendente mudou, então a data ajustada na mão perde o sentido.
   if (lead.quando_manual) patch.quando_manual = null;
 
-  if (outcome?.semantica === "aguardando" && !lead.ultima_msg_manual) {
-    // Você acabou de enviar a mensagem desta etapa: o relógio reinicia.
-    patch.ultima_msg = hoje();
-  }
+  return {
+    etapas: [
+      ...lead.etapas.filter((e) => e.stage_id !== destino.id),
+      { stage_id: destino.id, entrou_em: new Date().toISOString() },
+    ],
+    patch,
+    entrar: destino.id,
+    remover: [],
+    descricao: `Avançou para ${destino.nome}`,
+  };
+}
 
-  if (outcome?.semantica === "agendou" && !lead.compareceu) {
-    patch.compareceu = "pendente";
-  }
+/**
+ * Voltar: o lead volta para uma etapa anterior e o que veio depois é apagado.
+ *
+ * É o "faltou na visita" — que não é recusa: o lead continua vivo, o que não
+ * aconteceu foi o compromisso. Por isso o agendamento sai do caminho, para
+ * que um novo possa ser marcado; sem isso o segundo agendamento não teria
+ * onde entrar, já que cada etapa guarda uma entrada só.
+ */
+function planejarVolta(
+  lead: CrmLeadComputed,
+  destino: CrmStage,
+  stages: CrmStage[],
+): Plano {
+  const remover = stages
+    .filter((s) => s.ordem > destino.ordem)
+    .map((s) => s.id);
 
-  const encerra =
-    outcome?.semantica === "recusou" ||
-    outcome?.semantica === "desqualificado" ||
-    outcome?.semantica === "ganhou";
-  if (encerra) patch.encerrado_em = hoje();
+  return {
+    etapas: lead.etapas.filter((e) => !remover.includes(e.stage_id)),
+    patch: {
+      data_agendamento: null,
+      compareceu: null,
+      encerramento: null,
+      encerrado_stage_id: null,
+      encerrado_em: null,
+      quando_manual: null,
+    },
+    entrar: null,
+    remover,
+    descricao: `Voltou para ${destino.nome}`,
+  };
+}
 
-  const descricao = outcome
-    ? `${stage?.nome}: ${outcome.label}`
-    : `${stage?.nome}: resultado removido`;
+/**
+ * Encerrar: acabou, e fica gravado ONDE acabou.
+ *
+ * A etapa do encerramento é o dado que faltava para medir o gargalo — antes a
+ * perda era registrada onde o menu daquela etapa permitia, e não onde de fato
+ * aconteceu.
+ */
+function planejarEncerramento(
+  lead: CrmLeadComputed,
+  encerramento: Encerramento,
+  motivo: string | null,
+  stageId: string | null,
+): Plano {
+  const rotulos: Record<Encerramento, string> = {
+    contratou: "Contratou",
+    recusou: "Recusou",
+    desqualificado: "Não qualificado",
+  };
 
-  return { etapas, patch, posterioresRemovidos, descricao };
+  return {
+    etapas: lead.etapas,
+    patch: {
+      encerramento,
+      encerrado_stage_id: stageId,
+      encerrado_em: hoje(),
+      motivo_objecao: motivo,
+      quando_manual: null,
+    },
+    entrar: null,
+    remover: [],
+    descricao: motivo
+      ? `${rotulos[encerramento]}: ${motivo}`
+      : rotulos[encerramento],
+  };
+}
+
+/** Reabrir um lead encerrado, quando ele volta a dar sinal de vida. */
+function planejarReabertura(lead: CrmLeadComputed): Plano {
+  return {
+    etapas: lead.etapas,
+    patch: {
+      encerramento: null,
+      encerrado_stage_id: null,
+      encerrado_em: null,
+      ultima_msg: lead.ultima_msg_manual ? undefined : hoje(),
+    },
+    entrar: null,
+    remover: [],
+    descricao: "Reaberto",
+  };
 }
 
 // ==========================================
@@ -332,17 +400,13 @@ export function useCrmLeads(config: CrmConfig | null) {
 
       if (erroLead) throw erroLead;
 
-      // Primeira etapa já entra como "aguardando": a saudação foi enviada.
+      // O lead nasce na primeira etapa: a saudação foi enviada.
       const primeiraEtapa = config?.stages[0];
-      const aguardando = primeiraEtapa?.outcomes.find(
-        (o) => o.semantica === "aguardando",
-      );
-
-      if (primeiraEtapa && aguardando) {
+      if (primeiraEtapa) {
         await supabase.from("crm_lead_stages").insert({
           lead_id: lead.id,
           stage_id: primeiraEtapa.id,
-          outcome_id: aguardando.id,
+          entrou_em: new Date().toISOString(),
         });
       }
 
@@ -358,74 +422,113 @@ export function useCrmLeads(config: CrmConfig | null) {
     onError: erro("criarLead"),
   });
 
-  // --- Registrar o resultado de uma etapa ---
-  const registrarEtapa = useMutation({
-    mutationFn: async (args: {
-      lead: CrmLeadComputed;
-      stageId: string;
-      outcomeId: string | null;
-    }) => {
-      const { lead, stageId, outcomeId } = args;
-      const plano = planejarEtapa(lead, stageId, outcomeId, config);
-      const createdBy = await usuarioAtual();
+  // --- Avançar, voltar, encerrar ---
+  //
+  // As três compartilham a mesma mecânica de gravação porque são a mesma
+  // operação vista de ângulos diferentes: mexer na posição do lead e nos
+  // campos que aquela mexida implica. O que muda é só o plano.
+  const aplicarPlano = async (lead: CrmLeadComputed, plano: Plano) => {
+    const createdBy = await usuarioAtual();
 
-      if (outcomeId === null) {
-        const { error } = await supabase
-          .from("crm_lead_stages")
-          .delete()
-          .eq("lead_id", lead.id)
-          .eq("stage_id", stageId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("crm_lead_stages")
-          .upsert(
-            {
-              lead_id: lead.id,
-              stage_id: stageId,
-              outcome_id: outcomeId,
-              registrado_em: new Date().toISOString(),
-            },
-            { onConflict: "lead_id,stage_id" },
-          );
-        if (error) throw error;
-      }
+    if (plano.entrar) {
+      const { error } = await supabase
+        .from("crm_lead_stages")
+        .upsert(
+          {
+            lead_id: lead.id,
+            stage_id: plano.entrar,
+            entrou_em: new Date().toISOString(),
+          },
+          { onConflict: "lead_id,stage_id" },
+        );
+      if (error) throw error;
+    }
 
-      if (plano.posterioresRemovidos.length > 0) {
-        const { error } = await supabase
-          .from("crm_lead_stages")
-          .delete()
-          .eq("lead_id", lead.id)
-          .in("stage_id", plano.posterioresRemovidos);
-        if (error) throw error;
-      }
+    if (plano.remover.length > 0) {
+      const { error } = await supabase
+        .from("crm_lead_stages")
+        .delete()
+        .eq("lead_id", lead.id)
+        .in("stage_id", plano.remover);
+      if (error) throw error;
+    }
 
-      if (Object.keys(plano.patch).length > 0) {
-        const { error } = await supabase
-          .from("crm_leads")
-          .update(plano.patch)
-          .eq("id", lead.id);
-        if (error) throw error;
-      }
+    if (Object.keys(plano.patch).length > 0) {
+      const { error } = await supabase
+        .from("crm_leads")
+        .update(plano.patch)
+        .eq("id", lead.id);
+      if (error) throw error;
+    }
 
-      registrarEvento(lead.id, createdBy, "etapa", plano.descricao);
-      return plano.descricao;
+    registrarEvento(lead.id, createdBy, "etapa", plano.descricao);
+    return plano.descricao;
+  };
+
+  /**
+   * As três mutações são a mesma coisa vista de ângulos diferentes: montam um
+   * plano, aplicam no cache na hora e no banco em seguida. Só o plano muda.
+   */
+  const rodar = (
+    contexto: string,
+    montar: (args: MoverArgs) => Plano | null,
+  ) => ({
+    mutationFn: async (args: MoverArgs) => {
+      const plano = montar(args);
+      if (!plano) throw new Error("Não há para onde mover este lead.");
+      return aplicarPlano(args.lead, plano);
     },
-    onMutate: ({ lead, stageId, outcomeId }) => {
-      const plano = planejarEtapa(lead, stageId, outcomeId, config);
+    onMutate: (args: MoverArgs) => {
+      const plano = montar(args);
+      if (!plano) return iniciarOtimista((leads) => leads);
       return iniciarOtimista((leads) =>
         leads.map((l) =>
-          l.id === lead.id ? { ...l, ...plano.patch, etapas: plano.etapas } : l,
+          l.id === args.lead.id
+            ? { ...l, ...plano.patch, etapas: plano.etapas }
+            : l,
         ),
       );
     },
-    onSuccess: (descricao) => confirmar(descricao),
-    onError: (error, _args, contexto) => {
-      reverterOtimista(contexto);
-      erro("registrarEtapa")(error);
+    onSuccess: (descricao: string) => confirmar(descricao),
+    onError: (
+      error: Error,
+      _args: MoverArgs,
+      ctx: ContextoOtimista | undefined,
+    ) => {
+      reverterOtimista(ctx);
+      erro(contexto)(error);
     },
     onSettled: () => invalidateQueries.crmLeads(),
   });
+
+  const avancar = useMutation(
+    rodar("avancar", ({ lead, stageId }) => {
+      const destino = stageId
+        ? (config?.stages.find((s) => s.id === stageId) ?? null)
+        : lead.derived.proximaEtapa;
+      return destino ? planejarAvanco(lead, destino) : null;
+    }),
+  );
+
+  const voltar = useMutation(
+    rodar("voltar", ({ lead, stageId }) => {
+      const destino = config?.stages.find((s) => s.id === stageId);
+      return destino ? planejarVolta(lead, destino, config?.stages ?? []) : null;
+    }),
+  );
+
+  const encerrar = useMutation(
+    rodar("encerrar", ({ lead, encerramento, motivo }) =>
+      encerramento
+        ? planejarEncerramento(
+            lead,
+            encerramento,
+            motivo ?? null,
+            lead.derived.etapaAtual?.id ?? null,
+          )
+        : planejarReabertura(lead),
+    ),
+  );
 
   // --- Atualizar campos do lead ---
   const atualizarLead = useMutation({
@@ -496,7 +599,9 @@ export function useCrmLeads(config: CrmConfig | null) {
     loading: query.isLoading,
     error: query.error,
     criarLead,
-    registrarEtapa,
+    avancar,
+    voltar,
+    encerrar,
     atualizarLead,
     atualizarContato,
     excluirLead,
