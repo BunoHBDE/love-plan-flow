@@ -24,9 +24,20 @@ import type {
   CrmLead,
   CrmLeadComputed,
   CrmStage,
+  CrmUltimaMensagem,
   DataEventoStatus,
+  DirecaoMensagem,
   Encerramento,
 } from "@/types/crm.types";
+
+/**
+ * `integrations/supabase/types.ts` não conhece `crm_ultima_mensagem`: é uma
+ * função nova e o arquivo gerado não foi atualizado (mesma situação de
+ * `ia_revisao_lista` em `useIaRevisao.ts`). Até lá esta chamada passa por um
+ * cliente sem tipos — o formato do retorno está declarado abaixo.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
 
 // ==========================================
 // LEITURA
@@ -42,12 +53,40 @@ const SELECT_LEAD = `
   crm_lead_stages ( stage_id, entrou_em )
 `;
 
+interface UltimaMensagemRow {
+  lead_id: string;
+  direction: DirecaoMensagem;
+  sent_at: string;
+}
+
+/**
+ * A mensagem mais recente de cada lead, pela conversa real no WhatsApp — é o
+ * que decide a Situação (Aguardando / Silêncio / Respondeu) no motor. Vem de
+ * uma função estreita porque `messages` não é aberta para o front (ver
+ * migration `crm_situacao_por_mensagem`).
+ */
+async function carregarUltimasMensagens(): Promise<
+  Map<string, CrmUltimaMensagem>
+> {
+  const { data, error } = await db.rpc("crm_ultima_mensagem");
+  if (error) throw error;
+
+  const mapa = new Map<string, CrmUltimaMensagem>();
+  ((data ?? []) as UltimaMensagemRow[]).forEach((row) => {
+    mapa.set(row.lead_id, { direcao: row.direction, em: row.sent_at });
+  });
+  return mapa;
+}
+
 async function carregarLeads(): Promise<CrmLead[]> {
-  const { data, error } = await supabase
-    .from("crm_leads")
-    .select(SELECT_LEAD)
-    .eq("arquivado", false)
-    .order("entrada", { ascending: false });
+  const [{ data, error }, ultimasMensagens] = await Promise.all([
+    supabase
+      .from("crm_leads")
+      .select(SELECT_LEAD)
+      .eq("arquivado", false)
+      .order("entrada", { ascending: false }),
+    carregarUltimasMensagens(),
+  ]);
 
   if (error) throw error;
 
@@ -65,6 +104,7 @@ async function carregarLeads(): Promise<CrmLead[]> {
       origem: row.origem,
       ultima_msg: row.ultima_msg,
       ultima_msg_manual: row.ultima_msg_manual,
+      ultimaMensagem: ultimasMensagens.get(row.id) ?? null,
       quando_manual: row.quando_manual,
       data_agendamento: row.data_agendamento,
       compareceu: row.compareceu as Compareceu | null,

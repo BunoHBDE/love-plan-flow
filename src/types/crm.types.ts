@@ -86,6 +86,15 @@ export type Encerramento = "contratou" | "recusou" | "desqualificado";
 /** A data do casamento pode estar fechada ou ainda ser só um mês/ano. */
 export type DataEventoStatus = "com_data" | "sem_data";
 
+/** Quem mandou a mensagem mais recente da conversa: nós ("outbound") ou o lead ("inbound"). */
+export type DirecaoMensagem = "inbound" | "outbound";
+
+/** A última mensagem trocada no WhatsApp com o lead — o que decide a Situação. */
+export interface CrmUltimaMensagem {
+  direcao: DirecaoMensagem;
+  em: string;
+}
+
 export interface CrmLead {
   id: string;
   client_id: string;
@@ -93,6 +102,8 @@ export interface CrmLead {
   origem: string | null;
   ultima_msg: string | null;
   ultima_msg_manual: boolean;
+  /** Null quando a conversa ainda não está ligada a este lead em `messages`. */
+  ultimaMensagem: CrmUltimaMensagem | null;
   /** Data do próximo passo definida na mão, que sobrepõe a calculada. */
   quando_manual: string | null;
   data_agendamento: string | null;
@@ -125,15 +136,20 @@ export interface CrmLead {
 // ==========================================
 
 export type Situacao =
-  | "em_conversa"
+  /** Mandamos a mensagem e a resposta ainda está dentro do prazo da etapa. */
+  | "aguardando"
+  /** Mandamos a mensagem, passou o prazo da etapa e o lead não respondeu. */
   | "em_silencio"
+  /** O lead respondeu por último: a bola está com a gente. */
+  | "respondeu"
   | "perdido_recusa"
   | "desqualificado"
   | "contratou";
 
 export const SITUACAO_LABELS: Record<Situacao, string> = {
-  em_conversa: "Em conversa",
-  em_silencio: "Em silêncio",
+  aguardando: "Aguardando",
+  em_silencio: "Silêncio",
+  respondeu: "Respondeu",
   perdido_recusa: "Encerrado — recusou",
   // Quem descartou foi você, não o lead: são perdas de natureza diferente e
   // o painel precisa saber distinguir uma da outra.
@@ -142,8 +158,9 @@ export const SITUACAO_LABELS: Record<Situacao, string> = {
 };
 
 export const SITUACAO_STYLES: Record<Situacao, string> = {
-  em_conversa: "bg-primary/10 text-primary",
-  em_silencio: "bg-warning/25 text-warning-foreground",
+  aguardando: "bg-warning/15 text-warning-foreground",
+  em_silencio: "bg-destructive/15 text-destructive",
+  respondeu: "bg-primary/10 text-primary",
   perdido_recusa: "bg-destructive/10 text-destructive",
   desqualificado: "bg-muted text-muted-foreground",
   contratou: "bg-success/20 text-success",
