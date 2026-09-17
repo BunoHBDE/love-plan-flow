@@ -58,3 +58,25 @@ export function formatarDataCurta(iso: string | null | undefined): string {
   const [, mes, dia] = iso.split("-");
   return `${dia}/${mes}`;
 }
+
+/**
+ * "há 4h", "há 1 dia" — a partir de um instante exato (timestamp com hora),
+ * como o horário real da última mensagem. Para quem só tem a data (sem
+ * hora), use `formatarDiasRelativo`.
+ */
+export function formatarRelativo(momento: string): string {
+  const diffMin = Math.floor((Date.now() - new Date(momento).getTime()) / 60_000);
+  if (diffMin < 1) return "agora";
+  if (diffMin < 60) return `há ${diffMin} min`;
+  const diffHoras = Math.floor(diffMin / 60);
+  if (diffHoras < 24) return `há ${diffHoras}h`;
+  const dias = Math.floor(diffHoras / 24);
+  return `há ${dias} dia${dias === 1 ? "" : "s"}`;
+}
+
+/** Mesma ideia, mas a partir de uma contagem de dias já calculada — o
+ * fallback de quem não tem hora exata do último contato. */
+export function formatarDiasRelativo(dias: number): string {
+  if (dias <= 0) return "hoje";
+  return `há ${dias} dia${dias === 1 ? "" : "s"}`;
+}

@@ -142,6 +142,8 @@ export type Situacao =
   | "em_silencio"
   /** O lead respondeu por último: a bola está com a gente. */
   | "respondeu"
+  /** Há uma visita marcada (ou por remarcar/confirmar): a agenda manda, não a conversa. */
+  | "agendou"
   | "perdido_recusa"
   | "desqualificado"
   | "contratou";
@@ -150,6 +152,7 @@ export const SITUACAO_LABELS: Record<Situacao, string> = {
   aguardando: "Aguardando",
   em_silencio: "Silêncio",
   respondeu: "Respondeu",
+  agendou: "Agendou",
   perdido_recusa: "Encerrado — recusou",
   // Quem descartou foi você, não o lead: são perdas de natureza diferente e
   // o painel precisa saber distinguir uma da outra.
@@ -157,13 +160,30 @@ export const SITUACAO_LABELS: Record<Situacao, string> = {
   contratou: "Contratou",
 };
 
-export const SITUACAO_STYLES: Record<Situacao, string> = {
-  aguardando: "bg-warning/15 text-warning-foreground",
-  em_silencio: "bg-destructive/15 text-destructive",
-  respondeu: "bg-primary/10 text-primary",
-  perdido_recusa: "bg-destructive/10 text-destructive",
-  desqualificado: "bg-muted text-muted-foreground",
-  contratou: "bg-success/20 text-success",
+/**
+ * Cor do texto e do ponto que marcam a Situação na lista — sem pílula de
+ * fundo, só o indicador. Os dois separados porque o ponto precisa da cor
+ * cheia (`bg-warning`) para não sumir num círculo de 6px, enquanto o texto
+ * usa a variante pensada para ficar legível direto no fundo da página.
+ */
+export const SITUACAO_TEXT_STYLES: Record<Situacao, string> = {
+  aguardando: "text-warning-foreground",
+  em_silencio: "text-destructive",
+  respondeu: "text-primary",
+  agendou: "text-success",
+  perdido_recusa: "text-destructive",
+  desqualificado: "text-muted-foreground",
+  contratou: "text-success",
+};
+
+export const SITUACAO_DOT_STYLES: Record<Situacao, string> = {
+  aguardando: "bg-warning",
+  em_silencio: "bg-destructive",
+  respondeu: "bg-primary",
+  agendou: "bg-success",
+  perdido_recusa: "bg-destructive",
+  desqualificado: "bg-muted-foreground",
+  contratou: "bg-success",
 };
 
 export type Urgencia = "atrasado" | "hoje" | "futuro";

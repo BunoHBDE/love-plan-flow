@@ -1,21 +1,25 @@
-import { MessageCircle } from "lucide-react";
+import { useState } from "react";
+import { Check, Copy, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { formatarData } from "@/lib/crm/dates";
+import { diffDias, formatarData, formatarDataCurta, hoje } from "@/lib/crm/dates";
 import {
+  SITUACAO_DOT_STYLES,
   SITUACAO_LABELS,
-  SITUACAO_STYLES,
+  SITUACAO_TEXT_STYLES,
+  type CrmDerived,
   type Situacao,
   type Urgencia,
 } from "@/types/crm.types";
 
 /**
  * Nesta página, borda significa "clicável". Os badges abaixo são informação
- * pura, então não têm borda — só o fundo suave que os separa do texto.
+ * pura, então não têm borda.
  *
- * A situação do lead e, quando o atendimento está em aberto, a etapa em que
- * ele parou — "Aguardando · Proposta". Leads encerrados não têm etapa atual,
- * então mostram só a situação.
+ * A situação do lead: um ponto colorido e o texto, sem pílula de fundo — é o
+ * indicador mais lido da linha, então fica leve. Quando o atendimento está em
+ * aberto, pode vir com a etapa em que ele parou — "Aguardando · Proposta".
+ * Leads encerrados não têm etapa atual, então mostram só a situação.
  */
 export function SituacaoBadge({
   situacao,
@@ -29,19 +33,138 @@ export function SituacaoBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
-        SITUACAO_STYLES[situacao],
+        "inline-flex items-center gap-1.5 text-sm font-medium whitespace-nowrap",
+        SITUACAO_TEXT_STYLES[situacao],
         className,
       )}
     >
+      <span
+        className={cn("h-1.5 w-1.5 shrink-0 rounded-full", SITUACAO_DOT_STYLES[situacao])}
+      />
       {SITUACAO_LABELS[situacao]}
       {etapa && (
         <>
-          <span className="mx-1.5 opacity-40">·</span>
+          <span className="opacity-40">·</span>
           <span className="font-semibold">{etapa}</span>
         </>
       )}
     </span>
+  );
+}
+
+/** A etapa atual do lead, como uma pílula neutra — a coluna "Fase" da lista. */
+export function FaseBadge({
+  nome,
+  className,
+}: {
+  nome: string | null;
+  className?: string;
+}) {
+  if (!nome) {
+    return <span className={cn("text-sm text-muted-foreground", className)}>—</span>;
+  }
+
+  return (
+    <span
+      className={cn(
+        "inline-flex w-fit items-center rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground",
+        className,
+      )}
+    >
+      {nome}
+    </span>
+  );
+}
+
+/**
+ * A coluna "Próxima etapa": a etapa seguinte no funil e o prazo dela, com uma
+ * cor por urgência — igual à barra de urgência do "Quando", mas como texto
+ * solto, pensada para caber numa célula da lista em vez de um badge isolado.
+ *
+ * Quando há uma visita marcada (`situacao === "agendou"`), o prazo vira uma
+ * contagem regressiva ("em 3 dias"): é o compromisso da agenda, não o prazo
+ * de silêncio da etapa, e merece o aviso mesmo estando alguns dias à frente.
+ */
+export function ProximaEtapaCelula({
+  derived,
+  className,
+}: {
+  derived: CrmDerived;
+  className?: string;
+}) {
+  const { encerrado, proximaEtapa, quando, urgencia, situacao } = derived;
+
+  if (encerrado) {
+    return <span className={cn("text-sm text-muted-foreground", className)}>Encerrado</span>;
+  }
+
+  const nomeEtapa = proximaEtapa?.nome ?? "Fechar contrato";
+  const prazo = textoDoPrazo(quando, urgencia, situacao);
+
+  return (
+    <div className={className}>
+      <p className="truncate text-sm">{nomeEtapa}</p>
+      <p className={cn("mt-0.5 truncate text-xs font-medium", prazo.className)}>
+        {prazo.texto}
+      </p>
+    </div>
+  );
+}
+
+function textoDoPrazo(
+  quando: string | null,
+  urgencia: Urgencia | null,
+  situacao: Situacao,
+): { texto: string; className: string } {
+  if (!quando || !urgencia) {
+    return { texto: "—", className: "text-muted-foreground" };
+  }
+  if (urgencia === "atrasado") {
+    return { texto: `atrasado (${formatarDataCurta(quando)})`, className: "text-destructive" };
+  }
+  if (urgencia === "hoje") {
+    return { texto: `hoje (${formatarDataCurta(quando)})`, className: "text-warning-foreground" };
+  }
+  // Fora do prazo de silêncio: um compromisso marcado ainda merece destaque
+  // conforme se aproxima, mesmo alguns dias antes de vencer.
+  if (situacao === "agendou") {
+    const dias = diffDias(hoje(), quando);
+    return {
+      texto: `em ${dias} dia${dias === 1 ? "" : "s"} (${formatarDataCurta(quando)})`,
+      className: "text-warning-foreground",
+    };
+  }
+  return { texto: `até ${formatarDataCurta(quando)}`, className: "text-muted-foreground" };
+}
+
+/** Copia o telefone para a área de transferência — o atalho ao lado do número. */
+export function CopiarTelefoneButton({
+  telefone,
+  className,
+}: {
+  telefone: string;
+  className?: string;
+}) {
+  const [copiado, setCopiado] = useState(false);
+
+  return (
+    <button
+      type="button"
+      aria-label="Copiar número"
+      onClick={(evento) => {
+        evento.stopPropagation();
+        void navigator.clipboard.writeText(telefone).then(() => {
+          setCopiado(true);
+          setTimeout(() => setCopiado(false), 1500);
+        });
+      }}
+      className={cn(
+        "shrink-0 text-muted-foreground transition-colors hover:text-foreground",
+        className,
+      )}
+    >
+      {copiado ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+    </button>
   );
 }
 

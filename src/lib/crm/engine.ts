@@ -120,6 +120,10 @@ export function derivar(
   // mandarmos de novo). Sem mensagem ligada ao lead ainda, cai para o
   // cálculo antigo pela data do CRM — é o caso de quem entrou antes da
   // integração ou cuja conversa não foi casada com o lead.
+  //
+  // A visita marcada vence a conversa: enquanto há um compromisso para
+  // confirmar, remarcar ou registrar comparecimento, é a agenda que manda —
+  // não interessa quem falou por último no WhatsApp.
   let situacao: Situacao;
   if (lead.encerramento === "contratou") {
     situacao = "contratou";
@@ -127,13 +131,15 @@ export function derivar(
     situacao = "perdido_recusa";
   } else if (lead.encerramento === "desqualificado") {
     situacao = "desqualificado";
+  } else if (visitaPendente) {
+    situacao = "agendou";
   } else if (lead.ultimaMensagem?.direcao === "inbound") {
     situacao = "respondeu";
   } else if (lead.ultimaMensagem?.direcao === "outbound") {
     const diasSemResposta = diffDias(lead.ultimaMensagem.em.slice(0, 10), hojeISO);
-    situacao = !visitaPendente && diasSemResposta >= prazo ? "em_silencio" : "aguardando";
+    situacao = diasSemResposta >= prazo ? "em_silencio" : "aguardando";
   } else {
-    situacao = !visitaPendente && diasParado >= prazo ? "em_silencio" : "aguardando";
+    situacao = diasParado >= prazo ? "em_silencio" : "aguardando";
   }
 
   // --- Próximo passo e quando ---
