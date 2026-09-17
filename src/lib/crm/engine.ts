@@ -269,12 +269,14 @@ function calcularProximoPasso(ctx: ContextoPasso): {
     };
   }
 
-  // 6. Última etapa, dentro do prazo: não há para onde avançar sem fechar o
-  //    negócio, e fechar é um encerramento, não um passo de rotina.
+  // 6. Última etapa: não há para onde avançar, o que falta é a assinatura.
+  //    Fechar não é avançar — é encerrar bem —, mas continua sendo um passo
+  //    com botão, senão o desfecho mais importante do funil não tem onde ser
+  //    registrado.
   return {
     proximoPasso: "Conferir se assinaram",
     quando: somarDias(paradoDesde, prazo),
-    acao: null,
+    acao: { tipo: "fechar" },
   };
 }
 

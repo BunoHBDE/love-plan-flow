@@ -147,7 +147,7 @@ export function CrmPainel({
       {/* 2 · GARGALO */}
       <Bloco
         titulo="2 · Onde o atendimento trava"
-        descricao="De cada 100 que chegam a uma etapa, quantos seguem adiante. A etapa de maior queda está destacada — é onde a mensagem, o preço ou a proposta daquela etapa precisa mudar. 'Parados' é quanta gente está lá agora, e é a fila de quem você pode chamar hoje."
+        descricao="De cada 100 que chegam a uma etapa, quantos seguem adiante. Quem fecha o contrato numa etapa não conta como queda dela — é o melhor desfecho possível, não uma perda. A etapa de maior queda está destacada: é onde a mensagem, o preço ou a proposta daquela etapa precisa mudar. 'Parados' é quanta gente está lá agora, e é a fila de quem você pode chamar hoje."
       >
         <Table>
           <TableHeader>
@@ -155,6 +155,7 @@ export function CrmPainel({
               <TableHead>Etapa</TableHead>
               <TableHead className="text-right">Chegaram</TableHead>
               <TableHead className="text-right">Avançaram</TableHead>
+              <TableHead className="text-right">Fecharam</TableHead>
               <TableHead className="text-right">Queda</TableHead>
               <TableHead className="text-right">Perderam aqui</TableHead>
               <TableHead className="text-right">Parados</TableHead>
@@ -180,6 +181,15 @@ export function CrmPainel({
                 </TableCell>
                 <TableCell className="text-right">{linha.chegaram}</TableCell>
                 <TableCell className="text-right">{linha.avancaram}</TableCell>
+                <TableCell className="text-right">
+                  {linha.fecharam > 0 ? (
+                    <span className="font-medium text-success">
+                      {linha.fecharam}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell
                   className={cn(
                     "text-right",

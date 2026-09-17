@@ -158,7 +158,9 @@ export type Urgencia = "atrasado" | "hoje" | "futuro";
 export type AcaoProximoPasso =
   | { tipo: "avancar" }
   | { tipo: "compareceu" }
-  | { tipo: "agendamento" };
+  | { tipo: "agendamento" }
+  /** Última etapa: não há para onde avançar, o passo é fechar o negócio. */
+  | { tipo: "fechar" };
 
 /** Coluna do Kanban: uma etapa, ou uma das duas colunas de encerramento. */
 export const COLUNA_GANHO = "__ganho";
