@@ -69,7 +69,8 @@ function CartaoSugestao({
 
           <p className="mt-1 text-sm text-muted-foreground">
             {s.etapa}
-            {s.resultado_label ? `: ${s.resultado_label}` : ""}
+            {s.estado ? ` · ${s.estado}` : ""}
+            {s.motivo_sugerido ? ` · ${s.motivo_sugerido}` : ""}
             {s.qtd_mensagens ? ` · ${s.qtd_mensagens} mensagens lidas` : ""}
           </p>
         </div>
@@ -189,8 +190,8 @@ export function RevisaoIA() {
           ficou de fora dela e para desfazer o que entrou errado. */}
       <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
         A IA grava sozinha <strong className="text-foreground">3x por dia</strong>: etapa,
-        convidados e data do casamento. Ela nunca mexe em etapa que você
-        preencheu, e toda gravação pode ser desfeita aqui.
+        convidados e data do casamento. Ela nunca puxa um lead para trás nem
+        reabre um encerrado — só avança. Toda gravação pode ser desfeita aqui.
       </p>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
