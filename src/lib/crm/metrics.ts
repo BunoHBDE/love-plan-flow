@@ -61,13 +61,19 @@ export function calcularFunil(
         l.encerrado_stage_id === stage.id &&
         (l.encerramento === "recusou" || l.encerramento === "desqualificado"),
     ).length;
+    const fecharam = leads.filter(
+      (l) => l.encerrado_stage_id === stage.id && l.encerramento === "contratou",
+    ).length;
 
     linhas.push({
       label: `${i + 1} · ${stage.nome}`,
       chegaram,
       avancaram,
       perderam,
-      taxa: chegaram > 0 ? avancaram / chegaram : null,
+      // Quem fechou o contrato aqui não "deixou de avançar": teve o melhor
+      // desfecho possível. Sem somá-lo, fechar cedo derrubaria a taxa da
+      // etapa que fechou — o melhor resultado contado como o pior.
+      taxa: chegaram > 0 ? (avancaram + fecharam) / chegaram : null,
       pctTotal: pct(chegaram),
     });
   });
@@ -125,13 +131,18 @@ export interface LinhaGargalo {
   avancaram: number;
   /** Encerraram aqui — recusa ou descarte. */
   perderam: number;
+  /** Fecharam contrato aqui. Nem toda venda espera o funil inteiro. */
+  fecharam: number;
   /** Estão parados aqui agora, com o atendimento em aberto. */
   parados: number;
   /** Quantos dos parados já passaram do prazo da etapa. */
   emSilencio: number;
   /** Mediana de dias que os parados estão esperando. */
   diasMediana: number | null;
-  /** Fração de quem chegou e não seguiu. É a coluna que ordena o problema. */
+  /**
+   * Fração de quem chegou aqui e não teve desfecho — nem avançou, nem fechou.
+   * É a coluna que ordena o problema.
+   */
   queda: number | null;
   /** A etapa de maior queda, entre as que têm volume para significar algo. */
   gargalo: boolean;
@@ -162,6 +173,14 @@ export function calcularGargalo(
         (l.encerramento === "recusou" || l.encerramento === "desqualificado"),
     ).length;
 
+    // Fechar o contrato numa etapa intermediária é possível: quem aprova a
+    // proposta na hora não precisa passar pela visita. Esse lead tem alcance
+    // parado naquela etapa e, sem esta conta, entraria na queda dela como se
+    // tivesse sumido.
+    const fecharam = leads.filter(
+      (l) => l.encerrado_stage_id === stage.id && l.encerramento === "contratou",
+    ).length;
+
     const naEtapa = leads.filter(
       (l) => !l.derived.encerrado && l.derived.etapaAtual?.id === stage.id,
     );
@@ -172,11 +191,12 @@ export function calcularGargalo(
       chegaram,
       avancaram,
       perderam,
+      fecharam,
       parados: naEtapa.length,
       emSilencio: naEtapa.filter((l) => l.derived.situacao === "em_silencio")
         .length,
       diasMediana: mediana(naEtapa.map((l) => l.derived.diasParado)),
-      queda: chegaram > 0 ? 1 - avancaram / chegaram : null,
+      queda: chegaram > 0 ? 1 - (avancaram + fecharam) / chegaram : null,
       gargalo: false,
     };
   });

@@ -20,6 +20,7 @@ import {
   CornerUpLeft,
   XCircle,
   ArrowRight,
+  Handshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +39,7 @@ import {
   type Compareceu,
   type CrmConfig,
   type CrmLeadComputed,
+  type Encerramento,
 } from "@/types/crm.types";
 import { EncerrarLead } from "./EncerrarLead";
 
@@ -63,7 +65,8 @@ function MenuExcecoes({
   onEncerrar,
 }: Omit<Props, "onAbrirLead"> & {
   gatilho: React.ReactNode;
-  onEncerrar: () => void;
+  /** Abre o diálogo de encerramento no desfecho pedido. */
+  onEncerrar: (inicial: Encerramento) => void;
 }) {
   const atual = lead.derived.etapaAtual;
   const indice = config.stages.findIndex((s) => s.id === atual?.id);
@@ -102,7 +105,20 @@ function MenuExcecoes({
           </>
         )}
 
-        <DropdownMenuItem onSelect={onEncerrar} className="text-destructive">
+        {/* Fechar mora aqui, e não só na última etapa, porque nem todo
+            contrato espera o funil inteiro: quem fecha logo depois da
+            proposta precisa ter onde registrar isso. */}
+        <DropdownMenuItem onSelect={() => onEncerrar("contratou")}>
+          <Handshake className="h-4 w-4 opacity-60" />
+          Fechou o contrato
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          onSelect={() => onEncerrar("recusou")}
+          className="text-destructive"
+        >
           <XCircle className="h-4 w-4" />
           Encerrar o atendimento
         </DropdownMenuItem>
@@ -160,7 +176,7 @@ export function AcaoRapidaBotoes({
 }: Omit<Props, "onAbrirLead" | "className"> & {
   salvar: (patch: AtualizarLeadInput) => void;
 }) {
-  const [encerrando, setEncerrando] = useState(false);
+  const [encerrando, setEncerrando] = useState<Encerramento | null>(null);
   const acao = lead.derived.acao;
   const proxima = lead.derived.proximaEtapa;
 
@@ -202,10 +218,22 @@ export function AcaoRapidaBotoes({
           <Compareceu lead={lead} acoes={acoes} />
         )}
 
-        {proxima && (
+        {proxima ? (
           <Button size="sm" onClick={() => acoes.avancar.mutate({ lead })}>
             <ArrowRight className="h-3.5 w-3.5" />
             Avançar para {proxima.nome}
+          </Button>
+        ) : (
+          // Última etapa: não há para onde avançar, o que falta é a
+          // assinatura. É o desfecho que o funil inteiro persegue, então
+          // ganha o botão primário em vez de ficar atrás do chevron.
+          <Button
+            size="sm"
+            className="bg-success text-success-foreground hover:bg-success/90"
+            onClick={() => setEncerrando("contratou")}
+          >
+            <Handshake className="h-3.5 w-3.5" />
+            Fechou o contrato
           </Button>
         )}
 
@@ -213,7 +241,7 @@ export function AcaoRapidaBotoes({
           lead={lead}
           config={config}
           acoes={acoes}
-          onEncerrar={() => setEncerrando(true)}
+          onEncerrar={setEncerrando}
           gatilho={
             <Button size="sm" variant="outline" className="px-2">
               <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -226,8 +254,9 @@ export function AcaoRapidaBotoes({
         lead={lead}
         config={config}
         acoes={acoes}
-        aberto={encerrando}
-        onFechar={() => setEncerrando(false)}
+        aberto={encerrando !== null}
+        inicial={encerrando ?? "recusou"}
+        onFechar={() => setEncerrando(null)}
       />
     </div>
   );
@@ -244,7 +273,7 @@ export function AcaoRapidaMenu({
   onAbrirLead,
   className,
 }: Props) {
-  const [encerrando, setEncerrando] = useState(false);
+  const [encerrando, setEncerrando] = useState<Encerramento | null>(null);
   const acao = lead.derived.acao;
 
   if (lead.derived.encerrado) return null;
@@ -277,7 +306,7 @@ export function AcaoRapidaMenu({
         lead={lead}
         config={config}
         acoes={acoes}
-        onEncerrar={() => setEncerrando(true)}
+        onEncerrar={setEncerrando}
         gatilho={
           <Button
             size="sm"
@@ -285,7 +314,7 @@ export function AcaoRapidaMenu({
             className={cn("h-8 justify-between", className)}
           >
             <span className="truncate">
-              {lead.derived.proximaEtapa?.nome ?? "Contrato"}
+              {lead.derived.proximaEtapa?.nome ?? "Fechar contrato"}
             </span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
           </Button>
@@ -295,8 +324,9 @@ export function AcaoRapidaMenu({
         lead={lead}
         config={config}
         acoes={acoes}
-        aberto={encerrando}
-        onFechar={() => setEncerrando(false)}
+        aberto={encerrando !== null}
+        inicial={encerrando ?? "recusou"}
+        onFechar={() => setEncerrando(null)}
       />
     </>
   );
@@ -316,7 +346,7 @@ export function AcaoRapidaLinha({
   acoes,
   onAbrirLead,
 }: Omit<Props, "className">) {
-  const [encerrando, setEncerrando] = useState(false);
+  const [encerrando, setEncerrando] = useState<Encerramento | null>(null);
   const acao = lead.derived.acao;
   const proxima = lead.derived.proximaEtapa;
 
@@ -343,27 +373,37 @@ export function AcaoRapidaLinha({
     <div className="flex items-center gap-1.5">
       {acao?.tipo === "compareceu" ? (
         <Compareceu lead={lead} acoes={acoes} />
+      ) : proxima ? (
+        <Button
+          size="sm"
+          className="h-8"
+          onClick={(evento) => {
+            evento.stopPropagation();
+            acoes.avancar.mutate({ lead });
+          }}
+        >
+          {proxima.nome}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
       ) : (
-        proxima && (
-          <Button
-            size="sm"
-            className="h-8"
-            onClick={(evento) => {
-              evento.stopPropagation();
-              acoes.avancar.mutate({ lead });
-            }}
-          >
-            {proxima.nome}
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-        )
+        <Button
+          size="sm"
+          className="h-8 bg-success text-success-foreground hover:bg-success/90"
+          onClick={(evento) => {
+            evento.stopPropagation();
+            setEncerrando("contratou");
+          }}
+        >
+          <Handshake className="h-3.5 w-3.5" />
+          Fechar
+        </Button>
       )}
 
       <MenuExcecoes
         lead={lead}
         config={config}
         acoes={acoes}
-        onEncerrar={() => setEncerrando(true)}
+        onEncerrar={setEncerrando}
         gatilho={
           <Button
             size="sm"
@@ -380,8 +420,9 @@ export function AcaoRapidaLinha({
         lead={lead}
         config={config}
         acoes={acoes}
-        aberto={encerrando}
-        onFechar={() => setEncerrando(false)}
+        aberto={encerrando !== null}
+        inicial={encerrando ?? "recusou"}
+        onFechar={() => setEncerrando(null)}
       />
     </div>
   );
