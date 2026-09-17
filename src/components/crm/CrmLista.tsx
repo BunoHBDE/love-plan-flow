@@ -57,8 +57,18 @@ type FiltroId = "hoje" | "silencio" | "novos" | "todos";
  * As proporções das colunas da linha: Lead | Situação | Fase | Próxima etapa
  * | Últ. contato | Ações. Cabeçalho e linhas usam a mesma constante para
  * nunca desalinhar uma coluna da outra.
+ *
+ * `minmax(0, Nfr)` — e não só `Nfr` — é o que faz valer: cada linha é a sua
+ * própria grade (não uma tabela só, com as colunas compartilhadas entre
+ * todas as linhas), então sem o `minmax(0, …)` o navegador deixa cada coluna
+ * crescer até caber o conteúdo mais largo DAQUELA linha (o mínimo implícito
+ * de um item de grade é o tamanho do conteúdo, não zero). Uma etapa longa
+ * como "Visita Agendada" numa linha alargava exatamente a coluna dela,
+ * torcendo a grade só naquela linha. Com o mínimo travado em zero, a coluna
+ * nunca passa da fração combinada — o que não cabe trunca, não empurra.
  */
-const GRID_LINHA = "lg:grid-cols-[2.1fr_1fr_1fr_1.3fr_0.9fr_1.4fr]";
+const GRID_LINHA =
+  "lg:grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,1.4fr)]";
 
 /** Refino desligado. Não pode ser "" — o Radix reserva a string vazia. */
 const TODOS = "__todos";
@@ -513,26 +523,28 @@ function LinhaLeadBase({
       </div>
 
       {/* Situação */}
-      <div className="flex lg:justify-center">
-        <SituacaoBadge situacao={derived.situacao} />
+      <div className="flex min-w-0 overflow-hidden lg:justify-center">
+        <SituacaoBadge situacao={derived.situacao} className="min-w-0" />
       </div>
 
       {/* Fase */}
-      <div className="flex lg:justify-center">
+      <div className="flex min-w-0 overflow-hidden lg:justify-center">
         <FaseBadge nome={derived.etapaAtual?.nome ?? null} />
       </div>
 
       {/* Próxima etapa, com o prazo dela */}
-      <ProximaEtapaCelula derived={derived} className="lg:text-center" />
+      <ProximaEtapaCelula
+        derived={derived}
+        className="min-w-0 overflow-hidden lg:text-center"
+      />
 
       {/* Últ. contato */}
-      <span className="text-xs text-muted-foreground lg:text-center">
+      <div className="min-w-0 overflow-hidden truncate text-xs text-muted-foreground lg:text-center">
         {ultimoContato}
-      </span>
+      </div>
 
-      {/* Ações. Largura fixa: sem ela, a linha de um lead que não tem
-          botão primário encolhe aqui e desalinha todas as colunas. */}
-      <div className="flex shrink-0 items-center gap-2 lg:justify-center">
+      {/* Ações */}
+      <div className="flex min-w-0 items-center gap-2 overflow-hidden lg:justify-center">
         <AcaoRapidaLinha
           lead={lead}
           config={config}

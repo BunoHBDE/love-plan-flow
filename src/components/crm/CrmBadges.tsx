@@ -33,19 +33,22 @@ export function SituacaoBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 text-sm font-medium whitespace-nowrap",
+        "inline-flex max-w-full items-center gap-1.5 overflow-hidden text-sm font-medium whitespace-nowrap",
         SITUACAO_TEXT_STYLES[situacao],
         className,
       )}
     >
       <span
-        className={cn("h-1.5 w-1.5 shrink-0 rounded-full", SITUACAO_DOT_STYLES[situacao])}
+        className={cn(
+          "h-1.5 w-1.5 shrink-0 rounded-full",
+          SITUACAO_DOT_STYLES[situacao],
+        )}
       />
-      {SITUACAO_LABELS[situacao]}
+      <span className="truncate">{SITUACAO_LABELS[situacao]}</span>
       {etapa && (
         <>
-          <span className="opacity-40">·</span>
-          <span className="font-semibold">{etapa}</span>
+          <span className="shrink-0 opacity-40">·</span>
+          <span className="truncate font-semibold">{etapa}</span>
         </>
       )}
     </span>
@@ -67,7 +70,7 @@ export function FaseBadge({
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground",
+        "inline-flex max-w-full items-center truncate rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground",
         className,
       )}
     >
