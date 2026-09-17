@@ -192,14 +192,7 @@ function ConteudoDrawer({
           opcoes={config.origens.map((o) => ({ value: o.label, label: o.label }))}
         />
 
-        <CampoSelect
-          label="Motivo / objeção"
-          value={lead.motivo_objecao ?? SEM_VALOR}
-          onChange={(valor) =>
-            salvar({ motivo_objecao: valor === SEM_VALOR ? null : valor })
-          }
-          opcoes={config.motivos.map((m) => ({ value: m.label, label: m.label }))}
-        />
+        <CampoMotivo lead={lead} salvar={salvar} />
       </Secao>
 
       <BlocoAtendimento
@@ -625,6 +618,40 @@ function NomeEditavel({
       placeholder="Nome dos noivos"
       className="w-full truncate border-b border-dashed border-border/70 bg-transparent font-display text-2xl outline-none transition-colors hover:border-border focus:border-solid focus:border-primary"
     />
+  );
+}
+
+/** Texto livre — a lista fixa de motivos virou uma trava para quem quer
+ * escrever "preço + distância" ou qualquer combinação que não está nela. */
+function CampoMotivo({
+  lead,
+  salvar,
+}: {
+  lead: CrmLeadComputed;
+  salvar: (patch: AtualizarLeadInput) => void;
+}) {
+  const [motivo, setMotivo] = useState(lead.motivo_objecao ?? "");
+
+  // Ao trocar de lead, recarrega o valor do campo.
+  useEffect(
+    () => setMotivo(lead.motivo_objecao ?? ""),
+    [lead.id, lead.motivo_objecao],
+  );
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="motivo-objecao" className="text-sm">
+        Motivo / objeção
+      </Label>
+      <Textarea
+        id="motivo-objecao"
+        rows={2}
+        value={motivo}
+        onChange={(e) => setMotivo(e.target.value)}
+        onBlur={() => salvar({ motivo_objecao: motivo.trim() || null })}
+        placeholder="Preço, escolheu outro lugar, mudou de ideia..."
+      />
+    </div>
   );
 }
 
