@@ -37,7 +37,8 @@ export interface SugestaoRevisao {
   lead_nome: string;
   telefone: string | null;
   etapa: string | null;
-  semantica: string | null;
+  estado: string | null;
+  motivo_sugerido: string | null;
   qualificacao: string | null;
   confianca: number | null;
   precisa_revisao: boolean;
@@ -45,7 +46,6 @@ export interface SugestaoRevisao {
   qtd_mensagens: number | null;
   analisado_ate: string | null;
   status: "pendente" | "aplicada" | "rejeitada" | string;
-  resultado_label: string | null;
   campos: string[];
   antes: Record<string, unknown>;
   depois: Record<string, unknown>;
@@ -55,8 +55,8 @@ export interface SugestaoRevisao {
 
 /**
  * O diff em forma de lista, na ordem em que a função devolveu os campos.
- * "etapa" vira uma linha só, com o rótulo do resultado de cada lado — é assim
- * que se lê no CRM, não pelo id do outcome.
+ * "etapa" e "encerramento" viram uma linha só cada, escritas como se lêem no
+ * CRM: o nome da etapa e o desfecho com o motivo, não os ids.
  */
 export function diffDaSugestao(s: SugestaoRevisao): CampoAlterado[] {
   return (s.campos ?? []).map((campo) => {
@@ -66,7 +66,16 @@ export function diffDaSugestao(s: SugestaoRevisao): CampoAlterado[] {
       return {
         campo: "etapa",
         antes: antes?.existia ? `${antes?.stage_nome}` : null,
-        depois: `${depois?.stage_nome}: ${depois?.label}`,
+        depois: `${depois?.stage_nome} (${depois?.estado})`,
+      };
+    }
+    if (campo === "encerramento") {
+      return {
+        campo: "encerramento",
+        antes: (s.antes?.encerramento as string | null) ?? null,
+        depois: [s.depois?.encerramento, s.depois?.motivo_objecao]
+          .filter(Boolean)
+          .join(" · "),
       };
     }
     if (campo === "data") {

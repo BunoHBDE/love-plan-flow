@@ -1,9 +1,12 @@
 /**
  * CONFIGURAÇÃO DO CRM
  *
- * Carrega etapas, resultados, listas e parâmetros do usuário. Na primeira vez
- * chama `crm_bootstrap()`, que semeia o preset padrão (5 etapas, cadência
- * 3/7/14/30, listas de origem e motivo). A função é idempotente.
+ * Carrega etapas, listas e parâmetros do usuário. Na primeira vez chama
+ * `crm_bootstrap()`, que semeia o preset padrão (as oito etapas com seus
+ * prazos, listas de origem e motivo). A função é idempotente.
+ *
+ * As etapas não trazem mais "resultados": no modelo de etapa única o que
+ * existe é entrar nela, sair para a próxima, ou encerrar o lead.
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -12,10 +15,8 @@ import { QUERY_KEYS } from "@/lib/queryClient";
 import type {
   CrmConfig,
   CrmListItem,
-  CrmOutcome,
   CrmSettings,
   CrmStage,
-  Semantica,
 } from "@/types/crm.types";
 
 async function carregarConfig(): Promise<CrmConfig> {
@@ -27,7 +28,7 @@ async function carregarConfig(): Promise<CrmConfig> {
     supabase.from("crm_settings").select("*").maybeSingle(),
     supabase
       .from("crm_stages")
-      .select("id, nome, ordem, ativo, crm_stage_outcomes (*)")
+      .select("id, nome, ordem, ativo, dias_prazo")
       .eq("ativo", true)
       .order("ordem", { ascending: true }),
     supabase
@@ -44,24 +45,7 @@ async function carregarConfig(): Promise<CrmConfig> {
     throw new Error("Configuração do CRM não encontrada.");
   }
 
-  const stages: CrmStage[] = (stagesRes.data ?? []).map((stage) => ({
-    id: stage.id,
-    nome: stage.nome,
-    ordem: stage.ordem,
-    ativo: stage.ativo,
-    outcomes: [...(stage.crm_stage_outcomes ?? [])]
-      .sort((a, b) => a.ordem - b.ordem)
-      .map(
-        (outcome): CrmOutcome => ({
-          id: outcome.id,
-          stage_id: outcome.stage_id,
-          label: outcome.label,
-          semantica: outcome.semantica as Semantica,
-          acao_label: outcome.acao_label,
-          ordem: outcome.ordem,
-        }),
-      ),
-  }));
+  const stages = (stagesRes.data ?? []) as unknown as CrmStage[];
 
   const listas = (listsRes.data ?? []) as CrmListItem[];
 

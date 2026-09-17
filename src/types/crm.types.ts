@@ -4,43 +4,17 @@
  * O CRM não controla apenas a etapa do funil: ele controla todo o processo de
  * atendimento — o que fazer com cada lead e quando fazer.
  *
- * As etapas são configuráveis. Para que o motor continue inteligente sem
- * depender de rótulos, cada resultado de etapa carrega uma SEMÂNTICA.
+ * O lead está SEMPRE em uma etapa só, e são três as coisas que podem
+ * acontecer com ele:
+ *
+ *   Avançar   — venceu esta etapa e entra na próxima
+ *   Voltar    — desfaz o progresso (é o "faltou na visita", que remarca)
+ *   Encerrar  — acabou, com motivo e com a etapa onde acabou
+ *
+ * Ficar parado não é uma quarta ação: é a ausência delas. O tempo parado é
+ * calculado, não registrado — foi a troca que fez a lista de quem precisa ser
+ * chamado de volta parar de depender de alguém lembrar de marcar.
  */
-
-// ==========================================
-// SEMÂNTICA DOS RESULTADOS
-// ==========================================
-
-export const SEMANTICAS = [
-  "aguardando",
-  "respondeu",
-  "silencio",
-  "agendou",
-  "pendencia",
-  "recusou",
-  "desqualificado",
-  "ganhou",
-  "voltou_fup",
-  "recuou",
-] as const;
-
-export type Semantica = (typeof SEMANTICAS)[number];
-
-export const SEMANTICA_LABELS: Record<Semantica, string> = {
-  aguardando: "Mensagem enviada, aguardando resposta",
-  respondeu: "Respondeu, o atendimento segue",
-  silencio: "Sumiu — o lead fica em silêncio",
-  agendou: "Agendou um compromisso",
-  pendencia: "A bola está com você",
-  recusou: "Encerra: o lead recusou",
-  desqualificado: "Encerra: o lead não serve para você",
-  ganhou: "Encerra como contratado",
-  voltou_fup: "Estava em silêncio e voltou",
-  // Desfaz o progresso: o lead volta para esta etapa e o que veio depois é
-  // apagado. É o "Faltou" — a visita não aconteceu, então recomeça daqui.
-  recuou: "Voltou para esta etapa e apaga o que veio depois",
-};
 
 // ==========================================
 // CONFIGURAÇÃO
@@ -49,18 +23,10 @@ export const SEMANTICA_LABELS: Record<Semantica, string> = {
 export interface CrmSettings {
   id: string;
   user_id: string;
+  /** Prazo de fallback. O prazo em vigor é o da etapa (`dias_prazo`). */
   dias_silencio: number;
   dias_confirmar_agendamento: number;
   dias_analise_final: number;
-}
-
-export interface CrmOutcome {
-  id: string;
-  stage_id: string;
-  label: string;
-  semantica: Semantica;
-  acao_label: string | null;
-  ordem: number;
 }
 
 export interface CrmStage {
@@ -68,7 +34,12 @@ export interface CrmStage {
   nome: string;
   ordem: number;
   ativo: boolean;
-  outcomes: CrmOutcome[];
+  /**
+   * Quantos dias o lead pode ficar nesta etapa antes de contar como sumido.
+   * É por etapa porque sumir depois da Saudação não é a mesma coisa que sumir
+   * depois da visita — quem já veio até aqui merece mais corda.
+   */
+  dias_prazo: number;
 }
 
 export interface CrmListItem {
@@ -99,11 +70,18 @@ export const COMPARECEU_LABELS: Record<Compareceu, string> = {
   remarcou: "Remarcou",
 };
 
-export interface CrmLeadStageResult {
+/** Uma passagem do lead por uma etapa: quando ele entrou nela. */
+export interface CrmLeadEntrada {
   stage_id: string;
-  outcome_id: string | null;
-  registrado_em: string;
+  entrou_em: string;
 }
+
+/**
+ * Como o atendimento acabou. Mora no lead, e não no resultado de uma etapa,
+ * porque um lead pode ser perdido em QUALQUER ponto — inclusive na Saudação,
+ * onde antes não havia onde registrar isso.
+ */
+export type Encerramento = "contratou" | "recusou" | "desqualificado";
 
 /** A data do casamento pode estar fechada ou ainda ser só um mês/ano. */
 export type DataEventoStatus = "com_data" | "sem_data";
@@ -125,6 +103,9 @@ export interface CrmLead {
   ano_evento: string | null;
   convidados: number | null;
   motivo_objecao: string | null;
+  encerramento: Encerramento | null;
+  /** Em que etapa o lead estava quando acabou. É o dado do gargalo. */
+  encerrado_stage_id: string | null;
   encerrado_em: string | null;
   observacoes: string | null;
   arquivado: boolean;
@@ -136,7 +117,7 @@ export interface CrmLead {
   email: string | null;
 
   // Coleções
-  etapas: CrmLeadStageResult[];
+  etapas: CrmLeadEntrada[];
 }
 
 // ==========================================
@@ -175,7 +156,7 @@ export type Urgencia = "atrasado" | "hoje" | "futuro";
  * passo, para que a interface possa oferecer a ação sem repetir a lógica.
  */
 export type AcaoProximoPasso =
-  | { tipo: "etapa"; stageId: string }
+  | { tipo: "avancar" }
   | { tipo: "compareceu" }
   | { tipo: "agendamento" };
 
@@ -189,14 +170,15 @@ export interface CrmDerived {
   /** id da etapa atual, ou COLUNA_GANHO / COLUNA_PERDIDO */
   coluna: string;
   etapaAtual: CrmStage | null;
-  etapaTravada: CrmStage | null;
-  silencioDesde: string | null;
-  diasEmSilencio: number | null;
+  /** Para onde o botão "Avançar" leva. Null na última etapa. */
+  proximaEtapa: CrmStage | null;
   /**
-   * Você mandou uma mensagem e ainda não registrou o retorno. É a lista de
-   * quem pode ter respondido no WhatsApp sem você ter passado no sistema.
+   * Desde quando o lead está parado: a mais recente entre a entrada na etapa,
+   * a sua última mensagem e o compromisso realizado. Nunca é nula — quem não
+   * tem mensagem registrada cai para a data de entrada do lead.
    */
-  aguardandoResposta: boolean;
+  paradoDesde: string;
+  diasParado: number;
   proximoPasso: string | null;
   /** O que resolve o próximo passo, para a ação rápida na gaveta. */
   acao: AcaoProximoPasso | null;

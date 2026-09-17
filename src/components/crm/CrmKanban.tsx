@@ -183,11 +183,11 @@ function CardLead({
         </p>
       )}
 
-      {derived.diasEmSilencio !== null && derived.diasEmSilencio > 0 && (
+      {derived.situacao === "em_silencio" && (
         <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="h-3 w-3" />
-          {derived.diasEmSilencio} dia
-          {derived.diasEmSilencio === 1 ? "" : "s"} em silêncio
+          {derived.diasParado} dia
+          {derived.diasParado === 1 ? "" : "s"} em silêncio
         </p>
       )}
     </div>

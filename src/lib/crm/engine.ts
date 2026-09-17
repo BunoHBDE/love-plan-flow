@@ -5,8 +5,9 @@
  * calculados. Nada disso é gravado no banco, então mudar um prazo nos
  * parâmetros recalcula todo o histórico na hora, igual à planilha.
  *
- * O motor nunca olha para o RÓTULO de um resultado, só para a sua SEMÂNTICA.
- * É isso que permite renomear, criar e apagar etapas sem quebrar a lógica.
+ * A regra que organiza tudo: o lead está na etapa em que ENTROU por último, e
+ * o relógio corre desde que ele entrou lá. Passou do prazo daquela etapa sem
+ * avançar, está em silêncio — sem ninguém precisar marcar nada.
  */
 
 import {
@@ -15,77 +16,52 @@ import {
   type AcaoProximoPasso,
   type CrmDerived,
   type CrmLead,
-  type CrmOutcome,
   type CrmSettings,
   type CrmStage,
-  type Semantica,
   type Situacao,
   type Urgencia,
 } from "@/types/crm.types";
 import { diffDias, hoje, maiorData, somarDias } from "./dates";
 
-/**
- * Semânticas que contam como "o lead respondeu à mensagem daquela etapa".
- * `recuou` entra aqui porque quem faltou tinha respondido ao convite e
- * marcado a visita — o que não aconteceu foi o comparecimento, não a resposta.
- */
-const SEMANTICAS_RESPOSTA: Semantica[] = [
-  "respondeu",
-  "agendou",
-  "ganhou",
-  "pendencia",
-  "recuou",
-];
-
-/**
- * Semânticas que contam como "a mensagem daquela etapa foi ignorada".
- * `voltou_fup` entra aqui porque o lead voltou, mas a mensagem original
- * ficou sem resposta uma vez — é isso que o painel precisa saber.
- */
-const SEMANTICAS_SILENCIO: Semantica[] = ["silencio", "voltou_fup"];
-
-export function ehResposta(s: Semantica): boolean {
-  return SEMANTICAS_RESPOSTA.includes(s);
-}
-
-export function ehSilencio(s: Semantica): boolean {
-  return SEMANTICAS_SILENCIO.includes(s);
-}
-
 // ==========================================
-// ÍNDICE DE RESULTADOS
+// ONDE O LEAD ESTÁ
 // ==========================================
 
-export interface ResultadoEtapa {
+export interface Posicao {
   stage: CrmStage;
-  outcome: CrmOutcome;
   indice: number;
+  entrouEm: string;
 }
 
 /**
- * Monta o mapa etapa → resultado do lead, na ordem das etapas.
- * Etapas sem resultado ficam de fora.
+ * A etapa atual do lead: a de maior ordem entre as que ele entrou.
+ *
+ * `stages` chega ordenado por `ordem`, então o índice na lista É a posição no
+ * funil — é isso que permite responder "quem chegou até aqui" comparando
+ * índices, sem consultar o banco de novo.
  */
-export function indexarResultados(
+export function posicaoAtual(
   lead: CrmLead,
   stages: CrmStage[],
-): Map<string, ResultadoEtapa> {
-  const mapa = new Map<string, ResultadoEtapa>();
+): Posicao | null {
+  // De trás para frente: a primeira etapa com entrada é a de maior ordem.
+  for (let i = stages.length - 1; i >= 0; i--) {
+    const entrada = lead.etapas.find((e) => e.stage_id === stages[i].id);
+    if (entrada) {
+      return { stage: stages[i], indice: i, entrouEm: entrada.entrou_em };
+    }
+  }
 
-  // Registros por etapa de uma vez: evita varrer `lead.etapas` a cada stage.
-  const porEtapa = new Map(lead.etapas.map((e) => [e.stage_id, e]));
+  return null;
+}
 
-  stages.forEach((stage, indice) => {
-    const registro = porEtapa.get(stage.id);
-    if (!registro?.outcome_id) return;
-
-    const outcome = stage.outcomes.find((o) => o.id === registro.outcome_id);
-    if (!outcome) return;
-
-    mapa.set(stage.id, { stage, outcome, indice });
-  });
-
-  return mapa;
+/**
+ * Até onde o lead chegou, como índice de etapa. É a base do funil por alcance
+ * acumulado: quem está na etapa 5 passou pela 3, mesmo que a 3 nunca tenha
+ * sido registrada porque a conversa pulou direto.
+ */
+export function indiceAlcancado(lead: CrmLead, stages: CrmStage[]): number {
+  return posicaoAtual(lead, stages)?.indice ?? -1;
 }
 
 // ==========================================
@@ -99,91 +75,64 @@ export function derivar(
   // Quem deriva a base inteira calcula o "hoje" uma vez e passa adiante.
   hojeISO: string = hoje(),
 ): CrmDerived {
-  const resultados = indexarResultados(lead, stages);
-  const listaResultados = [...resultados.values()];
-
-  // --- Etapa que agendou o compromisso, e a etapa seguinte a ela ---
-  const agendamento = listaResultados.find(
-    (r) => r.outcome.semantica === "agendou",
-  );
-  const etapaPosAgendamento = agendamento
-    ? (stages[agendamento.indice + 1] ?? null)
-    : null;
-
-  // --- Etapa travada ---
-  // A primeira etapa (de trás para frente) que ficou em silêncio e cuja
-  // etapa seguinte ainda não foi registrada.
-  let etapaTravada: CrmStage | null = null;
-  let indiceTravada = -1;
-
-  for (let i = stages.length - 1; i >= 0; i--) {
-    const resultado = resultados.get(stages[i].id);
-    if (resultado?.outcome.semantica !== "silencio") continue;
-
-    const proxima = stages[i + 1];
-    if (!proxima || !resultados.has(proxima.id)) {
-      etapaTravada = stages[i];
-      indiceTravada = i;
-      break;
-    }
-  }
+  const posicao = posicaoAtual(lead, stages);
+  const etapaAtual = posicao?.stage ?? stages[0] ?? null;
+  const proximaEtapa = posicao ? (stages[posicao.indice + 1] ?? null) : null;
 
   // --- Situação ---
-  const contratou = listaResultados.some(
-    (r) => r.outcome.semantica === "ganhou",
-  );
-  const recusou = listaResultados.some(
-    (r) => r.outcome.semantica === "recusou",
-  );
-  const desqualificado = listaResultados.some(
-    (r) => r.outcome.semantica === "desqualificado",
-  );
+  // O encerramento é um fato gravado no lead, não uma inferência: ele vence
+  // qualquer cálculo de tempo. Um lead que contratou não fica "em silêncio"
+  // porque ninguém mandou mensagem depois.
+  const encerrado = lead.encerramento !== null;
+
+  // --- O relógio ---
+  // A entrada na etapa é o piso; sua última mensagem e a visita realizada
+  // empurram o relógio para frente, porque os dois reiniciam a espera. A
+  // `entrada` do lead fecha a conta: 79 leads não têm `ultima_msg`, e sem esse
+  // último recurso eles ficariam parados para sempre, invisíveis na fila.
+  const visitaRealizada = lead.compareceu === "sim" ? lead.data_agendamento : null;
+  const paradoDesde =
+    maiorData(
+      maiorData(posicao?.entrouEm.slice(0, 10), lead.ultima_msg),
+      maiorData(visitaRealizada, lead.entrada),
+    ) ?? lead.entrada;
+
+  const diasParado = diffDias(paradoDesde, hojeISO);
+  const prazo = etapaAtual?.dias_prazo ?? settings.dias_silencio;
+
+  // Uma visita marcada e não resolvida NÃO é silêncio do lead: a bola está
+  // com você, que precisa confirmar se ela aconteceu. Sem esta ressalva, 14
+  // leads com visita agendada apareciam como sumidos há 26 dias, quando o que
+  // está parado é o registro do comparecimento. Eles continuam cobrando —
+  // pela urgência da data da visita, na regra 3 do próximo passo.
+  const visitaPendente =
+    lead.compareceu === "nao" ||
+    lead.compareceu === "remarcou" ||
+    (lead.data_agendamento !== null && lead.compareceu !== "sim");
 
   let situacao: Situacao;
-  if (contratou) {
+  if (lead.encerramento === "contratou") {
     situacao = "contratou";
-  } else if (recusou) {
+  } else if (lead.encerramento === "recusou") {
     situacao = "perdido_recusa";
-  } else if (desqualificado) {
+  } else if (lead.encerramento === "desqualificado") {
     situacao = "desqualificado";
-  } else if (etapaTravada) {
+  } else if (!visitaPendente && diasParado >= prazo) {
     situacao = "em_silencio";
   } else {
     situacao = "em_conversa";
   }
 
-  const encerrado =
-    situacao === "contratou" ||
-    situacao === "perdido_recusa" ||
-    situacao === "desqualificado";
-
-  // --- Silêncio desde ---
-  // Regra normal: a data da última mensagem de etapa.
-  // Exceção: se o lead travou DEPOIS de um compromisso realizado, o relógio
-  // conta a partir do compromisso (ou da sua mensagem posterior, se houver).
-  let silencioDesde: string | null = null;
-  if (etapaTravada) {
-    const travouAposAgendamento =
-      agendamento !== undefined && indiceTravada > agendamento.indice;
-
-    silencioDesde =
-      travouAposAgendamento && lead.data_agendamento
-        ? maiorData(lead.ultima_msg, lead.data_agendamento)
-        : (lead.ultima_msg ?? null);
-  }
-
   // --- Próximo passo e quando ---
   const { proximoPasso, quando: quandoCalculado, acao } = calcularProximoPasso({
     lead,
-    stages,
     settings,
-    situacao,
     encerrado,
-    resultados,
-    listaResultados,
-    agendamento,
-    etapaTravada,
-    etapaPosAgendamento,
+    etapaAtual,
+    proximaEtapa,
+    paradoDesde,
+    prazo,
+    emSilencio: situacao === "em_silencio",
     hojeISO,
   });
 
@@ -199,20 +148,19 @@ export function derivar(
   }
 
   // --- Coluna do Kanban ---
-  const coluna = calcularColuna({ situacao, stages, resultados });
-  const etapaAtual = stages.find((s) => s.id === coluna) ?? null;
+  let coluna: string;
+  if (situacao === "contratou") coluna = COLUNA_GANHO;
+  else if (encerrado) coluna = COLUNA_PERDIDO;
+  else coluna = etapaAtual?.id ?? COLUNA_PERDIDO;
 
   return {
     situacao,
     encerrado,
     coluna,
     etapaAtual,
-    etapaTravada,
-    silencioDesde,
-    diasEmSilencio: silencioDesde ? diffDias(silencioDesde, hojeISO) : null,
-    aguardandoResposta:
-      !encerrado &&
-      listaResultados.some((r) => r.outcome.semantica === "aguardando"),
+    proximaEtapa,
+    paradoDesde,
+    diasParado,
     proximoPasso,
     acao,
     quando,
@@ -228,22 +176,24 @@ export function derivar(
 
 interface ContextoPasso {
   lead: CrmLead;
-  stages: CrmStage[];
   settings: CrmSettings;
-  situacao: Situacao;
   encerrado: boolean;
-  resultados: Map<string, ResultadoEtapa>;
-  listaResultados: ResultadoEtapa[];
-  agendamento: ResultadoEtapa | undefined;
-  etapaTravada: CrmStage | null;
-  etapaPosAgendamento: CrmStage | null;
+  etapaAtual: CrmStage | null;
+  proximaEtapa: CrmStage | null;
+  paradoDesde: string;
+  prazo: number;
+  emSilencio: boolean;
   hojeISO: string;
 }
 
 /**
- * A cascata de decisão, na mesma ordem de precedência da planilha.
- * A primeira condição que bate define o próximo passo, a sua data e — o que
- * a planilha não tinha — qual controle resolve esse passo.
+ * A cascata de decisão, na ordem de precedência do atendimento real. A
+ * primeira condição que bate define o passo, a sua data e qual controle o
+ * resolve — para que a interface ofereça a ação sem repetir esta lógica.
+ *
+ * As três primeiras regras são da visita, e existem porque um compromisso
+ * marcado tem uma agenda própria que não é a do funil: ele tem data, pode não
+ * acontecer, e precisa de confirmação antes.
  */
 function calcularProximoPasso(ctx: ContextoPasso): {
   proximoPasso: string | null;
@@ -252,48 +202,22 @@ function calcularProximoPasso(ctx: ContextoPasso): {
 } {
   const {
     lead,
-    stages,
     settings,
-    situacao,
     encerrado,
-    resultados,
-    listaResultados,
-    agendamento,
-    etapaTravada,
-    etapaPosAgendamento,
+    etapaAtual,
+    proximaEtapa,
+    paradoDesde,
+    prazo,
+    emSilencio,
     hojeISO,
   } = ctx;
 
-  if (encerrado) {
+  if (encerrado || !etapaAtual) {
     return { proximoPasso: null, quando: null, acao: null };
   }
 
-  // Lead sumiu: o passo é retomar o contato. Sem cadência automática — a
-  // data fica em aberto e você a empurra na mão quando quiser tentar de novo.
-  if (situacao === "em_silencio" && etapaTravada) {
-    return {
-      proximoPasso: "Retomar o contato",
-      quando: hojeISO,
-      acao: { tipo: "etapa", stageId: etapaTravada.id },
-    };
-  }
-
-  // 1. A bola está com você: uma negociação a responder, ou uma visita que
-  //    não aconteceu e precisa ser remarcada.
-  const pendencia = listaResultados.find(
-    (r) =>
-      r.outcome.semantica === "pendencia" || r.outcome.semantica === "recuou",
-  );
-  if (pendencia) {
-    return {
-      proximoPasso:
-        pendencia.outcome.acao_label ?? `Resolver: ${pendencia.outcome.label}`,
-      quando: hojeISO,
-      acao: { tipo: "etapa", stageId: pendencia.stage.id },
-    };
-  }
-
-  // 2. Não compareceu ao compromisso.
+  // 1. Não compareceu. Não é recusa — o lead está vivo e a visita é que não
+  //    aconteceu, então o passo é remarcar.
   if (lead.compareceu === "nao") {
     return {
       proximoPasso: "Reagendar a visita",
@@ -302,7 +226,7 @@ function calcularProximoPasso(ctx: ContextoPasso): {
     };
   }
 
-  // 3. Remarcou e a nova data ainda não foi confirmada.
+  // 2. Remarcou e a nova data ainda não foi escolhida.
   if (lead.compareceu === "remarcou") {
     return {
       proximoPasso: "Confirmar a nova data",
@@ -311,122 +235,47 @@ function calcularProximoPasso(ctx: ContextoPasso): {
     };
   }
 
-  // 4. Compareceu e está analisando o desfecho — o relógio conta do compromisso.
-  const posAgendamento = etapaPosAgendamento
-    ? resultados.get(etapaPosAgendamento.id)
-    : undefined;
-
-  if (posAgendamento?.outcome.semantica === "aguardando") {
-    const base = maiorData(lead.ultima_msg, lead.data_agendamento);
-    return {
-      // O pós-visita é onde o casal ainda decide, não onde assina: a cobrança
-      // aqui é pela decisão, e o Contrato só entra quando ela vem.
-      proximoPasso: "Conferir se decidiram",
-      quando: base ? somarDias(base, settings.dias_analise_final) : null,
-      acao: { tipo: "etapa", stageId: posAgendamento.stage.id },
-    };
-  }
-
-  // 5. Compareceu, mas o desfecho ainda não foi registrado.
-  if (
-    lead.compareceu === "sim" &&
-    etapaPosAgendamento &&
-    !resultados.has(etapaPosAgendamento.id)
-  ) {
-    return {
-      proximoPasso: "Registrar o pós-visita",
-      quando: hojeISO,
-      acao: { tipo: "etapa", stageId: etapaPosAgendamento.id },
-    };
-  }
-
-  // 6. Compromisso marcado e ainda não realizado — confirmar antes.
-  if (agendamento && lead.compareceu !== "sim") {
+  // 3. Visita marcada e ainda não realizada: confirmar antes que chegue o dia.
+  if (lead.data_agendamento && lead.compareceu !== "sim") {
     return {
       proximoPasso: "Confirmar a visita",
-      quando: lead.data_agendamento
-        ? somarDias(lead.data_agendamento, -settings.dias_confirmar_agendamento)
-        : null,
+      quando: somarDias(
+        lead.data_agendamento,
+        -settings.dias_confirmar_agendamento,
+      ),
       acao: { tipo: "compareceu" },
     };
   }
 
-  // 7. Alguma mensagem enviada esperando resposta.
-  const aguardando = listaResultados.find(
-    (r) => r.outcome.semantica === "aguardando",
-  );
-  if (aguardando) {
+  // 4. Passou do prazo da etapa: o lead sumiu e o passo é retomar o contato.
+  //    Sem cadência automática — a data fica em aberto e você a empurra na mão
+  //    quando quiser tentar de novo.
+  if (emSilencio) {
     return {
-      proximoPasso: "Conferir se respondeu",
-      quando: lead.ultima_msg
-        ? somarDias(lead.ultima_msg, settings.dias_silencio)
-        : null,
-      acao: { tipo: "etapa", stageId: aguardando.stage.id },
+      proximoPasso: "Retomar o contato",
+      quando: hojeISO,
+      acao: proximaEtapa ? { tipo: "avancar" } : null,
     };
   }
 
-  // 8. O lead respondeu e espera a sua próxima mensagem: a ação é registrar
-  //    o envio na próxima etapa em branco.
-  //
-  //    "Próxima" conta a partir de onde o lead está, não do começo da lista:
-  //    etapas podem ser puladas — quem aprova a proposta na hora vai direto ao
-  //    convite — e apontar para o buraco que ficou para trás mandaria você
-  //    preencher uma conversa que não aconteceu.
-  const ultimoIndice = listaResultados.reduce(
-    (maior, r) => Math.max(maior, r.indice),
-    -1,
-  );
-  const proximaEmBranco =
-    stages.find((stage, i) => i > ultimoIndice && !resultados.has(stage.id)) ??
-    stages.find((stage) => !resultados.has(stage.id));
+  // 5. O caso comum: a conversa está correndo dentro do prazo. O passo é
+  //    seguir para a próxima etapa, e a data é o fim do prazo — é quando ela
+  //    vira cobrança, se nada tiver acontecido até lá.
+  if (proximaEtapa) {
+    return {
+      proximoPasso: `Avançar para ${proximaEtapa.nome}`,
+      quando: somarDias(paradoDesde, prazo),
+      acao: { tipo: "avancar" },
+    };
+  }
+
+  // 6. Última etapa, dentro do prazo: não há para onde avançar sem fechar o
+  //    negócio, e fechar é um encerramento, não um passo de rotina.
   return {
-    proximoPasso: "Seguir o atendimento",
-    quando: hojeISO,
-    acao: proximaEmBranco ? { tipo: "etapa", stageId: proximaEmBranco.id } : null,
+    proximoPasso: "Conferir se assinaram",
+    quando: somarDias(paradoDesde, prazo),
+    acao: null,
   };
-}
-
-// ==========================================
-// COLUNA DO KANBAN
-// ==========================================
-
-/**
- * O lead fica na coluna da última etapa registrada. Se essa etapa já foi
- * vencida (o lead respondeu ou voltou pelo follow-up), ele avança para a
- * etapa seguinte, que é justamente a que espera a sua próxima mensagem.
- */
-function calcularColuna(args: {
-  situacao: Situacao;
-  stages: CrmStage[];
-  resultados: Map<string, ResultadoEtapa>;
-}): string {
-  const { situacao, stages, resultados } = args;
-
-  if (situacao === "contratou") return COLUNA_GANHO;
-  if (situacao === "perdido_recusa" || situacao === "desqualificado") {
-    return COLUNA_PERDIDO;
-  }
-
-  if (stages.length === 0) return COLUNA_PERDIDO;
-
-  let ultimo: ResultadoEtapa | null = null;
-  for (const stage of stages) {
-    const resultado = resultados.get(stage.id);
-    if (resultado) ultimo = resultado;
-  }
-
-  if (!ultimo) return stages[0].id;
-
-  const venceuEtapa =
-    ultimo.outcome.semantica === "respondeu" ||
-    ultimo.outcome.semantica === "voltou_fup";
-
-  if (venceuEtapa) {
-    const proxima = stages[ultimo.indice + 1];
-    if (proxima) return proxima.id;
-  }
-
-  return ultimo.stage.id;
 }
 
 // ==========================================

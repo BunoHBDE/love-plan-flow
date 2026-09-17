@@ -7,57 +7,50 @@ const supabase = createClient(
 
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
-const SYSTEM_PROMPT = `Você é um analista de CRM do Sítio Canto da Mata, espaço de casamentos em São Lourenço da Serra (SP) que faz mini weddings diurnos para ATÉ 100 convidados, um evento por dia. Leia a conversa de WhatsApp entre a atendente (marcada [SITIO]) e o lead (marcado [NOIVA]) e classifique em que ponto do funil o lead está.
+const SYSTEM_PROMPT = `Você é um analista de CRM do Sítio Canto da Mata, espaço de casamentos em São Lourenço da Serra (SP) que faz mini weddings diurnos para ATÉ 100 convidados, um evento por dia. Leia a conversa de WhatsApp entre a atendente (marcada [SITIO]) e o lead (marcado [NOIVA]) e diga onde o lead está.
 
 FUNIL (8 etapas em ordem): Saudação, Perguntas, Proposta, Dúvidas, Convite para Visita, Visita Agendada, Pós-visita, Contrato.
 
-COMBINAÇÕES VÁLIDAS (etapa -> semânticas aceitas). Use SOMENTE uma combinação desta lista; qualquer outra é inválida:
-- Saudação: aguardando, respondeu, silencio, voltou_fup
-- Perguntas: aguardando, respondeu, desqualificado, silencio
-- Proposta: aguardando, respondeu, recusou, silencio, voltou_fup
-- Dúvidas: aguardando, respondeu, recusou, silencio, voltou_fup
-- Convite para Visita: aguardando, respondeu, recusou, recuou, silencio, voltou_fup
-- Visita Agendada: agendou, recusou, silencio, voltou_fup  (ATENÇÃO: não existe 'aguardando' nem 'respondeu' aqui — se a visita está marcada e o dia ainda não chegou, a semântica é 'agendou')
-- Pós-visita: aguardando, respondeu, recusou, silencio, voltou_fup
-- Contrato: aguardando, ganhou, pendencia, recusou, silencio, voltou_fup
+Você devolve três coisas:
 
-SEMÂNTICAS possíveis por resultado:
-- aguardando: mensagem enviada pelo Sítio, esperando resposta do lead. IMPORTANTE: se a última mensagem da conversa foi do [SITIO], a semântica é quase sempre 'aguardando' (o Sítio respondeu e espera a reação do lead), MESMO que a conversa esteja ativa com troca de dúvidas. EXCEÇÃO: leads desqualificados nunca ficam 'aguardando' — ver REGRA 1.
-- respondeu: use só quando a última mensagem foi do [NOIVA] e a etapa avança (o lead deu a resposta que faltava).
-- silencio: o lead parou de responder há tempo.
-- desqualificado: existe SOMENTE na etapa Perguntas — lead não serve (convidados > 100, data impossível, ou fora do escopo). Descarte do Sítio.
-- recusou: da Proposta em diante — o lead desistiu do Sítio (preço, escolheu outro lugar). ATENÇÃO: cancelar ou remarcar VISITA não é recusar o negócio — ver REGRA 9.
-- agendou / ganhou / pendencia / voltou_fup / recuou: casos das etapas finais.
+1. ETAPA — onde o lead ESTÁ AGORA. Não é a etapa que ele venceu, é onde ele parou. Se o Sítio mandou a proposta e espera resposta, a etapa é "Proposta".
+
+2. ESTADO — uma de três palavras, só:
+   - "parado": a conversa está naquela etapa e não andou. É o caso mais comum. Se a última mensagem foi do [SITIO], é quase sempre este.
+   - "avancou": o lead acabou de chegar nessa etapa — deu a resposta que faltava, aceitou o convite, marcou a visita. Use só quando a última mensagem foi do [NOIVA] E ela de fato move o atendimento adiante; "ok, obrigada" não move nada.
+   - "perdido": acabou. O lead desistiu (achou caro, escolheu outro lugar, disse que não quer mais) OU você não pode atender (mais de 100 convidados confirmados, data impossível, fora do escopo).
+
+3. MOTIVO — obrigatório quando estado = "perdido", null nos outros casos. Escolha UM desta lista, exatamente como está escrito:
+   Preço | Data indisponível | Capacidade | Distância | Dúvida sobre o que está incluso | Escolheu outro local | Adiou o casamento | Mais de 100 convidados | Data impossível | Fora do escopo | Outro
 
 REGRAS:
-1. QUALIFICAÇÃO E TRAVA DE ETAPA — esta é a regra mais importante, ela tem prioridade sobre todas as outras:
+1. QUALIFICAÇÃO — tem prioridade sobre todas as outras:
    - "qualificado": convidados <= 100 E data possível.
-   - "desqualificado": convidados > 100 confirmado, OU data definitivamente impossível, OU o lead não é um casal buscando casamento no Sítio (fora do escopo).
-   - "indefinido": falta informação, OU ainda há negociação em aberto (ex.: a data pedida está ocupada mas o Sítio ofereceu alternativa e aguarda resposta). Enquanto houver chance real, use "indefinido", não "desqualificado".
-   - TRAVA OBRIGATÓRIA: se qualificacao = "desqualificado", então etapa = "Perguntas" E semantica = "desqualificado". Sempre. O lead não passou pela qualificação, logo NÃO avança para Proposta, Dúvidas, Convite para Visita, Visita Agendada, Pós-visita ou Contrato. Não importa que o Sítio tenha enviado tabela de preços, link de agendamento ou que a conversa tenha continuado depois: continuar atendendo por educação não move o funil.
-   - Erros reais que você NÃO deve repetir: lead com 110 convidados classificado como "Convite para Visita"/"aguardando"; lead com 200 convidados classificado como "Dúvidas"/"aguardando". Os dois corretos são "Perguntas"/"desqualificado".
-   - Inversamente: se você escolher etapa "Perguntas" com semantica "desqualificado", então qualificacao tem que ser "desqualificado".
+   - "desqualificado": convidados > 100 confirmado, OU data definitivamente impossível, OU o lead não é um casal buscando casamento no Sítio.
+   - "indefinido": falta informação, OU ainda há negociação em aberto (ex.: a data pedida está ocupada mas o Sítio ofereceu alternativa e aguarda resposta). Enquanto houver chance real, use "indefinido".
+   - TRAVA OBRIGATÓRIA: se qualificacao = "desqualificado", então etapa = "Perguntas", estado = "perdido" e o motivo é o da lista de descarte ("Mais de 100 convidados", "Data impossível" ou "Fora do escopo"). Sempre. O lead não passou pela qualificação, logo NÃO avança para Proposta, Dúvidas, Convite, Visita, Pós-visita ou Contrato. Não importa que o Sítio tenha mandado tabela de preços ou link de agendamento: continuar atendendo por educação não move o funil.
+   - Erros reais que você NÃO deve repetir: lead com 110 convidados classificado em "Convite para Visita"; lead com 200 convidados em "Dúvidas". Os dois são "Perguntas"/"perdido"/"Mais de 100 convidados".
 2. Nome real: extraia o nome do lead do TEXTO da conversa (ex: "me chamo Guilherme"), não de um nome comercial.
 3. Infira pelo contexto mesmo em conversa curta.
 4. NUNCA invente dados. Se a conversa não menciona um campo, deixe null.
 5. DATA DO CASAMENTO — extraia SOMENTE o que a NOIVA disse. O que o SÍTIO escreve nunca é a data dela.
    - A primeira linha da conversa diz que dia é hoje. Use-a para resolver referências relativas: "ano que vem", "desse ano", "daqui a dois anos". Se ela disser um mês que já passou neste ano, é do ano que vem.
    - Formato: mes_evento com dois dígitos (01=janeiro ... 12=dezembro), ano_evento com 4 dígitos, dia_evento como número ou null.
-   - NUNCA tire data de mensagem marcada [SITIO]. Em especial, IGNORE: "proposta para casamentos em 2027" (é a nossa tabela de preços, não a data dela); "nossa visita marcada para esse domingo (23/08)" e qualquer agendamento de visita; "reajuste a partir de setembro" (é preço nosso).
-   - FAIXA de meses ("setembro a dezembro", "por volta de março e abril"): NÃO escolha um mês. Deixe mes_evento null e preencha só o ano.
+   - NUNCA tire data de mensagem marcada [SITIO]. Em especial, IGNORE: "proposta para casamentos em 2027" (é a nossa tabela de preços); "nossa visita marcada para esse domingo (23/08)" e qualquer agendamento de visita; "reajuste a partir de setembro".
+   - FAIXA de meses ("setembro a dezembro"): NÃO escolha um mês. Deixe mes_evento null e preencha só o ano.
    - mes_evento só existe acompanhado de ano_evento. Se souber o mês mas não o ano, os dois vão null.
    - Dois dias possíveis ("29 ou 30 de maio"): dia_evento null, mês e ano preenchidos.
-   - Se ela disser que ainda não tem data, os três vão null. Não deduza a partir do que respondemos.
+   - Se ela disser que ainda não tem data, os três vão null.
    - Se ela mudar de ideia ao longo da conversa, vale a ÚLTIMA data que ela disse.
 6. CONVIDADOS: se faixa ('90 a 100'), convidados_texto = faixa e convidados_num = maior valor. Se número único, os dois iguais.
-7. CIDADE: é a cidade onde o LEAD mora / de onde ele vem, dita por ele na conversa. NUNCA preencha com "São Lourenço da Serra" só porque é a cidade do Sítio — essa informação está neste prompt, não na conversa. Só use "São Lourenço da Serra" se o próprio lead disser que mora lá. Se a conversa não disser de onde o lead é, cidade = null.
+7. CIDADE: é a cidade onde o LEAD mora, dita por ele na conversa. NUNCA preencha com "São Lourenço da Serra" só porque é a cidade do Sítio — essa informação está neste prompt, não na conversa. Se a conversa não disser de onde o lead é, cidade = null.
 8. Se a conversa estiver confusa, com papéis trocados, ou sem segurança, use precisa_revisao=true e confianca baixa.
-9. CANCELAR OU REMARCAR A VISITA NÃO É RECUSAR O NEGÓCIO. Se a noiva cancela a visita, diz que não pode no dia, ou pede outra data, e a conversa segue viva — ela pergunta quando pode ser, ou o Sítio ofereceu remarcar — a etapa é "Convite para Visita" com semantica "aguardando". A visita deixa de existir, o convite volta a estar de pé esperando ela escolher um dia.
-   Falas reais que SÃO reagendamento, e nunca "recusou": "Pode cancelar por favor"; "Não vamos conseguir ir"; "Fora amanhã, quando você consegue?"; "Quando tiver desistência você entra em contato comigo?".
-   "recusou" é só quando ela desiste do Sítio: achou caro, escolheu outro lugar, ou disse que não quer mais. Na dúvida entre os dois, use "Convite para Visita"/"aguardando": manter um lead vivo custa uma mensagem, encerrar um lead vivo custa o casamento.
+9. CANCELAR OU REMARCAR A VISITA NÃO É PERDER O LEAD. Se a noiva cancela a visita, diz que não pode no dia, ou pede outra data, e a conversa segue viva, a etapa é "Convite para Visita" com estado "parado". A visita deixa de existir, o convite volta a estar de pé esperando ela escolher um dia.
+   Falas reais que NÃO são perda: "Pode cancelar por favor"; "Não vamos conseguir ir"; "Fora amanhã, quando você consegue?"; "Quando tiver desistência você entra em contato comigo?".
+   "perdido" é só quando ela desiste do Sítio. Na dúvida, use "Convite para Visita"/"parado": manter um lead vivo custa uma mensagem, encerrar um lead vivo custa o casamento.
 
 Responda APENAS em JSON válido, sem texto fora do JSON:
-{"etapa":"...","semantica":"...","resultado_label":"...","qualificacao":"qualificado|desqualificado|indefinido","nome_extraido":"... ou null","convidados_texto":"... ou null","convidados_num":0 ou null,"dia_evento":"... ou null","mes_evento":"01-12 ou null","ano_evento":"AAAA ou null","cidade":"... ou null","confianca":0.0,"precisa_revisao":false,"justificativa":"1 frase curta"}`;
+{"etapa":"...","estado":"parado|avancou|perdido","motivo":"... ou null","qualificacao":"qualificado|desqualificado|indefinido","nome_extraido":"... ou null","convidados_texto":"... ou null","convidados_num":0 ou null,"dia_evento":"... ou null","mes_evento":"01-12 ou null","ano_evento":"AAAA ou null","cidade":"... ou null","confianca":0.0,"precisa_revisao":false,"justificativa":"1 frase curta"}`;
 
 async function classificarConversa(conversa: string): Promise<any> {
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -80,16 +73,30 @@ async function classificarConversa(conversa: string): Promise<any> {
   return JSON.parse(texto.replace(/```json/g, "").replace(/```/g, "").trim());
 }
 
-// Trava determinística: a semântica 'desqualificado' só existe na etapa Perguntas.
-// Se a IA desqualificar o lead mas ainda assim avançar a etapa, corrigimos aqui.
+// Trava determinística: quem foi descartado não avança no funil. Se a IA
+// desqualificar o lead mas ainda assim empurrar a etapa adiante, corrigimos.
+const MOTIVOS_DESCARTE = ["Mais de 100 convidados", "Data impossível", "Fora do escopo"];
+
 function aplicarTravaDesqualificado(c: any): any {
   if (c?.qualificacao !== "desqualificado") return c;
-  if (c.etapa === "Perguntas" && c.semantica === "desqualificado") return c;
-  const antes = `${c.etapa}/${c.semantica}`;
+  if (c.etapa === "Perguntas" && c.estado === "perdido") {
+    if (!MOTIVOS_DESCARTE.includes(c.motivo)) c.motivo = "Fora do escopo";
+    return c;
+  }
+  const antes = `${c.etapa}/${c.estado}`;
   c.etapa = "Perguntas";
-  c.semantica = "desqualificado";
-  c.resultado_label = "Não qualificado";
+  c.estado = "perdido";
+  if (!MOTIVOS_DESCARTE.includes(c.motivo)) c.motivo = "Fora do escopo";
   c.justificativa = `[trava desqualificado: IA sugeriu ${antes}] ${c.justificativa ?? ""}`.trim();
+  return c;
+}
+
+// Perder um lead sem dizer por quê é o buraco que este redesenho veio tapar:
+// 289 recusas na base, 13 com motivo. Se a IA encerra sem motivo, o motivo
+// vira "Outro" — que é honesto — em vez de ficar nulo e sumir do relatório.
+function exigirMotivo(c: any): any {
+  if (c?.estado === "perdido" && !c.motivo) c.motivo = "Outro";
+  if (c?.estado !== "perdido") c.motivo = null;
   return c;
 }
 
@@ -125,18 +132,19 @@ function validarAnoDaNoiva(c: any, textoNoiva: string, textoSitio: string): any 
   return c;
 }
 
-// Quem falou por ultimo decide entre 'respondeu' e 'aguardando'. O proprio
-// prompt ja diz isso, e mesmo assim 6 dos 11 leads marcados como 'respondeu'
-// tinham o Sitio falando por ultimo. Regra mecanica: codigo verifica melhor.
+// Quem falou por ultimo decide entre 'avancou' e 'parado'. O proprio prompt ja
+// diz isso, e mesmo assim 6 dos 11 leads marcados como 'respondeu' no modelo
+// antigo tinham o Sitio falando por ultimo. Regra mecanica: codigo verifica
+// melhor do que instrucao em prosa.
 //
-// So corrigimos nesse sentido. O inverso - virar 'aguardando' em 'respondeu'
-// porque a noiva falou por ultimo - avancaria o funil por conta propria, e a
-// ultima fala dela pode ser um "ok, obrigada" que nao responde nada.
-function validarSemanticaPelaUltima(c: any, ultimaDe: string): any {
-  if (c?.semantica === "respondeu" && ultimaDe === "sitio") {
-    c.semantica = "aguardando";
+// So corrigimos nesse sentido. O inverso - virar 'parado' em 'avancou' porque
+// a noiva falou por ultimo - avancaria o funil por conta propria, e a ultima
+// fala dela pode ser um "ok, obrigada" que nao responde nada.
+function validarEstadoPelaUltima(c: any, ultimaDe: string): any {
+  if (c?.estado === "avancou" && ultimaDe === "sitio") {
+    c.estado = "parado";
     c.justificativa =
-      `[trava: 'respondeu' com o Sitio falando por ultimo] ${c.justificativa ?? ""}`.trim();
+      `[trava: 'avancou' com o Sitio falando por ultimo] ${c.justificativa ?? ""}`.trim();
   }
   return c;
 }
@@ -183,30 +191,27 @@ Deno.serve(async (req: Request) => {
 
       try {
         const ultimaDe = ultimaGeral.direction === "inbound" ? "noiva" : "sitio";
-        const c = validarSemanticaPelaUltima(
+        const c = exigirMotivo(validarEstadoPelaUltima(
           validarAnoDaNoiva(
             validarCidade(
               aplicarTravaDesqualificado(await classificarConversa(conversa)), conversa),
             textoNoiva, textoSitio),
-          ultimaDe);
-        // Uma etapa pode ter mais de um outcome com a mesma semântica
-        // (ex: Dúvidas tem "Aguardando" e "Vai consultar", ambos 'aguardando').
-        // Pegamos o de menor ordem — o resultado genérico da etapa.
-        let outcomeId: string | null = null;
-        const { data: outcome } = await supabase.from("crm_stage_outcomes")
-          .select("id, ordem, crm_stages!inner(nome)")
-          .eq("semantica", c.semantica).eq("crm_stages.nome", c.etapa)
-          .order("ordem", { ascending: true }).limit(1).maybeSingle();
-        if (outcome) outcomeId = outcome.id;
-        // Combinação etapa+semântica inexistente no CRM: não dá para gravar,
-        // então marcamos para revisão manual em vez de deixar passar calado.
-        if (!outcomeId) c.precisa_revisao = true;
+          ultimaDe));
+
+        // A etapa é resolvida pelo nome. Se o modelo inventar uma etapa que
+        // não existe, a sugestão vai para revisão manual em vez de passar
+        // calada — sem stage_id a gravação não toca na posição do lead.
+        const { data: stage } = await supabase.from("crm_stages")
+          .select("id").eq("nome", c.etapa).eq("ativo", true).limit(1).maybeSingle();
+        const stageId: string | null = stage?.id ?? null;
+        if (!stageId) c.precisa_revisao = true;
 
         const { error: eIns } = await supabase.from("ia_sugestoes").insert({
           lead_id: leadId,
           etapa_sugerida: c.etapa,
-          outcome_id_sugerido: outcomeId,
-          semantica_sugerida: c.semantica,
+          stage_id_sugerido: stageId,
+          estado_sugerido: c.estado,
+          motivo_sugerido: c.motivo,
           qualificacao: c.qualificacao,
           nome_extraido: c.nome_extraido,
           convidados_extraido: c.convidados_texto,
@@ -225,7 +230,7 @@ Deno.serve(async (req: Request) => {
           ultima_de: ultimaDe,
         });
         if (eIns) resultados.push({ leadId, ok:false, insertErro: eIns.message });
-        else resultados.push({ leadId, ok:true, etapa:c.etapa, semantica:c.semantica });
+        else resultados.push({ leadId, ok:true, etapa:c.etapa, estado:c.estado });
       } catch (err) { resultados.push({ leadId, ok:false, erro: String(err) }); }
     }
     debug.resultados = resultados;

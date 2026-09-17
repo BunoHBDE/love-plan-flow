@@ -7,10 +7,9 @@
  * resolve a etapa sem abrir nada.
  *
  * Os filtros são os momentos da rotina, não categorias abstratas:
- *   Hoje                → o que precisa de você agora
- *   Aguardando resposta → quem pode ter respondido sem você registrar
- *   Em silêncio         → quem sumiu
- *   Novos               → o que você cadastrou hoje
+ *   Hoje        → o que precisa de você agora
+ *   Em silêncio → quem passou do prazo da etapa e sumiu
+ *   Novos       → o que você cadastrou hoje
  *
  * Abaixo deles vêm os REFINOS — etapa e data do casamento. Eles não competem
  * com os filtros de cima, se somam: "quem vence hoje, está na Proposta e quer
@@ -46,7 +45,7 @@ import { AcaoRapidaLinha } from "./AcaoRapida";
 import { CadastroRapido } from "./CadastroRapido";
 import { QualificacaoNaLinha } from "./Qualificacao";
 
-type FiltroId = "hoje" | "aguardando" | "silencio" | "novos" | "todos";
+type FiltroId = "hoje" | "silencio" | "novos" | "todos";
 
 /** Refino desligado. Não pode ser "" — o Radix reserva a string vazia. */
 const TODOS = "__todos";
@@ -75,16 +74,10 @@ const FILTROS: Filtro[] = [
       l.derived.urgencia === "atrasado" || l.derived.urgencia === "hoje",
   },
   {
-    id: "aguardando",
-    label: "Aguardando resposta",
-    descricao:
-      "Você mandou mensagem e ainda não registrou o retorno. É aqui que você varre o que respondeu no WhatsApp enquanto o dia corria.",
-    inclui: (l) => l.derived.aguardandoResposta,
-  },
-  {
     id: "silencio",
     label: "Em silêncio",
-    descricao: "Sumiram. Quem está há mais tempo sem responder vem primeiro.",
+    descricao:
+      "Passaram do prazo da etapa sem avançar. Quem está esperando há mais tempo vem primeiro — é desta lista que sai a rodada de retomada.",
     inclui: (l) => l.derived.situacao === "em_silencio",
   },
   {
@@ -197,7 +190,6 @@ export function CrmLista({
     const hojeISO = hoje();
     const mapa: Record<FiltroId, number> = {
       hoje: 0,
-      aguardando: 0,
       silencio: 0,
       novos: 0,
       todos: 0,
@@ -533,7 +525,7 @@ function ordenar(filtro: FiltroId, buscando: boolean) {
     if (buscando) return a.nome.localeCompare(b.nome, "pt-BR");
 
     if (filtro === "silencio") {
-      return (b.derived.diasEmSilencio ?? 0) - (a.derived.diasEmSilencio ?? 0);
+      return b.derived.diasParado - a.derived.diasParado;
     }
 
     if (filtro === "novos") {
@@ -597,13 +589,9 @@ function Vazio({
       titulo: "Nada pendente para hoje",
       dica: "Você já passou por todo mundo que precisava de você.",
     },
-    aguardando: {
-      titulo: "Nenhuma resposta pendente",
-      dica: "Todas as conversas em aberto já foram registradas.",
-    },
     silencio: {
       titulo: "Ninguém em silêncio",
-      dica: "Todo mundo que você procurou respondeu.",
+      dica: "Nenhum atendimento passou do prazo da sua etapa.",
     },
     novos: {
       titulo: "Nenhum lead cadastrado hoje",

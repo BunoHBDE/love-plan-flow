@@ -14,8 +14,10 @@ import { DatePickerField } from "@/components/ui/DatePickerField";
 import { cn } from "@/lib/utils";
 import {
   calcularFunil,
-  calcularIgnoradas,
+  calcularGargalo,
+  calcularMotivos,
   calcularOrigens,
+  dias,
   num,
   pct,
 } from "@/lib/crm/metrics";
@@ -44,8 +46,12 @@ export function CrmPainel({
     () => calcularFunil(filtrados, config.stages),
     [filtrados, config.stages],
   );
-  const ignoradas = useMemo(
-    () => calcularIgnoradas(filtrados, config.stages),
+  const gargalo = useMemo(
+    () => calcularGargalo(filtrados, config.stages),
+    [filtrados, config.stages],
+  );
+  const motivos = useMemo(
+    () => calcularMotivos(filtrados, config.stages),
     [filtrados, config.stages],
   );
   const origens = useMemo(
@@ -100,9 +106,9 @@ export function CrmPainel({
               <TableRow>
                 <TableHead>Etapa</TableHead>
                 <TableHead className="text-right">Chegaram</TableHead>
-                <TableHead className="text-right">Responderam</TableHead>
-                <TableHead className="text-right">Ignoraram</TableHead>
-                <TableHead className="text-right">Taxa de resposta</TableHead>
+                <TableHead className="text-right">Avançaram</TableHead>
+                <TableHead className="text-right">Perderam aqui</TableHead>
+                <TableHead className="text-right">Taxa de avanço</TableHead>
                 <TableHead className="text-right">% do total</TableHead>
               </TableRow>
             </TableHeader>
@@ -120,10 +126,10 @@ export function CrmPainel({
                   </TableCell>
                   <TableCell className="text-right">{linha.chegaram}</TableCell>
                   <TableCell className="text-right">
-                    {num(linha.responderam)}
+                    {num(linha.avancaram)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {num(linha.ignoraram)}
+                    {num(linha.perderam)}
                   </TableCell>
                   <TableCell className="text-right">{pct(linha.taxa)}</TableCell>
                   <TableCell className="text-right text-muted-foreground">
@@ -138,41 +144,145 @@ export function CrmPainel({
         )}
       </Bloco>
 
-      {/* 2 · MENSAGENS IGNORADAS */}
+      {/* 2 · GARGALO */}
       <Bloco
-        titulo="2 · Mensagens ignoradas por etapa"
-        descricao="Aponta qual mensagem reescrever primeiro. Conta mensagens, não leads — um lead que ficou em silêncio, voltou e sumiu de novo aparece duas vezes."
+        titulo="2 · Onde o atendimento trava"
+        descricao="De cada 100 que chegam a uma etapa, quantos seguem adiante. A etapa de maior queda está destacada — é onde a mensagem, o preço ou a proposta daquela etapa precisa mudar. 'Parados' é quanta gente está lá agora, e é a fila de quem você pode chamar hoje."
       >
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Etapa</TableHead>
-              <TableHead className="text-right">Vezes ignorada</TableHead>
-              <TableHead className="text-right">% das ignoradas</TableHead>
+              <TableHead className="text-right">Chegaram</TableHead>
+              <TableHead className="text-right">Avançaram</TableHead>
+              <TableHead className="text-right">Queda</TableHead>
+              <TableHead className="text-right">Perderam aqui</TableHead>
+              <TableHead className="text-right">Parados</TableHead>
+              <TableHead className="text-right">Em silêncio</TableHead>
+              <TableHead className="text-right">Parados há</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {ignoradas.linhas.map((linha) => (
-              <TableRow key={linha.label}>
-                <TableCell>{linha.label}</TableCell>
-                <TableCell className="text-right">{linha.vezes}</TableCell>
+            {gargalo.map((linha) => (
+              <TableRow
+                key={linha.stageId}
+                className={cn(linha.gargalo && "bg-destructive/5")}
+              >
+                <TableCell
+                  className={cn("whitespace-nowrap", linha.gargalo && "font-medium")}
+                >
+                  {linha.label}
+                  {linha.gargalo && (
+                    <span className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">
+                      gargalo
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">{linha.chegaram}</TableCell>
+                <TableCell className="text-right">{linha.avancaram}</TableCell>
+                <TableCell
+                  className={cn(
+                    "text-right",
+                    linha.gargalo ? "font-semibold text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {pct(linha.queda)}
+                </TableCell>
+                <TableCell className="text-right">{linha.perderam}</TableCell>
+                <TableCell className="text-right font-medium">
+                  {linha.parados}
+                </TableCell>
+                <TableCell className="text-right">
+                  {linha.emSilencio > 0 ? (
+                    <span className="text-warning-foreground">
+                      {linha.emSilencio}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell className="text-right text-muted-foreground">
-                  {pct(linha.pct)}
+                  {dias(linha.diasMediana)}
                 </TableCell>
               </TableRow>
             ))}
-            <TableRow className="font-medium">
-              <TableCell>Total</TableCell>
-              <TableCell className="text-right">{ignoradas.total}</TableCell>
-              <TableCell />
-            </TableRow>
           </TableBody>
         </Table>
       </Bloco>
 
+      {/* 3 · MOTIVOS DA PERDA */}
+      <Bloco
+        titulo="3 · Por que você perde, e onde"
+        descricao="O mesmo motivo em etapas diferentes é um problema diferente: 'preço' na Proposta é a tabela; 'preço' depois da visita é o que a visita prometeu."
+      >
+        {motivos.total === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Nenhuma perda registrada no período.
+          </p>
+        ) : (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Motivo</TableHead>
+                  {config.stages.map((stage, i) => (
+                    <TableHead
+                      key={stage.id}
+                      className="text-right"
+                      title={stage.nome}
+                    >
+                      {i + 1}
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">%</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {motivos.linhas.map((linha) => (
+                  <TableRow key={linha.label}>
+                    <TableCell className="whitespace-nowrap">
+                      {linha.label}
+                    </TableCell>
+                    {linha.porEtapa.map((valor, i) => (
+                      <TableCell
+                        key={config.stages[i].id}
+                        className={cn(
+                          "text-right",
+                          valor === 0 && "text-muted-foreground/40",
+                        )}
+                      >
+                        {valor === 0 ? "·" : valor}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right font-medium">
+                      {linha.total}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {pct(linha.pct)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Colunas numeradas na ordem das etapas:{" "}
+              {config.stages.map((s, i) => `${i + 1} ${s.nome}`).join(" · ")}
+            </p>
+            {motivos.semMotivo > 0 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {motivos.semMotivo} perda{motivos.semMotivo === 1 ? "" : "s"} sem
+                motivo — são leads encerrados antes de o motivo passar a ser
+                obrigatório.
+              </p>
+            )}
+          </>
+        )}
+      </Bloco>
+
       {/* 3 · POR ORIGEM */}
       <Bloco
-        titulo="3 · Desempenho por origem"
+        titulo="4 · Desempenho por origem"
         descricao="Compare os canais pela taxa lead → contrato, não pelo volume de leads."
       >
         <Table>

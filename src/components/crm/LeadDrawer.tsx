@@ -155,31 +155,43 @@ function ConteudoDrawer({
         salvar={salvar}
       />
 
-      <Secao titulo="Atendimento">
-        {config.stages.map((stage, indice) => {
-          const registro = lead.etapas.find((e) => e.stage_id === stage.id);
-          const travada = derived.etapaTravada?.id === stage.id;
+      <Secao
+        titulo="Atendimento"
+        descricao="Por onde o lead passou. Clicar numa etapa anterior traz o lead de volta para ela e apaga o que veio depois."
+      >
+        <ol className="space-y-1">
+          {config.stages.map((stage, indice) => {
+            const entrada = lead.etapas.find((e) => e.stage_id === stage.id);
+            const atual = derived.etapaAtual?.id === stage.id;
+            const passada = entrada !== undefined && !atual;
 
-          return (
-            <CampoSelect
-              key={stage.id}
-              label={`${indice + 1} · ${stage.nome}`}
-              destaque={travada}
-              value={registro?.outcome_id ?? SEM_VALOR}
-              onChange={(valor) =>
-                acoes.registrarEtapa.mutate({
-                  lead,
-                  stageId: stage.id,
-                  outcomeId: valor === SEM_VALOR ? null : valor,
-                })
-              }
-              opcoes={stage.outcomes.map((o) => ({
-                value: o.id,
-                label: o.label,
-              }))}
-            />
-          );
-        })}
+            return (
+              <li key={stage.id}>
+                <button
+                  type="button"
+                  disabled={!passada || derived.encerrado}
+                  onClick={() => acoes.voltar.mutate({ lead, stageId: stage.id })}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left text-sm",
+                    passada && !derived.encerrado && "hover:bg-muted",
+                    atual && "bg-primary/10 font-medium text-primary",
+                    !entrada && "text-muted-foreground/50",
+                  )}
+                >
+                  <span className="w-4 shrink-0 tabular-nums text-xs opacity-60">
+                    {indice + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{stage.nome}</span>
+                  {entrada && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {formatarData(entrada.entrou_em.slice(0, 10))}
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
       </Secao>
 
       <BlocoAgendamento lead={lead} config={config} salvar={salvar} />
@@ -309,12 +321,12 @@ function ProximoPasso({
         </div>
       )}
 
-      {derived.etapaTravada && (
+      {derived.situacao === "em_silencio" && derived.etapaAtual && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
           <AlertCircle className="h-3.5 w-3.5" />
-          Travado em <strong>{derived.etapaTravada.nome}</strong> — em silêncio
-          há {derived.diasEmSilencio} dia
-          {derived.diasEmSilencio === 1 ? "" : "s"}
+          Parado em <strong>{derived.etapaAtual.nome}</strong> há{" "}
+          {derived.diasParado} dia{derived.diasParado === 1 ? "" : "s"} — o prazo
+          da etapa é {derived.etapaAtual.dias_prazo}
         </p>
       )}
 
@@ -341,16 +353,8 @@ function BlocoAgendamento({
   config: CrmConfig;
   salvar: (patch: { data_agendamento?: string | null; compareceu?: Compareceu | null }) => void;
 }) {
-  // O bloco só aparece depois que alguma etapa marcou um agendamento.
-  const agendou = config.stages.some((stage) =>
-    stage.outcomes.some(
-      (outcome) =>
-        outcome.semantica === "agendou" &&
-        lead.etapas.some((e) => e.outcome_id === outcome.id),
-    ),
-  );
-
-  if (!agendou && !lead.data_agendamento && !lead.compareceu) return null;
+  // Só aparece quando há visita para falar sobre: marcada, ou já aconteceu.
+  if (!lead.data_agendamento && !lead.compareceu) return null;
 
   return (
     <Secao titulo="Visita">
