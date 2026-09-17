@@ -215,9 +215,11 @@ export function QuandoBadge({
 export function WhatsAppButton({
   telefone,
   size = "sm",
+  className,
 }: {
   telefone: string;
   size?: "sm" | "icon";
+  className?: string;
 }) {
   const digitos = telefone.replace(/\D/g, "");
   if (!digitos) return null;
@@ -228,6 +230,7 @@ export function WhatsAppButton({
     <Button
       variant="outline"
       size={size}
+      className={className}
       asChild
       onClick={(event) => event.stopPropagation()}
     >

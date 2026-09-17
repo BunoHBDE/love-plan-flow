@@ -370,13 +370,13 @@ export function AcaoRapidaLinha({
   }
 
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
+    <div className="flex min-w-0 items-center gap-1">
       {acao?.tipo === "compareceu" ? (
         <Compareceu lead={lead} acoes={acoes} />
       ) : proxima ? (
         <Button
           size="sm"
-          className="h-8 min-w-0 max-w-full"
+          className="h-8 min-w-0 max-w-full gap-1 px-2.5"
           onClick={(evento) => {
             evento.stopPropagation();
             acoes.avancar.mutate({ lead });
