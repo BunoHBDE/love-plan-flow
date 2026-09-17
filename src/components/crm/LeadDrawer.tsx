@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Archive, ArrowRight, RotateCcw, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  ChevronDown,
+  MessageCircle,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -45,7 +52,7 @@ import {
   type CrmConfig,
   type CrmLeadComputed,
 } from "@/types/crm.types";
-import { QuandoBadge, SituacaoBadge, WhatsAppButton } from "./CrmBadges";
+import { QuandoBadge, SituacaoBadge } from "./CrmBadges";
 import { AcaoRapidaBotoes } from "./AcaoRapida";
 import { FormularioQualificacao } from "./Qualificacao";
 
@@ -128,37 +135,138 @@ function ConteudoDrawer({
   const salvar = (patch: Parameters<typeof acoes.atualizarLead.mutate>[0]["patch"]) =>
     acoes.atualizarLead.mutate({ id: lead.id, patch });
 
+  // wa.me só entende dígitos com o código do país na frente — o mesmo
+  // cálculo do WhatsAppButton, refeito aqui porque este link tem o visual
+  // próprio de balão, e não o do botão padrão.
+  const digitosTelefone = lead.telefone.replace(/\D/g, "");
+  const numeroWhatsApp =
+    digitosTelefone.length <= 11 ? `55${digitosTelefone}` : digitosTelefone;
+
   return (
     <div className="space-y-6">
-      <SheetHeader className="space-y-3 text-left">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <SheetTitle className="font-display text-2xl truncate">
-              {lead.nome}
-            </SheetTitle>
+      <SheetHeader className="space-y-1 text-left">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {/* Título fica só para acessibilidade — quem edita usa o campo visível logo abaixo. */}
+            <SheetTitle className="sr-only">{lead.nome}</SheetTitle>
+            <NomeEditavel lead={lead} acoes={acoes} />
             <SheetDescription className="mt-0.5">
               Entrou em {formatarData(lead.entrada)}
             </SheetDescription>
           </div>
-          <SituacaoBadge
-            situacao={derived.situacao}
-            etapa={derived.etapaAtual?.nome}
-          />
+          <div className="flex shrink-0 items-center gap-2">
+            <SituacaoBadge
+              situacao={derived.situacao}
+              etapa={derived.etapaAtual?.nome}
+            />
+            {/* Pouco usado — só um balão, não mais um botão de largura cheia. */}
+            {digitosTelefone && (
+              <a
+                href={`https://wa.me/${numeroWhatsApp}`}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Abrir no WhatsApp"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 transition-colors hover:bg-emerald-500/20"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </a>
+            )}
+          </div>
         </div>
-        <WhatsAppButton telefone={lead.telefone} />
       </SheetHeader>
 
-      <ProximoPasso
+      {/* Os campos mais usados no dia a dia ficam logo no topo, antes até do próximo passo. */}
+      <Secao titulo="Dados principais">
+        <FormularioQualificacao lead={lead} acoes={acoes} idPrefixo="gaveta" />
+
+        <CampoSelect
+          label="Origem"
+          value={lead.origem ?? SEM_VALOR}
+          onChange={(valor) =>
+            salvar({ origem: valor === SEM_VALOR ? null : valor })
+          }
+          opcoes={config.origens.map((o) => ({ value: o.label, label: o.label }))}
+        />
+
+        <CampoSelect
+          label="Motivo / objeção"
+          value={lead.motivo_objecao ?? SEM_VALOR}
+          onChange={(valor) =>
+            salvar({ motivo_objecao: valor === SEM_VALOR ? null : valor })
+          }
+          opcoes={config.motivos.map((m) => ({ value: m.label, label: m.label }))}
+        />
+      </Secao>
+
+      <BlocoAtendimento
         lead={lead}
         config={config}
         acoes={acoes}
         salvar={salvar}
       />
 
-      <Secao
-        titulo="Atendimento"
-        descricao="Por onde o lead passou. Clicar numa etapa anterior traz o lead de volta para ela e apaga o que veio depois."
+      <BlocoAgendamento lead={lead} config={config} salvar={salvar} />
+
+      <BlocoDados lead={lead} config={config} acoes={acoes} salvar={salvar} />
+
+      <Separator />
+
+      {/* Excluir é raramente usado — fica como link discreto, não mais como botão de mesmo peso que "Arquivar" (removido, ninguém usava). */}
+      <div className="flex justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          onClick={onExcluir}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Excluir lead
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// PRÓXIMO PASSO + ATENDIMENTO (colapsado junto)
+// ==========================================
+
+function BlocoAtendimento({
+  lead,
+  config,
+  acoes,
+  salvar,
+}: {
+  lead: CrmLeadComputed;
+  config: CrmConfig;
+  acoes: ReturnType<typeof useCrmLeads>;
+  salvar: (patch: AtualizarLeadInput) => void;
+}) {
+  const { derived } = lead;
+  const [historicoAberto, setHistoricoAberto] = useState(false);
+
+  // Ao trocar de lead, fecha o histórico de novo.
+  useEffect(() => setHistoricoAberto(false), [lead.id]);
+
+  return (
+    <div className="space-y-2">
+      <ProximoPasso lead={lead} config={config} acoes={acoes} salvar={salvar} />
+
+      <button
+        type="button"
+        onClick={() => setHistoricoAberto((atual) => !atual)}
+        className="flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-xs text-muted-foreground hover:bg-muted"
       >
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 transition-transform",
+            historicoAberto && "rotate-180",
+          )}
+        />
+        {historicoAberto ? "Ocultar etapas anteriores" : "Ver etapas anteriores"}
+      </button>
+
+      {historicoAberto && (
         <ol className="space-y-1">
           {config.stages.map((stage, indice) => {
             const entrada = lead.etapas.find((e) => e.stage_id === stage.id);
@@ -192,40 +300,7 @@ function ConteudoDrawer({
             );
           })}
         </ol>
-      </Secao>
-
-      <BlocoAgendamento lead={lead} config={config} salvar={salvar} />
-
-      <Secao
-        titulo="Qualificação"
-        descricao="O que decide se o lead é qualificado. Sai na etapa de perguntas."
-      >
-        <FormularioQualificacao lead={lead} acoes={acoes} idPrefixo="gaveta" />
-      </Secao>
-
-      <BlocoDados lead={lead} config={config} acoes={acoes} salvar={salvar} />
-
-      <Separator />
-
-      <div className="flex flex-col gap-2 sm:flex-row">
-        {/* Saída para o lead que sumiu de vez: sai da fila, guarda o histórico. */}
-        <Button
-          variant="outline"
-          className="flex-1"
-          onClick={() => salvar({ arquivado: true })}
-        >
-          <Archive className="h-4 w-4" />
-          Arquivar
-        </Button>
-        <Button
-          variant="ghost"
-          className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10"
-          onClick={onExcluir}
-        >
-          <Trash2 className="h-4 w-4" />
-          Excluir
-        </Button>
-      </div>
+      )}
     </div>
   );
 }
@@ -386,7 +461,6 @@ function BlocoAgendamento({
 
 function BlocoDados({
   lead,
-  config,
   acoes,
   salvar,
 }: {
@@ -407,16 +481,7 @@ function BlocoDados({
   }, [lead.id, lead.observacoes, lead.telefone, lead.email]);
 
   return (
-    <Secao titulo="Dados">
-      <CampoSelect
-        label="Origem"
-        value={lead.origem ?? SEM_VALOR}
-        onChange={(valor) =>
-          salvar({ origem: valor === SEM_VALOR ? null : valor })
-        }
-        opcoes={config.origens.map((o) => ({ value: o.label, label: o.label }))}
-      />
-
+    <Secao titulo="Outros dados">
       <div className="space-y-2">
         {/* O cadastro rápido já escolhe a entrada; aqui é a correção depois. */}
         <Label className="text-sm">Entrada</Label>
@@ -470,15 +535,6 @@ function BlocoDados({
         />
       </div>
 
-      <CampoSelect
-        label="Motivo / objeção"
-        value={lead.motivo_objecao ?? SEM_VALOR}
-        onChange={(valor) =>
-          salvar({ motivo_objecao: valor === SEM_VALOR ? null : valor })
-        }
-        opcoes={config.motivos.map((m) => ({ value: m.label, label: m.label }))}
-      />
-
       <div className="space-y-2">
         <Label className="text-sm">Última mensagem minha</Label>
         <DatePickerField
@@ -530,6 +586,48 @@ function Secao({
       </div>
       {children}
     </section>
+  );
+}
+
+/**
+ * Nome editável direto no cabeçalho da gaveta. `nome` mora em `clients`, não
+ * em `crm_leads` — por isso passa por `atualizarContato`, e não pelo `salvar`
+ * genérico que o resto da gaveta usa (o mesmo caminho que o formulário de
+ * qualificação já usa para o nome).
+ */
+function NomeEditavel({
+  lead,
+  acoes,
+}: {
+  lead: CrmLeadComputed;
+  acoes: ReturnType<typeof useCrmLeads>;
+}) {
+  const [nome, setNome] = useState(lead.nome);
+
+  // Ao trocar de lead, recarrega o valor do campo.
+  useEffect(() => setNome(lead.nome), [lead.id, lead.nome]);
+
+  return (
+    <input
+      value={nome}
+      onChange={(e) => setNome(e.target.value)}
+      onBlur={() => {
+        const valor = nome.trim();
+        if (!valor) {
+          setNome(lead.nome);
+          return;
+        }
+        if (valor !== lead.nome) {
+          acoes.atualizarContato.mutate({
+            clientId: lead.client_id,
+            patch: { nome: valor },
+          });
+        }
+      }}
+      aria-label="Nome dos noivos"
+      placeholder="Nome dos noivos"
+      className="w-full truncate border-b border-dashed border-border/70 bg-transparent font-display text-2xl outline-none transition-colors hover:border-border focus:border-solid focus:border-primary"
+    />
   );
 }
 
