@@ -326,6 +326,15 @@ function ProximoPasso({
   // Ao trocar de lead, fecha o editor de data.
   useEffect(() => setEditandoData(false), [lead.id]);
 
+  // No caso comum — avançar para a próxima etapa — o botão logo abaixo já diz
+  // "Avançar para X"; repetir a mesma frase aqui em cima só ocupa espaço. Nos
+  // outros casos (retomar contato, confirmar visita, fechar contrato...) o
+  // texto e o botão dizem coisas diferentes, então os dois ficam.
+  const repeteNoBotao =
+    derived.acao?.tipo === "avancar" &&
+    derived.proximaEtapa !== null &&
+    derived.proximoPasso === `Avançar para ${derived.proximaEtapa.nome}`;
+
   if (!derived.proximoPasso) {
     return (
       <div className="rounded-lg border border-border bg-muted/40 px-4 py-3">
@@ -353,7 +362,9 @@ function ProximoPasso({
           <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">Próximo passo</p>
-            <p className="font-medium truncate">{derived.proximoPasso}</p>
+            {!repeteNoBotao && (
+              <p className="font-medium truncate">{derived.proximoPasso}</p>
+            )}
           </div>
         </div>
 
