@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -221,6 +221,60 @@ export type Database = {
           },
         ]
       }
+      crm_backup_20260917_lead_stages: {
+        Row: {
+          id: string | null
+          lead_id: string | null
+          outcome_id: string | null
+          registrado_em: string | null
+          stage_id: string | null
+        }
+        Insert: {
+          id?: string | null
+          lead_id?: string | null
+          outcome_id?: string | null
+          registrado_em?: string | null
+          stage_id?: string | null
+        }
+        Update: {
+          id?: string | null
+          lead_id?: string | null
+          outcome_id?: string | null
+          registrado_em?: string | null
+          stage_id?: string | null
+        }
+        Relationships: []
+      }
+      crm_backup_20260917_leads: {
+        Row: {
+          compareceu: string | null
+          data_agendamento: string | null
+          encerrado_em: string | null
+          id: string | null
+          motivo_objecao: string | null
+          quando_manual: string | null
+          ultima_msg: string | null
+        }
+        Insert: {
+          compareceu?: string | null
+          data_agendamento?: string | null
+          encerrado_em?: string | null
+          id?: string | null
+          motivo_objecao?: string | null
+          quando_manual?: string | null
+          ultima_msg?: string | null
+        }
+        Update: {
+          compareceu?: string | null
+          data_agendamento?: string | null
+          encerrado_em?: string | null
+          id?: string | null
+          motivo_objecao?: string | null
+          quando_manual?: string | null
+          ultima_msg?: string | null
+        }
+        Relationships: []
+      }
       crm_lead_events: {
         Row: {
           created_at: string
@@ -330,6 +384,7 @@ export type Database = {
           motivo_objecao: string | null
           observacoes: string | null
           origem: string | null
+          origem_ayllah: string | null
           quando_manual: string | null
           ultima_msg: string | null
           ultima_msg_manual: boolean
@@ -356,6 +411,7 @@ export type Database = {
           motivo_objecao?: string | null
           observacoes?: string | null
           origem?: string | null
+          origem_ayllah?: string | null
           quando_manual?: string | null
           ultima_msg?: string | null
           ultima_msg_manual?: boolean
@@ -382,6 +438,7 @@ export type Database = {
           motivo_objecao?: string | null
           observacoes?: string | null
           origem?: string | null
+          origem_ayllah?: string | null
           quando_manual?: string | null
           ultima_msg?: string | null
           ultima_msg_manual?: boolean
@@ -393,6 +450,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_encerrado_stage_id_fkey"
+            columns: ["encerrado_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
             referencedColumns: ["id"]
           },
         ]
@@ -525,6 +589,199 @@ export type Database = {
           ordem?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      ia_sugestoes: {
+        Row: {
+          analisado_ate: string | null
+          ano_evento_extraido: string | null
+          cidade_extraida: string | null
+          confianca: number | null
+          convidados_extraido: string | null
+          convidados_num_extraido: number | null
+          created_at: string
+          data_evento_extraida: string | null
+          estado_sugerido: string | null
+          etapa_sugerida: string | null
+          id: string
+          justificativa: string | null
+          lead_id: string
+          mes_evento_extraido: string | null
+          motivo_sugerido: string | null
+          nome_extraido: string | null
+          outcome_id_sugerido: string | null
+          precisa_revisao: boolean
+          qtd_mensagens: number | null
+          qualificacao: string | null
+          revisado_em: string | null
+          revisado_por: string | null
+          semantica_sugerida: string | null
+          stage_id_sugerido: string | null
+          status: string
+          ultima_de: string | null
+          ultima_msg_noiva: string | null
+          ultima_msg_sitio: string | null
+        }
+        Insert: {
+          analisado_ate?: string | null
+          ano_evento_extraido?: string | null
+          cidade_extraida?: string | null
+          confianca?: number | null
+          convidados_extraido?: string | null
+          convidados_num_extraido?: number | null
+          created_at?: string
+          data_evento_extraida?: string | null
+          estado_sugerido?: string | null
+          etapa_sugerida?: string | null
+          id?: string
+          justificativa?: string | null
+          lead_id: string
+          mes_evento_extraido?: string | null
+          motivo_sugerido?: string | null
+          nome_extraido?: string | null
+          outcome_id_sugerido?: string | null
+          precisa_revisao?: boolean
+          qtd_mensagens?: number | null
+          qualificacao?: string | null
+          revisado_em?: string | null
+          revisado_por?: string | null
+          semantica_sugerida?: string | null
+          stage_id_sugerido?: string | null
+          status?: string
+          ultima_de?: string | null
+          ultima_msg_noiva?: string | null
+          ultima_msg_sitio?: string | null
+        }
+        Update: {
+          analisado_ate?: string | null
+          ano_evento_extraido?: string | null
+          cidade_extraida?: string | null
+          confianca?: number | null
+          convidados_extraido?: string | null
+          convidados_num_extraido?: number | null
+          created_at?: string
+          data_evento_extraida?: string | null
+          estado_sugerido?: string | null
+          etapa_sugerida?: string | null
+          id?: string
+          justificativa?: string | null
+          lead_id?: string
+          mes_evento_extraido?: string | null
+          motivo_sugerido?: string | null
+          nome_extraido?: string | null
+          outcome_id_sugerido?: string | null
+          precisa_revisao?: boolean
+          qtd_mensagens?: number | null
+          qualificacao?: string | null
+          revisado_em?: string | null
+          revisado_por?: string | null
+          semantica_sugerida?: string | null
+          stage_id_sugerido?: string | null
+          status?: string
+          ultima_de?: string | null
+          ultima_msg_noiva?: string | null
+          ultima_msg_sitio?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_sugestoes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_sugestoes_outcome_id_sugerido_fkey"
+            columns: ["outcome_id_sugerido"]
+            isOneToOne: false
+            referencedRelation: "crm_stage_outcomes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_sugestoes_stage_id_sugerido_fkey"
+            columns: ["stage_id_sugerido"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          body: string | null
+          contact_name: string | null
+          contact_wa_id: string
+          created_at: string
+          crm_lead_id: string | null
+          direction: string
+          id: string
+          msg_type: string | null
+          sent_at: string
+          source_event_id: string | null
+          wa_message_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          contact_name?: string | null
+          contact_wa_id: string
+          created_at?: string
+          crm_lead_id?: string | null
+          direction: string
+          id?: string
+          msg_type?: string | null
+          sent_at: string
+          source_event_id?: string | null
+          wa_message_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          contact_name?: string | null
+          contact_wa_id?: string
+          created_at?: string
+          crm_lead_id?: string | null
+          direction?: string
+          id?: string
+          msg_type?: string | null
+          sent_at?: string
+          source_event_id?: string | null
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_source_event_id_fkey"
+            columns: ["source_event_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      numeros_internos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          telefone_normalizado: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          telefone_normalizado: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          telefone_normalizado?: string
         }
         Relationships: []
       }
@@ -1168,15 +1425,61 @@ export type Database = {
           },
         ]
       }
+      whatsapp_events: {
+        Row: {
+          id: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+          received_at: string
+        }
+        Insert: {
+          id?: string
+          payload: Json
+          processed?: boolean
+          processed_at?: string | null
+          received_at?: string
+        }
+        Update: {
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          received_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      crm_bootstrap: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
+      aplicar_sugestoes_ia: {
+        Args: {
+          p_confianca_min?: number
+          p_dry_run?: boolean
+          p_gravar_data?: boolean
+          p_gravar_etapa?: boolean
+          p_lead_ids?: string[]
+        }
+        Returns: {
+          alteracoes: Json
+          aplicado: boolean
+          lead_id: string
+          motivo: string
+          sugestao_id: string
+        }[]
       }
+      crm_bootstrap: { Args: never; Returns: undefined }
+      crm_ultima_mensagem: {
+        Args: never
+        Returns: {
+          direction: string
+          lead_id: string
+          sent_at: string
+        }[]
+      }
+      formatar_telefone_br: { Args: { valor: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1184,6 +1487,42 @@ export type Database = {
         }
         Returns: boolean
       }
+      ia_ano_da_proposta: { Args: { p_lead_id: string }; Returns: string }
+      ia_autor_uuid: { Args: never; Returns: string }
+      ia_revisao_lista: {
+        Args: never
+        Returns: {
+          analisado_ate: string
+          antes: Json
+          aplicado_em: string
+          campos: Json
+          confianca: number
+          depois: Json
+          estado: string
+          etapa: string
+          evento_id: string
+          justificativa: string
+          lead_id: string
+          lead_nome: string
+          motivo_sugerido: string
+          precisa_revisao: boolean
+          qtd_mensagens: number
+          qualificacao: string
+          status: string
+          sugestao_id: string
+          telefone: string
+        }[]
+      }
+      leads_para_reclassificar: {
+        Args: never
+        Returns: {
+          lead_id: string
+        }[]
+      }
+      normalizar_telefone: { Args: { tel: string }; Returns: string }
+      normalize_whatsapp_events: { Args: never; Returns: number }
+      reverter_evento_ia: { Args: { p_event_id: string }; Returns: Json }
+      vincular_mensagens_a_leads: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "user"
@@ -1202,12 +1541,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1231,11 +1570,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1256,11 +1595,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1281,11 +1620,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1298,11 +1637,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
