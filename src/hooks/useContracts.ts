@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import type { Contract, ContractInsertData, ContractStatus, DadosCliente, DadosEvento, DadosPagamento, DadosEmpresa } from '@/types/contract.types';
@@ -79,7 +80,7 @@ export function useContracts() {
       data_assinatura?: string;
       assinado_por?: string;
     }) => {
-      const updateData: Record<string, unknown> = { status };
+      const updateData: Database['public']['Tables']['contracts']['Update'] = { status };
       
       if (data_assinatura) {
         updateData.data_assinatura = data_assinatura;

@@ -645,11 +645,12 @@ function CampoMotivo({
       </Label>
       <Textarea
         id="motivo-objecao"
-        rows={2}
+        rows={1}
         value={motivo}
         onChange={(e) => setMotivo(e.target.value)}
         onBlur={() => salvar({ motivo_objecao: motivo.trim() || null })}
         placeholder="Preço, escolheu outro lugar, mudou de ideia..."
+        className="min-h-10 resize-none"
       />
     </div>
   );
