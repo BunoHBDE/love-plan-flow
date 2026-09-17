@@ -370,20 +370,23 @@ export function AcaoRapidaLinha({
   }
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex min-w-0 items-center gap-1.5">
       {acao?.tipo === "compareceu" ? (
         <Compareceu lead={lead} acoes={acoes} />
       ) : proxima ? (
         <Button
           size="sm"
-          className="h-8"
+          className="h-8 min-w-0 max-w-full"
           onClick={(evento) => {
             evento.stopPropagation();
             acoes.avancar.mutate({ lead });
           }}
         >
-          {proxima.nome}
-          <ArrowRight className="h-3.5 w-3.5" />
+          {/* Nome da etapa pode ser longo ("Convite para Visita") — trunca em
+              vez de empurrar o botão, que numa lista em grade alargaria só a
+              coluna daquela linha. */}
+          <span className="truncate">{proxima.nome}</span>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" />
         </Button>
       ) : (
         <Button
