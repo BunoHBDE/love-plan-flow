@@ -66,9 +66,14 @@ type FiltroId = "hoje" | "silencio" | "novos" | "todos";
  * como "Visita Agendada" numa linha alargava exatamente a coluna dela,
  * torcendo a grade só naquela linha. Com o mínimo travado em zero, a coluna
  * nunca passa da fração combinada — o que não cabe trunca, não empurra.
+ *
+ * As frações não são iguais: Situação e Últ. contato são sempre textos
+ * curtos ("Aguardando", "há 4h"), então cedem espaço para quem carrega o
+ * nome da etapa — Fase, Próxima etapa e, principalmente, o botão de Ações,
+ * onde um texto cortado é pior (é uma ação, não só informação).
  */
 const GRID_LINHA =
-  "lg:grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,1.4fr)]";
+  "lg:grid-cols-[minmax(0,2fr)_minmax(0,0.85fr)_minmax(0,1.15fr)_minmax(0,1.2fr)_minmax(0,0.7fr)_minmax(0,1.8fr)]";
 
 /** Refino desligado. Não pode ser "" — o Radix reserva a string vazia. */
 const TODOS = "__todos";
@@ -405,7 +410,7 @@ export function CrmLista({
               no mobile a linha empilha e cada campo já se explica sozinho. */}
           <div
             className={cn(
-              "hidden items-center gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid",
+              "hidden items-center gap-2 border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid",
               GRID_LINHA,
             )}
           >
@@ -490,7 +495,7 @@ function LinhaLeadBase({
       }}
       className={cn(
         "group flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/40",
-        "lg:grid lg:items-center lg:gap-3",
+        "lg:grid lg:items-center lg:gap-2",
         GRID_LINHA,
         // O navegador pula layout e pintura das linhas fora da tela — no
         // "Todos" com a base grande é o que mantém a rolagem leve. O
@@ -544,14 +549,18 @@ function LinhaLeadBase({
       </div>
 
       {/* Ações */}
-      <div className="flex min-w-0 items-center gap-2 overflow-hidden lg:justify-center">
+      <div className="flex min-w-0 items-center gap-1.5 overflow-hidden lg:justify-center">
         <AcaoRapidaLinha
           lead={lead}
           config={config}
           acoes={acoes}
           onAbrirLead={onAbrirLead}
         />
-        <WhatsAppButton telefone={lead.telefone} size="icon" />
+        <WhatsAppButton
+          telefone={lead.telefone}
+          size="icon"
+          className="h-8 w-8 shrink-0"
+        />
       </div>
     </div>
   );
