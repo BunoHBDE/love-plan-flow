@@ -339,6 +339,11 @@ function ProximoPasso({
           Atendimento encerrado
           {lead.encerrado_em && ` em ${formatarData(lead.encerrado_em)}`}.
         </p>
+        {/* "Encerrado" e "Não qualificado" (e também "Contratou") são
+            desfechos que podem ter sido marcados por engano — o botão de
+            reabrir já existia em AcaoRapidaBotoes, só não era alcançado
+            porque este retorno antecipado nunca chegava a renderizá-lo. */}
+        <AcaoRapidaBotoes lead={lead} config={config} acoes={acoes} salvar={salvar} />
       </div>
     );
   }
