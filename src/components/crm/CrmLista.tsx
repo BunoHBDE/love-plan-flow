@@ -36,16 +36,29 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { MONTHS } from "@/constants/visits";
-import { hoje } from "@/lib/crm/dates";
+import { formatarDiasRelativo, formatarRelativo, hoje } from "@/lib/crm/dates";
 import { anoDoCasamento, mesDoCasamento } from "@/lib/crm/lead";
 import type { useCrmLeads } from "@/hooks/useCrmLeads";
 import type { CrmConfig, CrmLeadComputed } from "@/types/crm.types";
-import { QuandoBadge, SituacaoBadge, WhatsAppButton } from "./CrmBadges";
+import {
+  CopiarTelefoneButton,
+  FaseBadge,
+  ProximaEtapaCelula,
+  SituacaoBadge,
+  WhatsAppButton,
+} from "./CrmBadges";
 import { AcaoRapidaLinha } from "./AcaoRapida";
 import { CadastroRapido } from "./CadastroRapido";
 import { QualificacaoNaLinha } from "./Qualificacao";
 
 type FiltroId = "hoje" | "silencio" | "novos" | "todos";
+
+/**
+ * As proporções das colunas da linha: Lead | Situação | Fase | Próxima etapa
+ * | Últ. contato | Ações. Cabeçalho e linhas usam a mesma constante para
+ * nunca desalinhar uma coluna da outra.
+ */
+const GRID_LINHA = "lg:grid-cols-[2.1fr_1fr_1fr_1.3fr_0.9fr_1.4fr]";
 
 /** Refino desligado. Não pode ser "" — o Radix reserva a string vazia. */
 const TODOS = "__todos";
@@ -377,16 +390,34 @@ export function CrmLista({
       {visiveis.length === 0 ? (
         <Vazio buscando={mostrandoBusca} refinando={refinando} filtro={filtro} />
       ) : (
-        <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-          {visiveis.map((lead) => (
-            <LinhaLead
-              key={lead.id}
-              lead={lead}
-              config={config}
-              acoes={acoes}
-              onAbrirLead={onAbrirLead}
-            />
-          ))}
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+          {/* Cabeçalho das colunas — só faz sentido com a grade do desktop;
+              no mobile a linha empilha e cada campo já se explica sozinho. */}
+          <div
+            className={cn(
+              "hidden items-center gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid",
+              GRID_LINHA,
+            )}
+          >
+            <span>Lead</span>
+            <span>Situação</span>
+            <span>Fase</span>
+            <span>Próxima etapa</span>
+            <span>Últ. contato</span>
+            <span>Ações</span>
+          </div>
+
+          <div className="divide-y divide-border">
+            {visiveis.map((lead) => (
+              <LinhaLead
+                key={lead.id}
+                lead={lead}
+                config={config}
+                acoes={acoes}
+                onAbrirLead={onAbrirLead}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -426,6 +457,13 @@ function LinhaLeadBase({
 }) {
   const { derived } = lead;
 
+  // Prefere o horário real da última mensagem (hora certa, "há 4h"); sem
+  // conversa ligada ainda, cai no cálculo antigo por dia — o mesmo que
+  // alimenta a Situação quando não há mensagem.
+  const ultimoContato = lead.ultimaMensagem
+    ? formatarRelativo(lead.ultimaMensagem.em)
+    : formatarDiasRelativo(derived.diasParado);
+
   return (
     <div
       role="button"
@@ -441,7 +479,9 @@ function LinhaLeadBase({
         }
       }}
       className={cn(
-        "group flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/40 lg:flex-row lg:items-center",
+        "group flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/40",
+        "lg:grid lg:items-center lg:gap-3",
+        GRID_LINHA,
         // O navegador pula layout e pintura das linhas fora da tela — no
         // "Todos" com a base grande é o que mantém a rolagem leve. O
         // intrinsic-size é só a estimativa da altura enquanto não renderiza.
@@ -451,42 +491,46 @@ function LinhaLeadBase({
         derived.encerrado && "opacity-60",
       )}
     >
-      {/* Quem é, junto do que já se sabe do casamento */}
-      <div className="min-w-0 lg:flex-1">
-        {/* O sublinhado no hover avisa que a linha toda abre o detalhe. */}
-        <p className="truncate font-medium underline-offset-4 group-hover:underline">
-          {lead.nome}
-        </p>
-        <p className="truncate text-xs text-muted-foreground">
-          {lead.telefone}
-          {lead.origem && ` · ${lead.origem}`}
-        </p>
-        <QualificacaoNaLinha lead={lead} acoes={acoes} className="-ml-2 mt-1" />
+      {/* Lead: quem é, o telefone (com atalho de copiar) e o que já se sabe
+          do casamento */}
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
+          {lead.nome.charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          {/* O sublinhado no hover avisa que a linha toda abre o detalhe. */}
+          <p className="truncate font-medium underline-offset-4 group-hover:underline">
+            {lead.nome}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-xs text-muted-foreground">
+              {lead.telefone}
+            </span>
+            <CopiarTelefoneButton telefone={lead.telefone} />
+          </div>
+          <QualificacaoNaLinha lead={lead} acoes={acoes} className="-ml-2 mt-1" />
+        </div>
       </div>
 
-      {/* Onde está */}
-      <div className="lg:w-60 lg:shrink-0">
-        <SituacaoBadge
-          situacao={derived.situacao}
-          etapa={derived.etapaAtual?.nome}
-        />
+      {/* Situação */}
+      <div>
+        <SituacaoBadge situacao={derived.situacao} />
       </div>
 
-      {/* O que fazer */}
-      <div className="flex flex-wrap items-center gap-2 lg:w-72 lg:shrink-0">
-        {derived.proximoPasso ? (
-          <>
-            <span className="text-sm">{derived.proximoPasso}</span>
-            <QuandoBadge quando={derived.quando} urgencia={derived.urgencia} />
-          </>
-        ) : (
-          <span className="text-sm text-muted-foreground">Encerrado</span>
-        )}
+      {/* Fase */}
+      <div>
+        <FaseBadge nome={derived.etapaAtual?.nome ?? null} />
       </div>
 
-      {/* Registrar. Largura fixa: sem ela, a linha de um lead que não tem
+      {/* Próxima etapa, com o prazo dela */}
+      <ProximaEtapaCelula derived={derived} />
+
+      {/* Últ. contato */}
+      <span className="text-xs text-muted-foreground">{ultimoContato}</span>
+
+      {/* Ações. Largura fixa: sem ela, a linha de um lead que não tem
           botão primário encolhe aqui e desalinha todas as colunas. */}
-      <div className="flex shrink-0 items-center gap-2 lg:w-56 lg:justify-end">
+      <div className="flex shrink-0 items-center gap-2 lg:justify-end">
         <AcaoRapidaLinha
           lead={lead}
           config={config}
