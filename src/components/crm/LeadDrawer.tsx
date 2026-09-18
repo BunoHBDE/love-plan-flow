@@ -386,7 +386,7 @@ function ProximoPasso({
             value={derived.quando ?? ""}
             onChange={(valor) => salvar({ quando_manual: valor || null })}
           />
-          {derived.quandoManual ? (
+          {derived.quandoManual && (
             <button
               type="button"
               className="flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-2 hover:underline"
@@ -397,11 +397,6 @@ function ProximoPasso({
               {derived.quandoCalculado &&
                 ` (${formatarData(derived.quandoCalculado)})`}
             </button>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Calculada pelos prazos. Escolher outra data vale só para este
-              passo — ao avançar o atendimento, o cálculo volta a valer.
-            </p>
           )}
         </div>
       )}
