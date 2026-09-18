@@ -1,7 +1,12 @@
 import { useState } from "react";
-import { Check, Copy, MessageCircle } from "lucide-react";
+import { Bot, Check, Copy, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { diffDias, formatarData, formatarDataCurta, hoje } from "@/lib/crm/dates";
 import {
   SITUACAO_DOT_STYLES,
@@ -138,6 +143,31 @@ function textoDoPrazo(
     };
   }
   return { texto: `até ${formatarDataCurta(quando)}`, className: "text-muted-foreground" };
+}
+
+/**
+ * Marca um campo como preenchido pela IA e ainda não editado por ninguém
+ * depois. Some sozinho assim que o campo é editado à mão — não é um estado
+ * para desmarcar, é só o reflexo de `lead.campos_ia` (ver `useCrmLeads`).
+ */
+export function IaBadge({ className }: { className?: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary",
+            className,
+          )}
+        >
+          <Bot className="h-2.5 w-2.5" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        Preenchido pela IA — editar substitui
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 /** Copia o telefone para a área de transferência — o atalho ao lado do número. */

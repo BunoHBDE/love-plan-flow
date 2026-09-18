@@ -122,6 +122,14 @@ export interface CrmLead {
   arquivado: boolean;
   created_at: string;
 
+  /**
+   * Campos cujo valor atual foi escrito pela IA e ainda não foi editado por
+   * um humano depois — usado pela gaveta do lead para mostrar o símbolo de
+   * IA. Chaves possíveis: 'nome', 'data', 'convidados', 'observacoes'.
+   * Editar o campo à mão remove a chave (ver `useCrmLeads`).
+   */
+  campos_ia: Record<string, boolean>;
+
   // Dados do cliente (join)
   nome: string;
   telefone: string;

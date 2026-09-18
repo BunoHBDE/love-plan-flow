@@ -31,10 +31,9 @@ import type {
 } from "@/types/crm.types";
 
 /**
- * `integrations/supabase/types.ts` não conhece `crm_ultima_mensagem`: é uma
- * função nova e o arquivo gerado não foi atualizado (mesma situação de
- * `ia_revisao_lista` em `useIaRevisao.ts`). Até lá esta chamada passa por um
- * cliente sem tipos — o formato do retorno está declarado abaixo.
+ * Cliente sem tipos para `rpc()` — algumas funções (como `crm_ultima_mensagem`)
+ * têm retorno em formato mais específico do que o gerado automaticamente
+ * infere; o formato real está declarado abaixo.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
@@ -48,7 +47,7 @@ const SELECT_LEAD = `
   data_agendamento, compareceu, convidados,
   data_evento_status, data_evento, mes_evento, ano_evento,
   motivo_objecao, encerramento, encerrado_stage_id, encerrado_em,
-  observacoes, arquivado, created_at,
+  observacoes, campos_ia, arquivado, created_at,
   clients ( nome, telefone, email ),
   crm_lead_stages ( stage_id, entrou_em )
 `;
@@ -118,6 +117,7 @@ async function carregarLeads(): Promise<CrmLead[]> {
       encerrado_stage_id: row.encerrado_stage_id,
       encerrado_em: row.encerrado_em,
       observacoes: row.observacoes,
+      campos_ia: (row.campos_ia as Record<string, boolean> | null) ?? {},
       arquivado: row.arquivado,
       created_at: row.created_at,
 
@@ -183,6 +183,42 @@ async function usuarioAtual(): Promise<string> {
  */
 function confirmar(mensagem: string) {
   sonner.success(mensagem, { id: "crm-salvo", duration: 1800 });
+}
+
+/**
+ * Quais chaves de `campos_ia` um patch humano invalida. Editar `convidados`
+ * tira o símbolo de IA só de `convidados`; editar qualquer parte da data
+ * (status, data fechada, mês ou ano) tira o de `data` inteiro, porque na
+ * gaveta os três se editam como um campo só.
+ */
+function camposIaAfetados(patch: AtualizarLeadInput): string[] {
+  const campos = new Set<string>();
+  if ("convidados" in patch) campos.add("convidados");
+  if ("observacoes" in patch) campos.add("observacoes");
+  if (
+    "data_evento" in patch ||
+    "data_evento_status" in patch ||
+    "mes_evento" in patch ||
+    "ano_evento" in patch
+  ) {
+    campos.add("data");
+  }
+  return [...campos];
+}
+
+/**
+ * Some da mão os campos que acabaram de ser editados por um humano —
+ * silenciosamente, sem deixar marca: é exatamente o que foi pedido. Dispara
+ * em segundo plano, igual a `registrarEvento`: não é o dado principal da
+ * gravação, só o símbolo que mostra quem escreveu por último.
+ */
+function limparCamposIa(leadId: string, campos: string[]) {
+  if (campos.length === 0) return;
+  void db
+    .rpc("crm_leads_limpar_campos_ia", { p_lead_id: leadId, p_campos: campos })
+    .then(({ error }: { error: unknown }) => {
+      if (error) console.error("crm: falha ao limpar campos_ia", error);
+    });
 }
 
 /**
@@ -578,11 +614,30 @@ export function useCrmLeads(config: CrmConfig | null) {
         .update(args.patch)
         .eq("id", args.id);
       if (error) throw error;
+      // Edição humana: some com o símbolo de IA dos campos que acabaram de
+      // ser sobrescritos à mão, sem deixar marca nenhuma.
+      limparCamposIa(args.id, camposIaAfetados(args.patch));
     },
-    onMutate: ({ id, patch }) =>
-      iniciarOtimista((leads) =>
-        leads.map((l) => (l.id === id ? { ...l, ...patch } : l)),
-      ),
+    onMutate: ({ id, patch }) => {
+      const afetados = camposIaAfetados(patch);
+      return iniciarOtimista((leads) =>
+        leads.map((l) =>
+          l.id === id
+            ? {
+                ...l,
+                ...patch,
+                campos_ia: afetados.length
+                  ? Object.fromEntries(
+                      Object.entries(l.campos_ia).filter(
+                        ([campo]) => !afetados.includes(campo),
+                      ),
+                    )
+                  : l.campos_ia,
+              }
+            : l,
+        ),
+      );
+    },
     onSuccess: () => confirmar("Alterações salvas"),
     onError: (error, _args, contexto) => {
       reverterOtimista(contexto);
@@ -595,6 +650,7 @@ export function useCrmLeads(config: CrmConfig | null) {
   const atualizarContato = useMutation({
     mutationFn: async (args: {
       clientId: string;
+      leadId: string;
       patch: { nome?: string; telefone?: string; email?: string | null };
     }) => {
       const { error } = await supabase
@@ -602,10 +658,26 @@ export function useCrmLeads(config: CrmConfig | null) {
         .update(args.patch)
         .eq("id", args.clientId);
       if (error) throw error;
+      if ("nome" in args.patch) limparCamposIa(args.leadId, ["nome"]);
     },
     onMutate: ({ clientId, patch }) =>
       iniciarOtimista((leads) =>
-        leads.map((l) => (l.client_id === clientId ? { ...l, ...patch } : l)),
+        leads.map((l) =>
+          l.client_id === clientId
+            ? {
+                ...l,
+                ...patch,
+                campos_ia:
+                  "nome" in patch
+                    ? Object.fromEntries(
+                        Object.entries(l.campos_ia).filter(
+                          ([campo]) => campo !== "nome",
+                        ),
+                      )
+                    : l.campos_ia,
+              }
+            : l,
+        ),
       ),
     onSuccess: () => confirmar("Alterações salvas"),
     onError: (error, _args, contexto) => {

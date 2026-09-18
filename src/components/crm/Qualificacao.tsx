@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { resumoCurto } from "@/lib/crm/lead";
 import type { AtualizarLeadInput, useCrmLeads } from "@/hooks/useCrmLeads";
 import type { CrmLead, CrmLeadComputed } from "@/types/crm.types";
+import { IaBadge } from "./CrmBadges";
 
 const SEM_VALOR = "__nenhum";
 
@@ -51,7 +52,10 @@ export function DataDoCasamento({
 
   return (
     <div className="space-y-3">
-      <Label className="text-sm">Data do casamento</Label>
+      <div className="flex items-center gap-1.5">
+        <Label className="text-sm">Data do casamento</Label>
+        {lead.campos_ia.data && <IaBadge />}
+      </div>
 
       <RadioGroup
         value={lead.data_evento_status}
@@ -230,6 +234,7 @@ export function FormularioQualificacao({
     if (limpo && limpo !== lead.nome) {
       acoes.atualizarContato.mutate({
         clientId: lead.client_id,
+        leadId: lead.id,
         patch: { nome: limpo },
       });
     }
@@ -239,9 +244,12 @@ export function FormularioQualificacao({
     <>
       {mostrarNome && (
         <div className="space-y-2">
-          <Label htmlFor={`${idPrefixo}-nome`} className="text-sm">
-            Nome dos noivos
-          </Label>
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor={`${idPrefixo}-nome`} className="text-sm">
+              Nome dos noivos
+            </Label>
+            {lead.campos_ia.nome && <IaBadge />}
+          </div>
           <Input
             id={`${idPrefixo}-nome`}
             value={nome}
@@ -255,13 +263,16 @@ export function FormularioQualificacao({
       <DataDoCasamento lead={lead} salvar={salvar} idPrefixo={idPrefixo} />
 
       <div className="space-y-2">
-        <Label
-          htmlFor={`${idPrefixo}-convidados`}
-          className="flex items-center gap-1.5 text-sm"
-        >
-          <Users className="h-3.5 w-3.5" />
-          Convidados
-        </Label>
+        <div className="flex items-center gap-1.5">
+          <Label
+            htmlFor={`${idPrefixo}-convidados`}
+            className="flex items-center gap-1.5 text-sm"
+          >
+            <Users className="h-3.5 w-3.5" />
+            Convidados
+          </Label>
+          {lead.campos_ia.convidados && <IaBadge />}
+        </div>
         <Input
           id={`${idPrefixo}-convidados`}
           type="number"

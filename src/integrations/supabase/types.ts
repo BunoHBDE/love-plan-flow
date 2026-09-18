@@ -366,7 +366,10 @@ export type Database = {
         Row: {
           ano_evento: string | null
           arquivado: boolean
-          cidade: string | null
+          atualizado_em: string | null
+          atualizado_por_id: string | null
+          atualizado_por_tipo: string | null
+          campos_ia: Json
           client_id: string
           compareceu: string | null
           convidados: number | null
@@ -393,7 +396,10 @@ export type Database = {
         Insert: {
           ano_evento?: string | null
           arquivado?: boolean
-          cidade?: string | null
+          atualizado_em?: string | null
+          atualizado_por_id?: string | null
+          atualizado_por_tipo?: string | null
+          campos_ia?: Json
           client_id: string
           compareceu?: string | null
           convidados?: number | null
@@ -420,7 +426,10 @@ export type Database = {
         Update: {
           ano_evento?: string | null
           arquivado?: boolean
-          cidade?: string | null
+          atualizado_em?: string | null
+          atualizado_por_id?: string | null
+          atualizado_por_tipo?: string | null
+          campos_ia?: Json
           client_id?: string
           compareceu?: string | null
           convidados?: number | null
@@ -1461,6 +1470,7 @@ export type Database = {
           p_gravar_data?: boolean
           p_gravar_etapa?: boolean
           p_lead_ids?: string[]
+          p_permitir_encerramento?: boolean
         }
         Returns: {
           alteracoes: Json
@@ -1471,6 +1481,10 @@ export type Database = {
         }[]
       }
       crm_bootstrap: { Args: never; Returns: undefined }
+      crm_leads_limpar_campos_ia: {
+        Args: { p_campos: string[]; p_lead_id: string }
+        Returns: undefined
+      }
       crm_ultima_mensagem: {
         Args: never
         Returns: {

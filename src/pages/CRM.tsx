@@ -9,7 +9,6 @@ import { CrmLista } from "@/components/crm/CrmLista";
 import { CrmKanban } from "@/components/crm/CrmKanban";
 import { CrmPainel } from "@/components/crm/CrmPainel";
 import { LeadDrawer } from "@/components/crm/LeadDrawer";
-import { RevisaoIA } from "@/components/crm/RevisaoIA";
 
 export default function CRM() {
   const { config, loading: configLoading, error: configError } = useCrmConfig();
@@ -53,7 +52,6 @@ export default function CRM() {
                 <TabsTrigger value="atendimento">Atendimento</TabsTrigger>
                 <TabsTrigger value="kanban">Kanban</TabsTrigger>
                 <TabsTrigger value="painel">Painel</TabsTrigger>
-                <TabsTrigger value="revisao">Revisão IA</TabsTrigger>
               </TabsList>
 
               <TabsContent value="atendimento" className="mt-0">
@@ -76,10 +74,6 @@ export default function CRM() {
 
               <TabsContent value="painel" className="mt-0">
                 <CrmPainel leads={leads} config={config} />
-              </TabsContent>
-
-              <TabsContent value="revisao" className="mt-0">
-                <RevisaoIA />
               </TabsContent>
             </Tabs>
           )}
