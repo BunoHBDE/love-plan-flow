@@ -77,8 +77,27 @@ async function classificarConversa(conversa: string): Promise<any> {
 // desqualificar o lead mas ainda assim empurrar a etapa adiante, corrigimos.
 const MOTIVOS_DESCARTE = ["Mais de 100 convidados", "Data impossível", "Fora do escopo"];
 
-function aplicarTravaDesqualificado(c: any): any {
+// Bug encontrado no diagnóstico de 2026-09-18: esta trava forçava etapa =
+// "Perguntas" mesmo quando o lead já tinha avançado muito mais (ex.: um
+// contrato assinado que foi cancelado depois). Isso apagou o rastro de um
+// lead que chegou a "Contrato" — ele virou "Perguntas/Não qualificado" como
+// se nunca tivesse saído do início. Agora, se o lead já passou de
+// "Perguntas", a trava NÃO reescreve a etapa: mantém onde ele realmente
+// está e força precisa_revisao=true, porque só um humano sabe dizer se o
+// desfecho é "nunca foi qualificado" ou "era qualificado e desistiu depois
+// de avançar" — são coisas diferentes.
+function aplicarTravaDesqualificado(c: any, ordemAtualLead: number, ordemPerguntas: number): any {
   if (c?.qualificacao !== "desqualificado") return c;
+
+  if (ordemAtualLead > ordemPerguntas) {
+    c.estado = "perdido";
+    if (!MOTIVOS_DESCARTE.includes(c.motivo)) c.motivo = "Fora do escopo";
+    c.precisa_revisao = true;
+    c.justificativa =
+      `[trava desqualificado: lead já estava além de Perguntas, etapa mantida para revisão humana] ${c.justificativa ?? ""}`.trim();
+    return c;
+  }
+
   if (c.etapa === "Perguntas" && c.estado === "perdido") {
     if (!MOTIVOS_DESCARTE.includes(c.motivo)) c.motivo = "Fora do escopo";
     return c;
@@ -168,8 +187,23 @@ Deno.serve(async (req: Request) => {
     }
     debug.leadIds = leadIds.length;
 
+    // Etapas carregadas uma vez só: usadas pra resolver o stage_id da
+    // sugestão e, agora, pra trava de desqualificado saber se o lead já
+    // está além de "Perguntas" (ver aplicarTravaDesqualificado).
+    const { data: stagesRows } = await supabase.from("crm_stages")
+      .select("id, nome, ordem").eq("ativo", true);
+    const stages = stagesRows ?? [];
+    const ordemPorId = new Map(stages.map((s: any) => [s.id, s.ordem]));
+    const ordemPerguntas = stages.find((s: any) => s.nome === "Perguntas")?.ordem ?? 0;
+
     const resultados: any[] = [];
     for (const leadId of leadIds) {
+      const { data: entradasLead } = await supabase.from("crm_lead_stages")
+        .select("stage_id").eq("lead_id", leadId);
+      const ordemAtualLead = (entradasLead ?? [])
+        .map((e: any) => ordemPorId.get(e.stage_id) ?? 0)
+        .reduce((max: number, o: number) => Math.max(max, o), 0);
+
       const { data: msgs } = await supabase.from("messages")
         .select("direction, body, msg_type, sent_at")
         .eq("crm_lead_id", leadId).order("sent_at", { ascending: true });
@@ -194,16 +228,15 @@ Deno.serve(async (req: Request) => {
         const c = exigirMotivo(validarEstadoPelaUltima(
           validarAnoDaNoiva(
             validarCidade(
-              aplicarTravaDesqualificado(await classificarConversa(conversa)), conversa),
+              aplicarTravaDesqualificado(await classificarConversa(conversa), ordemAtualLead, ordemPerguntas),
+              conversa),
             textoNoiva, textoSitio),
           ultimaDe));
 
         // A etapa é resolvida pelo nome. Se o modelo inventar uma etapa que
         // não existe, a sugestão vai para revisão manual em vez de passar
         // calada — sem stage_id a gravação não toca na posição do lead.
-        const { data: stage } = await supabase.from("crm_stages")
-          .select("id").eq("nome", c.etapa).eq("ativo", true).limit(1).maybeSingle();
-        const stageId: string | null = stage?.id ?? null;
+        const stageId: string | null = stages.find((s: any) => s.nome === c.etapa)?.id ?? null;
         if (!stageId) c.precisa_revisao = true;
 
         const { error: eIns } = await supabase.from("ia_sugestoes").insert({

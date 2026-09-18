@@ -45,7 +45,7 @@ export interface SugestaoRevisao {
   justificativa: string | null;
   qtd_mensagens: number | null;
   analisado_ate: string | null;
-  status: "pendente" | "aplicada" | "rejeitada" | string;
+  status: "pendente" | "aplicada" | "aguardando_encerramento" | "rejeitada" | string;
   campos: string[];
   antes: Record<string, unknown>;
   depois: Record<string, unknown>;
@@ -119,12 +119,18 @@ export function useIaRevisao() {
   // Aprovar é aplicar aquele lead específico. O corte de confiança vai a zero
   // de propósito: quem está aprovando na mão já viu o diff, o corte existe
   // para a aplicação automática em lote, não para você.
+  //
+  // p_permitir_encerramento: true é o que diferencia este clique do cron. A
+  // IA nunca fecha um lead sozinha (ver aplicar_sugestoes_ia) — só quando um
+  // humano vê o diff aqui e aprova é que "recusou"/"desqualificado" vira
+  // escrita de verdade.
   const aprovar = useMutation({
     mutationFn: async (leadId: string) => {
       const { data, error } = await db.rpc("aplicar_sugestoes_ia", {
         p_lead_ids: [leadId],
         p_confianca_min: 0,
         p_dry_run: false,
+        p_permitir_encerramento: true,
       });
       if (error) throw error;
       const linha = (data ?? [])[0] as { aplicado?: boolean; motivo?: string } | undefined;
