@@ -380,7 +380,7 @@ function ProximoPasso({
       {editandoData && (
         <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
           <Label className="text-xs text-muted-foreground">
-            Data do próximo passo
+            Data da Próxima Mensagem
           </Label>
           <DatePickerField
             value={derived.quando ?? ""}
