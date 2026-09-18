@@ -51,7 +51,7 @@ import {
   type CrmConfig,
   type CrmLeadComputed,
 } from "@/types/crm.types";
-import { QuandoBadge, SituacaoBadge } from "./CrmBadges";
+import { IaBadge, QuandoBadge, SituacaoBadge } from "./CrmBadges";
 import { AcaoRapidaBotoes } from "./AcaoRapida";
 import { FormularioQualificacao } from "./Qualificacao";
 
@@ -521,6 +521,7 @@ function BlocoDados({
             if (telefone !== lead.telefone) {
               acoes.atualizarContato.mutate({
                 clientId: lead.client_id,
+                leadId: lead.id,
                 patch: { telefone },
               });
             }
@@ -538,6 +539,7 @@ function BlocoDados({
             if (email.trim() !== (lead.email ?? "")) {
               acoes.atualizarContato.mutate({
                 clientId: lead.client_id,
+                leadId: lead.id,
                 patch: { email: email.trim() || null },
               });
             }
@@ -546,7 +548,10 @@ function BlocoDados({
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">Observações</Label>
+        <div className="flex items-center gap-1.5">
+          <Label className="text-sm">Observações</Label>
+          {lead.campos_ia.observacoes && <IaBadge />}
+        </div>
         <Textarea
           rows={3}
           value={observacoes}
@@ -603,26 +608,30 @@ function NomeEditavel({
   useEffect(() => setNome(lead.nome), [lead.id, lead.nome]);
 
   return (
-    <input
-      value={nome}
-      onChange={(e) => setNome(e.target.value)}
-      onBlur={() => {
-        const valor = nome.trim();
-        if (!valor) {
-          setNome(lead.nome);
-          return;
-        }
-        if (valor !== lead.nome) {
-          acoes.atualizarContato.mutate({
-            clientId: lead.client_id,
-            patch: { nome: valor },
-          });
-        }
-      }}
-      aria-label="Nome dos noivos"
-      placeholder="Nome dos noivos"
-      className="w-full truncate border-b border-dashed border-border/70 bg-transparent font-display text-2xl outline-none transition-colors hover:border-border focus:border-solid focus:border-primary"
-    />
+    <div className="flex items-center gap-2">
+      <input
+        value={nome}
+        onChange={(e) => setNome(e.target.value)}
+        onBlur={() => {
+          const valor = nome.trim();
+          if (!valor) {
+            setNome(lead.nome);
+            return;
+          }
+          if (valor !== lead.nome) {
+            acoes.atualizarContato.mutate({
+              clientId: lead.client_id,
+              leadId: lead.id,
+              patch: { nome: valor },
+            });
+          }
+        }}
+        aria-label="Nome dos noivos"
+        placeholder="Nome dos noivos"
+        className="w-full min-w-0 truncate border-b border-dashed border-border/70 bg-transparent font-display text-2xl outline-none transition-colors hover:border-border focus:border-solid focus:border-primary"
+      />
+      {lead.campos_ia.nome && <IaBadge />}
+    </div>
   );
 }
 
