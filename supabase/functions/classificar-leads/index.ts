@@ -233,18 +233,11 @@ Deno.serve(async (req: Request) => {
             textoNoiva, textoSitio),
           ultimaDe));
 
-        // A etapa é resolvida pelo nome. Se o modelo inventar uma etapa que
-        // não existe, a sugestão vai para revisão manual em vez de passar
-        // calada — sem stage_id a gravação não toca na posição do lead.
-        const stageId: string | null = stages.find((s: any) => s.nome === c.etapa)?.id ?? null;
-        if (!stageId) c.precisa_revisao = true;
-
         const { error: eIns } = await supabase.from("ia_sugestoes").insert({
           lead_id: leadId,
           etapa_sugerida: c.etapa,
-          stage_id_sugerido: stageId,
-          estado_sugerido: c.estado,
-          motivo_sugerido: c.motivo,
+          // A IA não move o lead no funil: etapa só é gravada como registro
+          // da análise, sem stage_id/estado que a gravação pudesse aplicar.
           qualificacao: c.qualificacao,
           nome_extraido: c.nome_extraido,
           convidados_extraido: c.convidados_texto,
