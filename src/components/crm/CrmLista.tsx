@@ -39,7 +39,12 @@ import { MONTHS } from "@/constants/visits";
 import { formatarDiasRelativo, formatarRelativo, hoje } from "@/lib/crm/dates";
 import { anoDoCasamento, mesDoCasamento } from "@/lib/crm/lead";
 import type { useCrmLeads } from "@/hooks/useCrmLeads";
-import type { CrmConfig, CrmLeadComputed } from "@/types/crm.types";
+import {
+  SITUACAO_LABELS,
+  type CrmConfig,
+  type CrmLeadComputed,
+  type Situacao,
+} from "@/types/crm.types";
 import {
   CopiarTelefoneButton,
   FaseBadge,
@@ -152,6 +157,7 @@ export function CrmLista({
   const [filtro, setFiltro] = useState<FiltroId>("hoje");
   const [busca, setBusca] = useState("");
   const [etapa, setEtapa] = useState(TODOS);
+  const [situacao, setSituacao] = useState(TODOS);
   const [ano, setAno] = useState(TODOS);
   const [mes, setMes] = useState(TODOS);
   const campoBusca = useRef<HTMLInputElement>(null);
@@ -188,6 +194,17 @@ export function CrmLista({
     [config.stages],
   );
 
+  const opcoesSituacao = useMemo(
+    () => [
+      { valor: TODOS, label: "Todas as situações" },
+      ...(Object.keys(SITUACAO_LABELS) as Situacao[]).map((s) => ({
+        valor: s,
+        label: SITUACAO_LABELS[s],
+      })),
+    ],
+    [],
+  );
+
   // Só os anos que alguém realmente citou: uma lista fixa de anos futuros
   // encheria o menu de opções que não devolvem ninguém. O ano escolhido entra
   // junto mesmo que suma dos dados, senão o campo ficaria em branco.
@@ -206,7 +223,8 @@ export function CrmLista({
     ];
   }, [leads, ano]);
 
-  const refinando = etapa !== TODOS || ano !== TODOS || mes !== TODOS;
+  const refinando =
+    etapa !== TODOS || situacao !== TODOS || ano !== TODOS || mes !== TODOS;
 
   // Etapa e data do casamento estreitam a base ANTES dos filtros de rotina,
   // para que as contagens dos chips digam quantos sobram de fato — um "Hoje 12"
@@ -219,6 +237,8 @@ export function CrmLista({
       // em aberto, e é isso que se espera ao escolher "Proposta".
       if (etapa !== TODOS && lead.derived.etapaAtual?.id !== etapa) return false;
 
+      if (situacao !== TODOS && lead.derived.situacao !== situacao) return false;
+
       if (ano !== TODOS) {
         const doLead = anoDoCasamento(lead);
         if (ano === SEM_ANO ? doLead !== null : doLead !== ano) return false;
@@ -228,7 +248,7 @@ export function CrmLista({
 
       return true;
     });
-  }, [leads, refinando, etapa, ano, mes]);
+  }, [leads, refinando, etapa, situacao, ano, mes]);
 
   const contagens = useMemo(() => {
     const hojeISO = hoje();
@@ -303,6 +323,7 @@ export function CrmLista({
 
   const limparRefinos = () => {
     setEtapa(TODOS);
+    setSituacao(TODOS);
     setAno(TODOS);
     setMes(TODOS);
   };
@@ -384,6 +405,13 @@ export function CrmLista({
           aoMudar={escolher(setEtapa)}
           opcoes={opcoesEtapa}
           largura="w-52"
+        />
+        <SelectFiltro
+          rotulo="Filtrar por situação"
+          valor={situacao}
+          aoMudar={escolher(setSituacao)}
+          opcoes={opcoesSituacao}
+          largura="w-48"
         />
         <SelectFiltro
           rotulo="Filtrar por ano do casamento"
