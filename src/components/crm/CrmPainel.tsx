@@ -21,8 +21,42 @@ import {
   num,
   pct,
 } from "@/lib/crm/metrics";
+import { hoje, paraDate, somarDias } from "@/lib/crm/dates";
 import type { CrmConfig, CrmLeadComputed } from "@/types/crm.types";
 import { CrmFunil } from "./CrmFunil";
+
+type PeriodoId =
+  | "dia"
+  | "7dias"
+  | "semana"
+  | "mes"
+  | "30dias"
+  | "60dias"
+  | "90dias"
+  | "personalizado";
+
+/** Atalhos de período. Todos terminam hoje; só o começo muda. */
+const PERIODOS: {
+  id: Exclude<PeriodoId, "personalizado">;
+  label: string;
+  inicio: (hojeISO: string) => string;
+}[] = [
+  { id: "dia", label: "Hoje", inicio: (h) => h },
+  // "N dias" conta hoje como o último dia: 7 dias = hoje e os 6 anteriores.
+  { id: "7dias", label: "7 dias", inicio: (h) => somarDias(h, -6) },
+  {
+    id: "semana",
+    label: "Semana",
+    // A semana começa na segunda-feira.
+    inicio: (h) => somarDias(h, -((paraDate(h).getDay() + 6) % 7)),
+  },
+  { id: "mes", label: "Mês", inicio: (h) => `${h.slice(0, 8)}01` },
+  { id: "30dias", label: "30 dias", inicio: (h) => somarDias(h, -29) },
+  { id: "60dias", label: "60 dias", inicio: (h) => somarDias(h, -59) },
+  { id: "90dias", label: "90 dias", inicio: (h) => somarDias(h, -89) },
+];
+
+const PERIODO_INICIAL: PeriodoId = "30dias";
 
 export function CrmPainel({
   leads,
@@ -31,9 +65,12 @@ export function CrmPainel({
   leads: CrmLeadComputed[];
   config: CrmConfig;
 }) {
-  const anoAtual = new Date().getFullYear();
-  const [de, setDe] = useState(`${anoAtual}-01-01`);
-  const [ate, setAte] = useState(`${anoAtual}-12-31`);
+  const [periodo, setPeriodo] = useState<PeriodoId>(PERIODO_INICIAL);
+  const [de, setDe] = useState(() => {
+    const atalho = PERIODOS.find((p) => p.id === PERIODO_INICIAL)!;
+    return atalho.inicio(hoje());
+  });
+  const [ate, setAte] = useState(() => hoje());
   const [funilComoTabela, setFunilComoTabela] = useState(false);
 
   // O painel filtra pela data de entrada do lead, como na planilha.
@@ -41,6 +78,28 @@ export function CrmPainel({
     () => leads.filter((l) => l.entrada >= de && l.entrada <= ate),
     [leads, de, ate],
   );
+
+  const escolherPeriodo = (atalho: (typeof PERIODOS)[number]) => {
+    const fim = hoje();
+    setPeriodo(atalho.id);
+    setDe(atalho.inicio(fim));
+    setAte(fim);
+  };
+
+  // Editar uma data à mão vira período personalizado. O começo nunca passa do
+  // fim: arrastar uma ponta para além da outra leva a outra junto.
+  const mudarDe = (valor: string) => {
+    if (!valor) return;
+    setPeriodo("personalizado");
+    setDe(valor);
+    if (valor > ate) setAte(valor);
+  };
+  const mudarAte = (valor: string) => {
+    if (!valor) return;
+    setPeriodo("personalizado");
+    setAte(valor);
+    if (valor < de) setDe(valor);
+  };
 
   const funil = useMemo(
     () => calcularFunil(filtrados, config.stages),
@@ -61,19 +120,57 @@ export function CrmPainel({
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-end">
-        <div className="space-y-2">
-          <Label className="text-sm">Período — de</Label>
-          <DatePickerField value={de} onChange={setDe} className="w-[180px]" />
+      <div className="space-y-4 rounded-lg border border-border bg-card p-4">
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Período do painel"
+        >
+          {PERIODOS.map((atalho) => (
+            <Button
+              key={atalho.id}
+              type="button"
+              size="sm"
+              variant={periodo === atalho.id ? "default" : "outline"}
+              aria-pressed={periodo === atalho.id}
+              onClick={() => escolherPeriodo(atalho)}
+            >
+              {atalho.label}
+            </Button>
+          ))}
+          <Button
+            type="button"
+            size="sm"
+            variant={periodo === "personalizado" ? "default" : "outline"}
+            aria-pressed={periodo === "personalizado"}
+            onClick={() => setPeriodo("personalizado")}
+          >
+            Escolher período
+          </Button>
         </div>
-        <div className="space-y-2">
-          <Label className="text-sm">Período — até</Label>
-          <DatePickerField value={ate} onChange={setAte} className="w-[180px]" />
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div className="space-y-2">
+            <Label className="text-sm">De</Label>
+            <DatePickerField
+              value={de}
+              onChange={mudarDe}
+              className="w-[180px]"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">Até</Label>
+            <DatePickerField
+              value={ate}
+              onChange={mudarAte}
+              className="w-[180px]"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground sm:ml-auto sm:pb-2">
+            {filtrados.length} lead{filtrados.length === 1 ? "" : "s"} pela data
+            de entrada
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground sm:ml-auto sm:pb-2">
-          {filtrados.length} lead{filtrados.length === 1 ? "" : "s"} pela data de
-          entrada
-        </p>
       </div>
 
       {/* 1 · FUNIL */}
