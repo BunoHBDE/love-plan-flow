@@ -45,13 +45,14 @@ import {
   FaseBadge,
   ProximaEtapaCelula,
   SituacaoBadge,
-  WhatsAppButton,
 } from "./CrmBadges";
 import { AcaoRapidaLinha } from "./AcaoRapida";
+import { FupBotao } from "./FupBotao";
+import type { FupDoLead } from "@/hooks/useCrmFups";
 import { CadastroRapido } from "./CadastroRapido";
 import { QualificacaoNaLinha } from "./Qualificacao";
 
-type FiltroId = "hoje" | "silencio" | "novos" | "todos";
+type FiltroId = "hoje" | "silencio" | "fup" | "novos" | "todos";
 
 /**
  * As proporções das colunas da linha: Lead | Situação | Fase | Próxima etapa
@@ -90,7 +91,11 @@ interface Filtro {
   id: FiltroId;
   label: string;
   descricao: string;
-  inclui: (lead: CrmLeadComputed, hojeISO: string) => boolean;
+  inclui: (
+    lead: CrmLeadComputed,
+    hojeISO: string,
+    fups: Map<string, FupDoLead>,
+  ) => boolean;
 }
 
 const FILTROS: Filtro[] = [
@@ -107,6 +112,13 @@ const FILTROS: Filtro[] = [
     descricao:
       "Passaram do prazo da etapa sem avançar. Quem está esperando há mais tempo vem primeiro — é desta lista que sai a rodada de retomada.",
     inclui: (l) => l.derived.situacao === "em_silencio",
+  },
+  {
+    id: "fup",
+    label: "Em FUP",
+    descricao:
+      "Leads com FUP sem resposta. Quem tem a próxima mensagem mais perto vem primeiro.",
+    inclui: (l, _hoje, fups) => !!fups.get(l.id)?.aberto && !l.encerramento,
   },
   {
     id: "novos",
@@ -126,11 +138,15 @@ export function CrmLista({
   leads,
   config,
   acoes,
+  fupsPorLead,
+  registrarFup,
   onAbrirLead,
 }: {
   leads: CrmLeadComputed[];
   config: CrmConfig;
   acoes: ReturnType<typeof useCrmLeads>;
+  fupsPorLead: Map<string, FupDoLead>;
+  registrarFup: (lead: CrmLeadComputed, dias: number) => void;
   onAbrirLead: (id: string) => void;
 }) {
   const [filtro, setFiltro] = useState<FiltroId>("hoje");
@@ -219,17 +235,18 @@ export function CrmLista({
     const mapa: Record<FiltroId, number> = {
       hoje: 0,
       silencio: 0,
+      fup: 0,
       novos: 0,
       todos: 0,
     };
     // Uma passada só pela base, em vez de um `filter` por chip.
     refinados.forEach((lead) => {
       FILTROS.forEach((f) => {
-        if (f.inclui(lead, hojeISO)) mapa[f.id] += 1;
+        if (f.inclui(lead, hojeISO, fupsPorLead)) mapa[f.id] += 1;
       });
     });
     return mapa;
-  }, [refinados]);
+  }, [refinados, fupsPorLead]);
 
   // Nome e telefone comparáveis, calculados uma vez por carga — normalizar
   // a base inteira a cada tecla era parte da travada da busca.
@@ -263,10 +280,10 @@ export function CrmLista({
             (digitos !== "" && chaves?.telefone.includes(digitos))
           );
         })
-      : refinados.filter((l) => ativo.inclui(l, hojeISO));
+      : refinados.filter((l) => ativo.inclui(l, hojeISO, fupsPorLead));
 
     return [...base].sort(ordenar(filtro, !!termo));
-  }, [leads, indiceBusca, refinados, filtro, buscaAdiada]);
+  }, [leads, indiceBusca, refinados, filtro, buscaAdiada, fupsPorLead]);
 
   const filtroAtivo = FILTROS.find((f) => f.id === filtro)!;
   const buscando = busca.trim() !== "";
@@ -429,6 +446,8 @@ export function CrmLista({
                 lead={lead}
                 config={config}
                 acoes={acoes}
+                fup={fupsPorLead.get(lead.id)}
+                registrarFup={registrarFup}
                 onAbrirLead={onAbrirLead}
               />
             ))}
@@ -456,6 +475,7 @@ const LinhaLead = memo(
   (anterior, proxima) =>
     anterior.lead === proxima.lead &&
     anterior.config === proxima.config &&
+    anterior.fup === proxima.fup &&
     anterior.onAbrirLead === proxima.onAbrirLead,
 );
 
@@ -463,11 +483,15 @@ function LinhaLeadBase({
   lead,
   config,
   acoes,
+  fup,
+  registrarFup,
   onAbrirLead,
 }: {
   lead: CrmLeadComputed;
   config: CrmConfig;
   acoes: ReturnType<typeof useCrmLeads>;
+  fup: FupDoLead | undefined;
+  registrarFup: (lead: CrmLeadComputed, dias: number) => void;
   onAbrirLead: (id: string) => void;
 }) {
   const { derived } = lead;
@@ -556,10 +580,10 @@ function LinhaLeadBase({
           acoes={acoes}
           onAbrirLead={onAbrirLead}
         />
-        <WhatsAppButton
-          telefone={lead.telefone}
-          size="icon"
-          className="h-8 w-8 shrink-0"
+        <FupBotao
+          lead={lead}
+          fup={fup}
+          onRegistrar={(dias) => registrarFup(lead, dias)}
         />
       </div>
     </div>
@@ -659,6 +683,10 @@ function Vazio({
     silencio: {
       titulo: "Ninguém em silêncio",
       dica: "Nenhum atendimento passou do prazo da sua etapa.",
+    },
+    fup: {
+      titulo: "Ninguém em FUP",
+      dica: "Nenhum lead está aguardando resposta de um FUP.",
     },
     novos: {
       titulo: "Nenhum lead cadastrado hoje",
