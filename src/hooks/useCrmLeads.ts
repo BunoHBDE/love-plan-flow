@@ -473,16 +473,7 @@ export function useCrmLeads(config: CrmConfig | null) {
       }
       const lead = { id: leadId as string };
 
-      // O lead nasce na primeira etapa: a saudação foi enviada.
-      const primeiraEtapa = config?.stages[0];
-      if (primeiraEtapa) {
-        await supabase.from("crm_lead_stages").insert({
-          lead_id: lead.id,
-          stage_id: primeiraEtapa.id,
-          entrou_em: new Date().toISOString(),
-        });
-      }
-
+      // O banco já coloca o lead na primeira etapa (a saudação foi enviada).
       registrarEvento(lead.id, createdBy, "criado", "Lead cadastrado");
       return lead.id;
     },
