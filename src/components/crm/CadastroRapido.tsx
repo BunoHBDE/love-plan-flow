@@ -60,8 +60,12 @@ export function CadastroRapido({
   // entrado sem máscara.
   const digitos = phoneDigits(telefone);
   const duplicado =
-    digitos.length >= 8
-      ? leads.find((lead) => phoneDigits(lead.telefone).endsWith(digitos))
+    digitos.length >= 10
+      ? leads.find(
+          (lead) =>
+            !lead.arquivado &&
+            phoneDigits(lead.telefone).slice(-10) === digitos.slice(-10),
+        )
       : undefined;
 
   // O telefone é o único jeito de falar com o lead: um número pela metade
@@ -73,11 +77,17 @@ export function CadastroRapido({
   // seria um prazo de follow-up contando para trás.
   const entradaNoFuturo = entrada > hoje();
 
+  // Telefone que já tem lead aberto não é cadastrado de novo: abre o existente.
   const podeSalvar =
-    nome.trim() !== "" && telefoneCompleto && entrada !== "" && !entradaNoFuturo;
+    nome.trim() !== "" &&
+    telefoneCompleto &&
+    entrada !== "" &&
+    !entradaNoFuturo &&
+    !duplicado;
 
   const salvar = () => {
-    if (!podeSalvar) return;
+    // Enter dispara aqui mesmo com o botão desabilitado.
+    if (!podeSalvar || acoes.criarLead.isPending) return;
 
     acoes.criarLead.mutate(
       { nome, telefone, origem: origem || null, entrada },
@@ -179,7 +189,7 @@ export function CadastroRapido({
       ) : duplicado ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-warning-foreground">
           <AlertTriangle className="h-3.5 w-3.5" />
-          Este WhatsApp já está em{" "}
+          Este WhatsApp já tem lead aberto:{" "}
           <button
             type="button"
             className="font-semibold underline underline-offset-2"
