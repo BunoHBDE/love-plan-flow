@@ -79,7 +79,7 @@ export function CrmPainel({
       {/* 1 · FUNIL */}
       <Bloco
         titulo="1 · Funil"
-        descricao="Quantos leads passam por cada etapa. Uma queda forte numa etapa é problema da mensagem daquela etapa, não do lead."
+        descricao={"\n"}
         acao={
           <Button
             variant="outline"
@@ -147,7 +147,7 @@ export function CrmPainel({
       {/* 2 · GARGALO */}
       <Bloco
         titulo="2 · Onde o atendimento trava"
-        descricao="De cada 100 que chegam a uma etapa, quantos seguem adiante. Quem fecha o contrato numa etapa não conta como queda dela — é o melhor desfecho possível, não uma perda. A etapa de maior queda está destacada: é onde a mensagem, o preço ou a proposta daquela etapa precisa mudar. 'Parados' é quanta gente está lá agora, e é a fila de quem você pode chamar hoje."
+        descricao={"\n"}
       >
         <Table>
           <TableHeader>
@@ -223,7 +223,7 @@ export function CrmPainel({
       {/* 3 · MOTIVOS DA PERDA */}
       <Bloco
         titulo="3 · Por que você perde, e onde"
-        descricao="O mesmo motivo em etapas diferentes é um problema diferente: 'preço' na Proposta é a tabela; 'preço' depois da visita é o que a visita prometeu."
+        descricao={"\n"}
       >
         {motivos.total === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
@@ -293,7 +293,7 @@ export function CrmPainel({
       {/* 3 · POR ORIGEM */}
       <Bloco
         titulo="4 · Desempenho por origem"
-        descricao="Compare os canais pela taxa lead → contrato, não pelo volume de leads."
+        descricao={"\n"}
       >
         <Table>
           <TableHeader>
