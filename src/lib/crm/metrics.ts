@@ -40,7 +40,11 @@ export function calcularFunil(
   const total = leads.length;
   const pct = (n: number) => (total > 0 ? n / total : null);
 
-  const alcances = leads.map((lead) => indiceAlcancado(lead, stages));
+  // Todo lead entra pela primeira etapa: quem ainda não tem linha em
+  // crm_lead_stages está implícito nela (como no motor), não fora do funil.
+  const alcances = leads.map((lead) =>
+    Math.max(0, indiceAlcancado(lead, stages)),
+  );
 
   const linhas: LinhaFunil[] = [
     {
@@ -161,7 +165,10 @@ export function calcularGargalo(
   leads: CrmLeadComputed[],
   stages: CrmStage[],
 ): LinhaGargalo[] {
-  const alcances = leads.map((lead) => indiceAlcancado(lead, stages));
+  // Mesmo critério do funil: sem linha de etapa, o lead está na primeira.
+  const alcances = leads.map((lead) =>
+    Math.max(0, indiceAlcancado(lead, stages)),
+  );
 
   const linhas: LinhaGargalo[] = stages.map((stage, i) => {
     const chegaram = alcances.filter((a) => a >= i).length;
