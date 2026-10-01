@@ -275,6 +275,63 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_fups: {
+        Row: {
+          created_by: string
+          dias: number
+          etapa_id: string | null
+          etapa_nome: string | null
+          id: string
+          iniciado_em: string
+          lead_id: string
+          numero_fup: number
+          proxima_mensagem: string
+          status: string
+          voltou_em: string | null
+        }
+        Insert: {
+          created_by: string
+          dias: number
+          etapa_id?: string | null
+          etapa_nome?: string | null
+          id?: string
+          iniciado_em?: string
+          lead_id: string
+          numero_fup?: number
+          proxima_mensagem: string
+          status?: string
+          voltou_em?: string | null
+        }
+        Update: {
+          created_by?: string
+          dias?: number
+          etapa_id?: string | null
+          etapa_nome?: string | null
+          id?: string
+          iniciado_em?: string
+          lead_id?: string
+          numero_fup?: number
+          proxima_mensagem?: string
+          status?: string
+          voltou_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_fups_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_fups_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_lead_events: {
         Row: {
           created_at: string

@@ -89,6 +89,7 @@ export const QUERY_KEYS = {
   // ==========================================
   CRM_CONFIG: ['crm', 'config'] as const,
   CRM_LEADS: ['crm', 'leads'] as const,
+  CRM_FUPS: ['crm', 'fups'] as const,
 } as const;
 
 // ==========================================
@@ -132,6 +133,7 @@ export const invalidateQueries = {
   // CRM
   crmConfig: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CRM_CONFIG }),
   crmLeads: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CRM_LEADS }),
+  crmFups: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CRM_FUPS }),
 
   // Invalida TUDO (use com cuidado!)
   all: () => queryClient.invalidateQueries(),

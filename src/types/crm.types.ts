@@ -95,6 +95,20 @@ export interface CrmUltimaMensagem {
   em: string;
 }
 
+/** Um FUP registrado: `aguardando` até o lead responder, depois `voltou`. */
+export interface CrmFup {
+  id: string;
+  lead_id: string;
+  dias: number;
+  etapa_id: string | null;
+  etapa_nome: string | null;
+  numero_fup: number;
+  proxima_mensagem: string;
+  iniciado_em: string;
+  status: "aguardando" | "voltou";
+  voltou_em: string | null;
+}
+
 export interface CrmLead {
   id: string;
   client_id: string;

@@ -5,6 +5,7 @@ import { SubscriptionGate } from "@/components/subscription";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCrmConfig } from "@/hooks/useCrmConfig";
 import { useCrmLeads } from "@/hooks/useCrmLeads";
+import { useCrmFups } from "@/hooks/useCrmFups";
 import { CrmLista } from "@/components/crm/CrmLista";
 import { CrmKanban } from "@/components/crm/CrmKanban";
 import { CrmPainel } from "@/components/crm/CrmPainel";
@@ -14,6 +15,7 @@ export default function CRM() {
   const { config, loading: configLoading, error: configError } = useCrmConfig();
   const acoes = useCrmLeads(config);
   const { leads, loading: leadsLoading } = acoes;
+  const { fupsPorLead, registrarFup } = useCrmFups(acoes);
 
   const [leadAberto, setLeadAberto] = useState<string | null>(null);
 
@@ -59,6 +61,10 @@ export default function CRM() {
                   leads={leads}
                   config={config}
                   acoes={acoes}
+                  fupsPorLead={fupsPorLead}
+                  registrarFup={(lead, dias) =>
+                    registrarFup.mutate({ lead, dias })
+                  }
                   onAbrirLead={setLeadAberto}
                 />
               </TabsContent>
