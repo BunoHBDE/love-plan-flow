@@ -116,6 +116,9 @@ $$;
 revoke all on function public.crm_fups_reconciliar() from public, anon;
 grant execute on function public.crm_fups_reconciliar() to authenticated;
 
+-- A função do gatilho só deve ser chamada pelo próprio gatilho.
+revoke all on function public.crm_fups_marcar_voltou() from public, anon, authenticated;
+
 -- ------------------------------------------------------------------
 -- Análise
 -- ------------------------------------------------------------------
