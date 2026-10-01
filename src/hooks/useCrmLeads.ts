@@ -38,6 +38,9 @@ import type {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any;
 
+/** Telefone que já tem lead aberto: a mensagem é segura para ir à tela. */
+class ErroLeadDuplicado extends Error {}
+
 // ==========================================
 // LEITURA
 // ==========================================
@@ -437,7 +440,9 @@ export function useCrmLeads(config: CrmConfig | null) {
   const erro = (contexto: string) => (error: Error) => {
     toast({
       title: "Não foi possível salvar",
-      description: getSafeErrorMessage(error, contexto),
+      description: error instanceof ErroLeadDuplicado
+        ? error.message
+        : getSafeErrorMessage(error, contexto),
       variant: "destructive",
     });
   };
@@ -447,34 +452,26 @@ export function useCrmLeads(config: CrmConfig | null) {
     mutationFn: async (input: NovoLeadInput) => {
       const createdBy = await usuarioAtual();
 
-      const { data: cliente, error: erroCliente } = await supabase
-        .from("clients")
-        .insert({
-          nome: input.nome.trim(),
-          telefone: input.telefone.trim(),
-          email: input.email?.trim() || null,
-          created_by: createdBy,
-        })
-        .select("id")
-        .single();
+      // Cliente e lead nascem juntos, no banco: reaproveita o cliente que já
+      // tem esse telefone e recusa o telefone que já tem lead aberto.
+      const { data: leadId, error: erroLead } = await db.rpc("crm_criar_lead", {
+        p_nome: input.nome.trim(),
+        p_telefone: input.telefone.trim(),
+        p_email: input.email?.trim() || null,
+        p_origem: input.origem || null,
+        p_entrada: input.entrada,
+        p_observacoes: input.observacoes?.trim() || null,
+      });
 
-      if (erroCliente) throw erroCliente;
-
-      const { data: lead, error: erroLead } = await supabase
-        .from("crm_leads")
-        .insert({
-          client_id: cliente.id,
-          created_by: createdBy,
-          entrada: input.entrada,
-          origem: input.origem || null,
-          // A entrada é a data da sua primeira mensagem: é o relógio inicial.
-          ultima_msg: input.entrada,
-          observacoes: input.observacoes?.trim() || null,
-        })
-        .select("id")
-        .single();
-
-      if (erroLead) throw erroLead;
+      if (erroLead) {
+        if (erroLead.message === "LEAD_DUPLICADO") {
+          throw new ErroLeadDuplicado(
+            "Já existe um lead aberto com esse telefone. Abra o lead existente em vez de cadastrar de novo.",
+          );
+        }
+        throw erroLead;
+      }
+      const lead = { id: leadId as string };
 
       // O lead nasce na primeira etapa: a saudação foi enviada.
       const primeiraEtapa = config?.stages[0];
