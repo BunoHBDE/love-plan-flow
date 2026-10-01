@@ -213,6 +213,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "contracts_quote_id_fkey"
             columns: ["quote_id"]
             isOneToOne: false
@@ -317,6 +324,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "crm_fups_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "crm_fups_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -324,11 +338,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "crm_fups_etapa_id_fkey"
-            columns: ["etapa_id"]
+            foreignKeyName: "crm_fups_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: "crm_stages"
-            referencedColumns: ["id"]
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["lead_id"]
           },
         ]
       }
@@ -368,6 +382,13 @@ export type Database = {
             referencedRelation: "crm_leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_lead_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["lead_id"]
+          },
         ]
       }
       crm_lead_stages: {
@@ -402,6 +423,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "crm_leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_stages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "crm_lead_stages_outcome_id_fkey"
@@ -517,6 +545,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_leads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "crm_leads_encerrado_stage_id_fkey"
@@ -758,6 +793,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ia_sugestoes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["lead_id"]
+          },
+          {
             foreignKeyName: "ia_sugestoes_outcome_id_sugerido_fkey"
             columns: ["outcome_id_sugerido"]
             isOneToOne: false
@@ -820,6 +862,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "crm_leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["lead_id"]
           },
           {
             foreignKeyName: "messages_source_event_id_fkey"
@@ -1351,6 +1400,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "quotes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "quotes_espaco_id_fkey"
             columns: ["espaco_id"]
             isOneToOne: false
@@ -1489,6 +1545,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "visits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       whatsapp_events: {
@@ -1517,7 +1580,50 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      crm_fups_ate_voltar: {
+        Row: {
+          fups_ate_voltar: number | null
+          fups_total: number | null
+          lead_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_fups_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_fups_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads_telefone_duplicado"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      crm_fups_resumo: {
+        Row: {
+          etapa: string | null
+          taxa_volta_pct: number | null
+          total: number | null
+          voltaram: number | null
+        }
+        Relationships: []
+      }
+      crm_leads_telefone_duplicado: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          lead_id: string | null
+          mensagens: number | null
+          nome: string | null
+          origem_ayllah: string | null
+          telefone_chave: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       aplicar_sugestoes_ia: {
@@ -1538,6 +1644,18 @@ export type Database = {
         }[]
       }
       crm_bootstrap: { Args: never; Returns: undefined }
+      crm_criar_lead: {
+        Args: {
+          p_email: string
+          p_entrada: string
+          p_nome: string
+          p_observacoes: string
+          p_origem: string
+          p_telefone: string
+        }
+        Returns: string
+      }
+      crm_fups_reconciliar: { Args: never; Returns: number }
       crm_leads_limpar_campos_ia: {
         Args: { p_campos: string[]; p_lead_id: string }
         Returns: undefined
