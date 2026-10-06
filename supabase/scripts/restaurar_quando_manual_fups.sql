@@ -17,8 +17,13 @@
 --   * `quando_manual` está nulo — uma data que alguém pôs depois nunca é
 --     sobrescrita;
 --   * o lead não está encerrado;
---   * o lead não entrou em etapa nova depois do FUP — avançar zera
---     `quando_manual` de propósito, porque o passo pendente mudou.
+--   * ninguém moveu o lead de etapa depois do FUP — avançar zera
+--     `quando_manual` de propósito, porque o passo pendente mudou. O sinal é o
+--     evento `etapa` em `crm_lead_events` (ação humana), NÃO
+--     `crm_lead_stages.entrou_em`: a IA gravava `entrou_em` com o horário da
+--     análise das mensagens, que pode cair segundos depois do FUP mesmo quando
+--     a etapa foi movida pelo cron horas depois. Um filtro por `entrou_em`
+--     deixava de fora leads que a IA tinha zerado (evento `ia`).
 
 -- ------------------------------------------------------------------
 -- 1. Simulação: o que seria restaurado (não altera nada)
@@ -41,8 +46,9 @@ select l.id as lead_id,
  where l.quando_manual is null
    and l.encerramento is null
    and not exists (
-         select 1 from public.crm_lead_stages ls
-          where ls.lead_id = l.id and ls.entrou_em > u.iniciado_em)
+         select 1 from public.crm_lead_events e
+          where e.lead_id = l.id and e.tipo = 'etapa'
+            and e.created_at > u.iniciado_em)
  order by u.iniciado_em;
 
 -- ------------------------------------------------------------------
@@ -64,16 +70,18 @@ update public.crm_leads l
    and l.quando_manual is null
    and l.encerramento is null
    and not exists (
-         select 1 from public.crm_lead_stages ls
-          where ls.lead_id = l.id and ls.entrou_em > u.iniciado_em);
+         select 1 from public.crm_lead_events e
+          where e.lead_id = l.id and e.tipo = 'etapa'
+            and e.created_at > u.iniciado_em);
 
--- Confira o número de linhas afetadas antes de confirmar. Na simulação de
--- 05/10/2026 eram 31. Se estiver certo: commit; senão: rollback.
+-- Confira o número de linhas afetadas antes de confirmar. Em produção, a
+-- primeira rodada (05/10/2026) restaurou 31 leads e uma segunda (06/10/2026),
+-- já com o filtro corrigido, mais 2. Se estiver certo: commit; senão: rollback.
 commit;
 
 -- ------------------------------------------------------------------
--- 3. Verificação: deve devolver zero linhas, salvo os leads que avançaram de
---    etapa depois do FUP (2 em 05/10/2026), que ficam de fora de propósito.
+-- 3. Verificação: deve devolver zero linhas. Ficam de fora, de propósito,
+--    os leads que uma pessoa moveu de etapa depois do FUP.
 -- ------------------------------------------------------------------
 select l.id, u.proxima_mensagem
   from (
@@ -84,4 +92,8 @@ select l.id, u.proxima_mensagem
   ) u
   join public.crm_leads l on l.id = u.lead_id
  where l.quando_manual is distinct from u.proxima_mensagem
-   and l.encerramento is null;
+   and l.encerramento is null
+   and not exists (
+         select 1 from public.crm_lead_events e
+          where e.lead_id = l.id and e.tipo = 'etapa'
+            and e.created_at > u.iniciado_em);
