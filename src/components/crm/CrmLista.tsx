@@ -57,7 +57,13 @@ import type { FupDoLead } from "@/hooks/useCrmFups";
 import { CadastroRapido } from "./CadastroRapido";
 import { QualificacaoNaLinha } from "./Qualificacao";
 
-type FiltroId = "hoje" | "silencio" | "fup" | "novos" | "todos";
+type FiltroId =
+  | "hoje"
+  | "silencio"
+  | "fup"
+  | "novos"
+  | "todos"
+  | "encerrados";
 
 /**
  * As proporções das colunas da linha: Lead | Situação | Fase | Próxima etapa
@@ -134,8 +140,16 @@ const FILTROS: Filtro[] = [
   {
     id: "todos",
     label: "Todos",
-    descricao: "Todo o atendimento em aberto. Os encerrados ficam no fim.",
-    inclui: () => true,
+    descricao:
+      "Todo o atendimento em aberto. Os encerrados ficam em “Encerrados”.",
+    inclui: (l) => !l.derived.encerrado,
+  },
+  {
+    id: "encerrados",
+    label: "Encerrados",
+    descricao:
+      "Atendimentos já encerrados (contrato fechado ou descartados), do mais recente ao mais antigo. A busca por nome também os encontra.",
+    inclui: (l) => l.derived.encerrado,
   },
 ];
 
@@ -258,6 +272,7 @@ export function CrmLista({
       fup: 0,
       novos: 0,
       todos: 0,
+      encerrados: 0,
     };
     // Uma passada só pela base, em vez de um `filter` por chip.
     refinados.forEach((lead) => {
@@ -647,11 +662,15 @@ function ordenar(filtro: FiltroId, buscando: boolean) {
       return b.derived.diasParado - a.derived.diasParado;
     }
 
+    if (filtro === "encerrados") {
+      return (b.encerrado_em ?? "").localeCompare(a.encerrado_em ?? "");
+    }
+
     if (filtro === "novos") {
       return b.created_at.localeCompare(a.created_at);
     }
 
-    // Pendências primeiro, por data; encerrados no fim.
+    // Pendências primeiro, por data.
     const qa = a.derived.quando ?? "9999-12-31";
     const qb = b.derived.quando ?? "9999-12-31";
     if (qa !== qb) return qa < qb ? -1 : 1;
@@ -723,6 +742,10 @@ function Vazio({
     todos: {
       titulo: "Nenhum lead ainda",
       dica: "Cadastre o primeiro contato para começar o atendimento.",
+    },
+    encerrados: {
+      titulo: "Nenhum atendimento encerrado",
+      dica: "Os leads encerrados aparecem aqui.",
     },
   };
 
