@@ -57,7 +57,13 @@ import type { FupDoLead } from "@/hooks/useCrmFups";
 import { CadastroRapido } from "./CadastroRapido";
 import { QualificacaoNaLinha } from "./Qualificacao";
 
-type FiltroId = "hoje" | "silencio" | "fup" | "novos" | "todos";
+type FiltroId =
+  | "hoje"
+  | "silencio"
+  | "fup"
+  | "novos"
+  | "todos"
+  | "encerrados";
 
 /**
  * As proporções das colunas da linha: Lead | Situação | Fase | Próxima etapa
@@ -134,8 +140,16 @@ const FILTROS: Filtro[] = [
   {
     id: "todos",
     label: "Todos",
-    descricao: "Todo o atendimento em aberto. Os encerrados ficam no fim.",
-    inclui: () => true,
+    descricao:
+      "Todo o atendimento em aberto. Os encerrados ficam no filtro “Encerrados”.",
+    inclui: (l) => !l.derived.encerrado,
+  },
+  {
+    id: "encerrados",
+    label: "Encerrados",
+    descricao:
+      "Atendimentos finalizados — contratados, recusados e não qualificados. Fora do “Todos” para não atrapalhar a rotina.",
+    inclui: (l) => l.derived.encerrado,
   },
 ];
 
@@ -258,6 +272,7 @@ export function CrmLista({
       fup: 0,
       novos: 0,
       todos: 0,
+      encerrados: 0,
     };
     // Uma passada só pela base, em vez de um `filter` por chip.
     refinados.forEach((lead) => {
@@ -723,6 +738,10 @@ function Vazio({
     todos: {
       titulo: "Nenhum lead ainda",
       dica: "Cadastre o primeiro contato para começar o atendimento.",
+    },
+    encerrados: {
+      titulo: "Nenhum atendimento encerrado",
+      dica: "Leads contratados, recusados ou descartados aparecem aqui.",
     },
   };
 
