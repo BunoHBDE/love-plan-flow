@@ -380,34 +380,53 @@ export function CrmLista({
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-2">
-        {FILTROS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => {
-              setFiltro(item.id);
-              setBusca("");
-            }}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors",
-              filtro === item.id && !buscando
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-muted-foreground hover:bg-muted",
-            )}
-          >
-            {item.label}
-            <span
+        {FILTROS.map((item) => {
+          const ativo = filtro === item.id && !buscando;
+          // Encerrados é consulta, não rotina: sem borda nem fundo, empurrado
+          // para a ponta, para não competir com os filtros do dia a dia.
+          const discreto = item.id === "encerrados";
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setFiltro(item.id);
+                setBusca("");
+              }}
               className={cn(
-                "rounded-full px-1.5 text-xs",
-                filtro === item.id && !buscando
-                  ? "bg-primary-foreground/20"
-                  : "bg-muted",
+                "inline-flex items-center gap-2 rounded-full text-sm transition-colors",
+                discreto
+                  ? cn(
+                      "ml-auto px-2.5 py-1.5 text-xs",
+                      ativo
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground/70 hover:bg-muted/60 hover:text-muted-foreground",
+                    )
+                  : cn(
+                      "border px-3 py-1.5",
+                      ativo
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted",
+                    ),
               )}
             >
-              {contagens[item.id]}
-            </span>
-          </button>
-        ))}
+              {item.label}
+              <span
+                className={cn(
+                  "rounded-full px-1.5 text-xs",
+                  discreto
+                    ? "text-muted-foreground/70"
+                    : ativo
+                      ? "bg-primary-foreground/20"
+                      : "bg-muted",
+                )}
+              >
+                {contagens[item.id]}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Refinos: cruzam com o filtro de cima em vez de substituí-lo. */}
